@@ -36,7 +36,7 @@ B7.ConfigWA = (function () {
   const icone = k => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (IC[k] || '') + '</svg>';
   const linha = (t, d, ctl, cls) => '<div class="asw-row ' + (cls || '') + '"><div class="asw-row-t"><b>' + t + '</b>' + (d ? '<small>' + d + '</small>' : '') + '</div><div class="asw-row-c">' + ctl + '</div></div>';
   const chave = (k, on) => '<label class="asw-tg"><input type="checkbox" data-c="' + k + '"' + (on ? ' checked' : '') + '><span></span></label>';
-  const bloco = (t, d, html, cls) => '<section class="asw-bl ' + (cls || '') + '"><header><h3>' + t + '</h3>' + (d ? '<p>' + d + '</p>' : '') + '</header>' + html + '</section>';
+  const bloco = (t, d, html, cls) => '<section class="asw-bl ' + (cls || '') + '">' + (t || d ? '<header>' + (t ? '<h3>' + t + '</h3>' : '') + (d ? '<p>' + d + '</p>' : '') + '</header>' : '') + html + '</section>';
   const seg = (k, val, ops) => '<div class="asw-seg" role="radiogroup">' + ops.map(([v, r]) => '<label class="' + (String(val) === String(v) ? 'on' : '') + '"><input type="radio" name="' + k + '" data-c="' + k + '" value="' + esc(v) + '"' + (String(val) === String(v) ? ' checked' : '') + '><span>' + r + '</span></label>').join('') + '</div>';
   const num = (k, v, min, max, suf) => '<label class="cwa-num"><input type="number" inputmode="numeric" data-c="' + k + '" value="' + esc(v) + '" min="' + min + '" max="' + max + '"><span>' + suf + '</span></label>';
   /* 4.81.0: número com − e + e sugestões (no lugar da caixinha de número) */
@@ -50,6 +50,24 @@ B7.ConfigWA = (function () {
   const NOME_MODELO = { video: ['Vídeo pronto', 'Edição de vídeo → Enviar no WhatsApp'], design: ['Arte pronta', 'Design → Enviar no WhatsApp'], gravacao: ['Confirmar gravação', 'Gravações → Enviar no WhatsApp'],
     aprovacao: ['Pedir aprovação', 'Aprovações → Enviar no WhatsApp'], roteiro: ['Mandar roteiro', 'Roteiros → Enviar no WhatsApp'], material: ['Pedir material gravado', 'Edição de vídeo → pedir material'] };
 
+  const DESC = {
+    geral: 'O que precisa de atenção aparece primeiro.',
+    meu: 'Vale só para você: como suas mensagens saem e como você ouve os áudios.',
+    modelos: 'Os textos que já vêm escritos no “Enviar no WhatsApp” das outras telas. Só seus.',
+    respostas: 'Textos prontos da equipe: digite / na conversa para usar.',
+    grupos: 'De qual cliente é cada grupo (é assim que o {otto}, os avisos e a Central sabem de quem é a conversa) e se o {otto} fala nele.',
+    avisos: 'Quando e como a equipe fica sabendo que alguém espera resposta.',
+    assuntos: 'O que é da Branding7, o que é de outra equipe e quem responde por cada coisa.',
+    'otto-geral': 'O que o {otto} fez nos últimos dias e as dúvidas que ele passou para a equipe.',
+    'otto-jeito': 'Quem ele é e como escreve.',
+    'otto-velocidade': 'Quanto ele demora para responder, quando fala em áudio e com que voz.',
+    'otto-equipe': 'As pessoas da equipe, o grupo interno, o bom dia e as pendências.',
+    'otto-saber': 'O que ele lembra e as respostas que vocês ensinaram.',
+    'otto-controle': 'O que ele pode fazer sozinho e quem pode dar ordens.',
+    'otto-testar': 'Converse com ele aqui, sem mandar nada no WhatsApp.',
+    conexao: 'O número da Branding7 ligado ao B7.',
+    arquivos: 'Onde ficam fotos, vídeos e áudios, e o que fazer com conversas paradas.'
+  };
   /* ------------------------------------------------------------ abrir */
   async function abrir(params) {
     const painel = document.getElementById('painel-dashboard'); if (!painel) return;
@@ -60,7 +78,7 @@ B7.ConfigWA = (function () {
     const adm = souAdmin();
     const q = [
       sb().from('wa_config').select('*').eq('id', 1).maybeSingle(),
-      adm ? sb().from('wa_assistente').select('id,nome,ativo,push_espera_min,push_para,vigia_min,esperando_cliente_h,alertas_ligados,horario,avisos_regras').eq('id', 1).maybeSingle() : Promise.resolve({ data: null }),
+      adm ? sb().from('wa_assistente').select('id,nome,ativo,push_espera_min,push_para,vigia_min,esperando_cliente_h,alertas_ligados,horario,avisos_regras,modo_clientes,resumo_dia_ligado,resumo_dia_hora,grupos').eq('id', 1).maybeSingle() : Promise.resolve({ data: null }),
       adm ? sb().from('perfis').select('id,nome,papel').eq('estado', 'ativa').neq('papel', 'cliente').order('nome') : Promise.resolve({ data: [] }),
       adm ? sb().from('wa_conversas').select('jid,nome,cliente_id,arquivada,ultima_em,foto_url').eq('tipo', 'grupo').order('ultima_em', { ascending: false, nullsFirst: false }).limit(500) : Promise.resolve({ data: [] }),
       adm ? sb().from('clientes_resumo').select('id,nome,logo_url').is('deleted_at', null).order('nome').limit(600) : Promise.resolve({ data: [] }),
@@ -79,6 +97,7 @@ B7.ConfigWA = (function () {
       w: { respostas: cf.data.respostas || [], auto_arquivar_dias: cf.data.auto_arquivar_dias || 0, fotos_auto: cf.data.fotos_auto !== false },
       a: adm ? { push_espera_min: ass.push_espera_min ?? 15, push_para: ass.push_para || [], vigia_min: ass.vigia_min ?? 20, esperando_cliente_h: ass.esperando_cliente_h ?? 24,
         alertas_ligados: ass.alertas_ligados !== false,
+        modo_clientes: ass.modo_clientes === 'atende' ? 'atende' : 'vigia', resumo_dia_ligado: !!ass.resumo_dia_ligado, resumo_dia_hora: ass.resumo_dia_hora || '18:00', grupos: ass.grupos || {},
         avisos_regras: Object.assign({ nossos: '', outros: [], responsaveis: [], instrucoes: '' }, ass.avisos_regras || {}), horario: ass.horario || { ativo: false, ini: '08:00', fim: '18:00', dias: [1, 2, 3, 4, 5], mensagem: '' } } : null,
       p: { assinatura: pref.assinatura !== false, nome: pref.nome || '', enter: pref.enter !== false, vel, modelos }
     };
@@ -103,13 +122,8 @@ B7.ConfigWA = (function () {
     ]);
     if (!S || !raiz || !raiz.isConnected) return;
     S.estado = e || {}; S.drive = d || {}; S.uso = { drive: a, sistema: b ? b.length : null, bytes: b ? b.reduce((s, x) => s + (Number(x.midia_tamanho) || 0), 0) : null };
-    if (String(S.aba).startsWith('otto-')) {   /* não redesenha por cima do Otto aberto: só o topo */
-      const e2 = S.estado, on = e2 && e2.estado === 'open', pt = raiz.querySelector('.asw-id p'), bola = raiz.querySelector('.cwa-av i');
-      if (pt) pt.textContent = on ? 'Número ' + (e2.numero ? '+' + e2.numero : '') + ' conectado e recebendo mensagens' : 'Número desconectado — as mensagens não estão chegando';
-      if (bola) bola.className = on ? '' : 'off';
-      const dds = raiz.querySelectorAll('.asw-stats dd');
-      if (dds[2] && S.uso.drive != null) dds[2].textContent = S.uso.drive;
-      if (dds[3] && S.uso.bytes != null) { dds[3].textContent = tam(S.uso.bytes); dds[3].parentElement.classList.toggle('alerta', S.uso.bytes > 50e6); }
+    if (String(S.aba).startsWith('otto-')) {   /* não redesenha por cima do Otto aberto: só as pílulas do topo */
+      const pl = raiz.querySelector('.cwa-pils'); if (pl) pl.outerHTML = pilulas();
       return;
     }
     desenhar();
@@ -137,6 +151,7 @@ B7.ConfigWA = (function () {
         const { error } = await sb().from('wa_assistente').update({ push_espera_min: Math.max(0, Math.min(600, Number(a.push_espera_min) || 0)), push_para: a.push_para,
           vigia_min: Math.max(5, Math.min(600, Number(a.vigia_min) || 20)), esperando_cliente_h: Math.max(0, Math.min(240, Number(a.esperando_cliente_h) || 0)),
           alertas_ligados: a.alertas_ligados, horario: a.horario,
+          modo_clientes: a.modo_clientes === 'atende' ? 'atende' : 'vigia', resumo_dia_ligado: !!a.resumo_dia_ligado, resumo_dia_hora: /^\d{2}:\d{2}$/.test(a.resumo_dia_hora || '') ? a.resumo_dia_hora : '18:00', grupos: a.grupos || {},
           avisos_regras: { nossos: String(a.avisos_regras.nossos || '').trim(), instrucoes: String(a.avisos_regras.instrucoes || '').trim(),
             outros: (a.avisos_regras.outros || []).filter(o => String(o.equipe || '').trim() && String(o.assuntos || '').trim()).map(o => ({ equipe: o.equipe.trim(), assuntos: o.assuntos.trim() })),
             responsaveis: (a.avisos_regras.responsaveis || []).filter(r => r.pessoa_id).map(r => ({ cliente_id: r.cliente_id || null, assunto: r.assunto || 'qualquer', pessoa_id: r.pessoa_id })) } }).eq('id', 1);
@@ -165,30 +180,32 @@ B7.ConfigWA = (function () {
   /* ------------------------------------------------------------ desenho */
   function desenhar() {
     const sc = raiz.scrollTop;
-    const ABAS = [
-      ['geral', 'Visão geral', null, true], ['meu', 'Meu jeito de enviar'], ['respostas', 'Respostas rápidas', (S.w.respostas || []).length],
-      ['modelos', 'Modelos de texto'], ['avisos', 'Avisos e espera', null, true], ['assuntos', 'Assuntos e responsáveis', S.a && S.a.avisos_regras ? (S.a.avisos_regras.responsaveis || []).length || null : null, true], ['grupos', 'Grupos e clientes', S.grupos.filter(g => !g.cliente_id && !g.arquivada).length || null, true],
-      ['arquivos', 'Arquivos e conversas', null, true], ['conexao', 'Número conectado', null, true]
-    ].filter(a => S.adm || !a[3]);
-    const e = S.estado, on = e && e.estado === 'open';
+    /* 4.83.0: organização nova — cada coisa num lugar só, em 5 grupos */
+    const n = (v) => v ? v : null;
+    const GRUPOS = [
+      ['Início', [['geral', 'Visão geral', null, true]]],
+      ['Para você', [['meu', 'Meu jeito de enviar'], ['modelos', 'Modelos de texto']]],
+      ['Equipe e clientes', [['respostas', 'Respostas rápidas', n((S.w.respostas || []).length)], ['grupos', 'Grupos e clientes', n(S.grupos.filter(g => !g.cliente_id && !g.arquivada).length), true],
+        ['avisos', 'Avisos e horários', null, true], ['assuntos', 'Assuntos e responsáveis', S.a && S.a.avisos_regras ? n((S.a.avisos_regras.responsaveis || []).length) : null, true]]],
+      ['Otto', S.adm && B7.AssistenteWA && B7.AssistenteWA.ABAS_OTTO ? B7.AssistenteWA.ABAS_OTTO.map(([k, r]) => ['otto-' + k, r, null, true, true]) : []],
+      ['Sistema', [['conexao', 'Número conectado', null, true], ['arquivos', 'Arquivos e conversas', null, true]]]
+    ].map(([t, l]) => [t, l.filter(a => S.adm || !a[3])]).filter(([, l]) => l.length);
+    const todos = GRUPOS.flatMap(([, l]) => l), atualA = todos.find(a => a[0] === S.aba) || todos[0];
+    const e = S.estado, on = e && e.estado === 'open', d = S.drive || {}, dOk = d.conectado && d.status === 'ativa';
+
+    const ic = a => a[4] ? B7.AssistenteWA.icone(a[0].slice(5)) : icone(a[0]);
     raiz.innerHTML =
-      '<header class="asw-hero cwa-hero on">' +
-        '<a class="asw-volta" href="#/whatsapp">‹ Conversas</a>' +
-        '<div class="asw-id"><span class="asw-av cwa-av">' + icone('conexao') + (S.adm ? '<i class="' + (e == null ? 'esp' : on ? '' : 'off') + '"></i>' : '') + '</span>' +
-          '<div class="asw-id-t"><h1>Configurações do WhatsApp</h1><p>' +
-            (!S.adm ? 'Do seu jeito de mandar mensagem às respostas rápidas da equipe' :
-              e == null ? 'Conferindo o número…' : on ? 'Número ' + (e.numero ? '+' + esc(e.numero) : '') + ' conectado e recebendo mensagens' : 'Número desconectado — as mensagens não estão chegando') + '</p></div></div>' +
-        (S.adm ? '<dl class="asw-stats">' +
-          '<div><dt>grupos de clientes</dt><dd>' + S.grupos.filter(g => g.cliente_id).length + '<small>/' + S.grupos.length + '</small></dd></div>' +
-          '<div><dt>respostas rápidas</dt><dd>' + (S.w.respostas || []).length + '</dd></div>' +
-          '<div><dt>arquivos no Drive</dt><dd>' + (S.uso && S.uso.drive != null ? S.uso.drive : '–') + '</dd></div>' +
-          '<div class="' + (S.uso && S.uso.bytes > 50e6 ? 'alerta' : '') + '"><dt>ainda no sistema</dt><dd>' + (S.uso && S.uso.bytes != null ? tam(S.uso.bytes) : '–') + '</dd></div>' +
-        '</dl>' : '') + '</header>' +
+      '<header class="cwa-topo">' +
+        '<a class="cwa-volta" href="#/whatsapp" aria-label="Voltar para as conversas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></a>' +
+        '<span class="cwa-topo-ic">' + icone('conexao') + '</span>' +
+        '<div class="cwa-topo-t"><h1>Configurações do WhatsApp</h1><p>' + (S.adm ? 'Conversas, avisos, ' + esc(S.ottoNome) + ' e arquivos — tudo num lugar' : 'Seu jeito de mandar mensagem e as respostas da equipe') + '</p></div>' +
+        (S.adm ? pilulas() : '') + '</header>' +
       '<div class="asw-casca">' +
-        '<nav class="asw-nav" aria-label="Seções">' + ABAS.map(([k, r, n]) => '<button class="' + (S.aba === k ? 'on' : '') + '" data-aba="' + k + '"' + (S.aba === k ? ' aria-current="page"' : '') + '>' + icone(k) + '<span>' + r + '</span>' + (n != null ? '<b>' + n + '</b>' : '') + '</button>').join('') +
-          (S.adm && B7.AssistenteWA && B7.AssistenteWA.ABAS_OTTO ? '<div class="cwa-nav-grupo"><span class="cwa-nav-rot">' + icone('otto') + esc(S.ottoNome) + ' · assistente' + '<i class="' + (S.ottoAtivo ? 'on' : '') + '" title="' + (S.ottoAtivo ? 'Ligado' : 'Desligado') + '"></i></span>' +
-            B7.AssistenteWA.ABAS_OTTO.map(([k, r]) => '<button class="cwa-sub' + (S.aba === 'otto-' + k ? ' on' : '') + '" data-aba="otto-' + k + '"' + (S.aba === 'otto-' + k ? ' aria-current="page"' : '') + '>' + B7.AssistenteWA.icone(k) + '<span>' + r + '</span></button>').join('') + '</div>' : '') + '</nav>' +
-        '<section class="asw-corpo">' + corpo() + '</section>' +
+        '<nav class="asw-nav cwa-nav" aria-label="Seções">' + GRUPOS.map(([t, l]) => '<div class="cwa-ng"><span class="cwa-ng-t">' + t + (t === 'Otto' ? '<i class="' + (S.ottoAtivo ? 'on' : '') + '"></i>' : '') + '</span>' +
+          l.map(a => '<button class="' + (S.aba === a[0] ? 'on' : '') + '" data-aba="' + a[0] + '"' + (S.aba === a[0] ? ' aria-current="page"' : '') + '>' + ic(a) + '<span>' + a[1] + '</span>' + (a[2] != null ? '<b>' + a[2] + '</b>' : '') + '</button>').join('') + '</div>').join('') + '</nav>' +
+        '<section class="asw-corpo">' +
+          '<header class="cwa-cab"><span class="cwa-cab-ic">' + ic(atualA) + '</span><div><small>' + (GRUPOS.find(([, l]) => l.includes(atualA)) || [''])[0] + '</small><h2>' + atualA[1] + '</h2>' + (DESC[atualA[0]] ? '<p>' + DESC[atualA[0]].replace(/\{otto\}/g, esc(S.ottoNome)) + '</p>' : '') + '</div></header>' +
+          corpo() + '</section>' +
       '</div>' +
       '<div class="asw-barra" aria-hidden="true"><span>Alterações ainda não salvas</span><button class="b" data-desfazer>Desfazer</button><button class="b pri" data-salvar>Salvar</button></div>';
     raiz.scrollTop = sc;
@@ -198,6 +215,15 @@ B7.ConfigWA = (function () {
     marcarSujo();
   }
 
+  const gcfg = jid => ((S.a && S.a.grupos) || {})[jid] || {};
+  function pilulas() {
+    const e = S.estado, on = e && e.estado === 'open', d = S.drive || {}, dOk = d.conectado && d.status === 'ativa';
+    const pil = (est, t, aba) => '<button class="cwa-pil ' + est + '" data-aba="' + aba + '"><i></i>' + t + '</button>';
+    return '<div class="cwa-pils">' +
+      pil(e == null ? 'esp' : on ? 'ok' : 'ruim', e == null ? 'Número…' : on ? 'Número conectado' : 'Número desconectado', 'conexao') +
+      pil(S.ottoAtivo ? 'ok' : 'off', esc(S.ottoNome) + (S.ottoAtivo ? ' ligado' : ' desligado'), 'otto-geral') +
+      pil(S.drive == null ? 'esp' : dOk ? (S.uso && S.uso.sistema ? 'meio' : 'ok') : 'ruim', S.drive == null ? 'Drive…' : dOk ? 'Drive conectado' : 'Drive desconectado', 'arquivos') + '</div>';
+  }
   function corpo() {
     const w = S.w, a = S.a, p = S.p;
     if (String(S.aba).startsWith('otto-')) return '<div id="cwa-otto" class="cwa-otto"><div class="asw-carrega"><i></i>Abrindo o ' + esc(S.ottoNome) + '…</div></div>';
@@ -205,7 +231,7 @@ B7.ConfigWA = (function () {
       const e = S.estado, on = e && e.estado === 'open', d = S.drive || {}, dOk = d.conectado && d.status === 'ativa';
       const semCli = S.grupos.filter(g => !g.cliente_id && !g.arquivada).length;
       const card = (k, t, st, txt, acao) => '<button class="cwa-card ' + st + '" data-aba="' + k + '"><span class="cwa-card-ic">' + icone(k) + '</span><span class="cwa-card-t"><b>' + t + '</b><small>' + txt + '</small></span><i class="cwa-pt"></i><em>' + acao + ' ›</em></button>';
-      return bloco('Tudo em ordem?', 'O que precisa de atenção aparece primeiro.',
+      return bloco('', '',
         '<div class="cwa-cards">' +
           card('conexao', 'Número do WhatsApp', e == null ? 'esp' : on ? 'ok' : 'ruim', e == null ? 'Conferindo…' : on ? 'Conectado' + (e.numero ? ' · +' + esc(e.numero) : '') : 'Desconectado — leia o QR Code de novo', on ? 'Ver' : 'Conectar') +
           card('arquivos', 'Arquivos no Google Drive', S.drive == null ? 'esp' : dOk ? (S.uso && S.uso.sistema ? 'meio' : 'ok') : 'ruim',
@@ -236,7 +262,7 @@ B7.ConfigWA = (function () {
       const cliEx = 'Sabor da Feira';
       const prev = r ? esc(String(r.texto || '').replace(/\{cliente\}/g, cliEx).replace(/\{eu\}/g, primeiro(eu().nome) || 'Você')).replace(/\n/g, '<br>') : '';
       const ro = S.adm ? '' : ' readonly';
-      return bloco('Respostas rápidas', 'Na conversa, digite <b>/</b> e o atalho — a resposta entra pronta, é só revisar e enviar. <code>{cliente}</code> vira o nome do cliente e <code>{eu}</code> o seu.' + (S.adm ? '' : ' Só o administrador cria e muda.'),
+      return bloco('', 'Na conversa, digite <b>/</b> e o atalho — a resposta entra pronta, é só revisar e enviar. <code>{cliente}</code> vira o nome do cliente e <code>{eu}</code> o seu.' + (S.adm ? '' : ' Só o administrador cria e muda.'),
         '<div class="cwa-rr2">' +
           '<div class="cwa-rr-lista">' + lista.map((x, i) => '<button type="button" class="cwa-rr-card' + (i === S.rrSel ? ' on' : '') + (!x.atalho || !String(x.texto || '').trim() ? ' inc' : '') + '" data-rr="' + i + '">' +
               '<span class="cwa-rr-at">/' + esc(x.atalho || '…') + '</span><b>' + esc(x.titulo || x.atalho || 'Nova resposta') + '</b><small>' + esc(String(x.texto || 'Sem texto ainda').replace(/\s+/g, ' ').slice(0, 64)) + '</small></button>').join('') +
@@ -253,7 +279,7 @@ B7.ConfigWA = (function () {
         '</div>');
     }
     if (S.aba === 'modelos') {
-      return bloco('Modelos de texto', 'O texto que já vem escrito quando você usa “Enviar no WhatsApp” nas outras telas. Vale só para você. Em branco volta ao padrão.',
+      return bloco('', 'Em branco volta ao texto padrão.',
         '<div class="cwa-mod">' + Object.keys(NOME_MODELO).map(t => '<label class="cwa-mod-i"><span><b>' + NOME_MODELO[t][0] + '</b><small>' + NOME_MODELO[t][1] + '</small></span>' +
           '<textarea class="campo" data-m="' + t + '" rows="4">' + esc(p.modelos[t]) + '</textarea></label>').join('') + '</div>' +
         '<p class="cwa-dica">Pode usar: <code>{cliente}</code> <code>{titulo}</code> <code>{data}</code> <code>{hora}</code> <code>{local}</code> <code>{link}</code> <code>{texto}</code></p>');
@@ -273,9 +299,14 @@ B7.ConfigWA = (function () {
           linha('Quem recebe', (a.push_para || []).length ? '' : 'Ninguém marcado: recebe todo mundo que tem acesso ao WhatsApp.',
             '<div class="cwa-pessoas">' + pessoas.map(x => '<button type="button" class="cwa-pes' + ((a.push_para || []).includes(x.id) ? ' on' : '') + '" data-push="' + x.id + '"><span class="esc-av" style="--c:' + corNome(x.nome) + '"><b>' + esc(ini(x.nome)) + '</b></span>' + esc(primeiro(x.nome)) + '<i>✓</i></button>').join('') + '</div>', 'cwa-pilha2') +
           linha('Aviso no grupo da equipe', 'Print da conversa e marcação da coordenação.', passo('a.vigia_min', a.vigia_min, 5, 600, 'min', [[10, '10 min'], [20, '20 min'], [30, '30 min'], [60, '1 h']]), 'cwa-pilha2')) +
+        bloco('Nos grupos de cliente', 'O que o ' + esc(S.ottoNome) + ' faz quando um cliente escreve.',
+          linha('Modo', a.modo_clientes === 'atende' ? 'Atender: responde o cliente quando chamado.' : 'Só vigiar: não responde o cliente; se ninguém da equipe responder, avisa no grupo da equipe.',
+            seg('a.modo_clientes', a.modo_clientes, [['vigia', 'Só vigiar'], ['atende', 'Atender']]))) +
         bloco('A gente esperando o cliente', 'Mandamos algo que pede retorno (aprovação, material, confirmação) e o cliente sumiu.',
           linha('Lembrar a equipe', 'Uma mensagem no grupo da equipe com tudo o que está parado.', passo('a.esperando_cliente_h', a.esperando_cliente_h, 0, 240, 'h', [[0, 'Desligado'], [12, '12 h'], [24, '1 dia'], [48, '2 dias']]), 'cwa-pilha2') +
-          linha('Avisos de prazo e aprovação', 'Demandas atrasadas, vencendo amanhã e aprovações paradas.', chave('a.alertas_ligados', a.alertas_ligados))) +
+          linha('Avisos de prazo e aprovação', 'Demandas atrasadas, vencendo amanhã e aprovações paradas.', chave('a.alertas_ligados', a.alertas_ligados)) +
+          linha('Resumo do dia', 'Entregas, o que vence amanhã, atrasos e quem espera resposta — 1 vez por dia útil, no grupo da equipe.',
+            '<div class="cwa-par">' + (a.resumo_dia_ligado ? '<input class="campo cwa-hora" type="time" data-c="a.resumo_dia_hora" value="' + esc(a.resumo_dia_hora || '18:00') + '">' : '') + chave('a.resumo_dia_ligado', a.resumo_dia_ligado) + '</div>')) +
         bloco('Horário de atendimento', 'Fora dele os avisos esperam o próximo horário e o ' + esc(S.ottoNome) + ' avisa o cliente que o time responde depois.',
           linha('Usar horário de atendimento', '', chave('a.horario.ativo', !!h.ativo)) +
           '<div class="asw-horario cwa-hor' + (h.ativo ? '' : ' off') + '"><div class="cwa-dias">' + DIAS.map(([d, r]) => '<button type="button" class="' + ((h.dias || []).map(String).includes(d) ? 'on' : '') + '" data-dia="' + d + '">' + r + '</button>').join('') + '</div>' +
@@ -317,7 +348,7 @@ B7.ConfigWA = (function () {
       if (S.filtroG === 'com') lista = lista.filter(g => cliDe(g));
       const opts = '<option value="">Nenhum cliente</option>' + S.clientes.map(c => '<option value="' + c.id + '"' + (c.logo_url ? ' data-img="' + esc(c.logo_url) + '"' : '') + '>' + esc(c.nome) + '</option>').join('');
       const pct = ativos.length ? Math.round(ligados / ativos.length * 100) : 100;
-      return bloco('Grupos e clientes', 'Cada grupo ligado ao cliente certo: é assim que o ' + esc(S.ottoNome) + ', os avisos e o painel da Central sabem de quem é a conversa.',
+      return bloco('', '',
         '<div class="cwa-prog"><div><b>' + ligados + ' de ' + ativos.length + '</b> grupos ativos ligados a um cliente</div><i style="--p:' + pct + '%"></i></div>' +
         '<div class="cwa-gtopo"><label class="esc-busca cwa-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.6-3.6"/></svg><input data-busca placeholder="Buscar grupo" value="' + esc(S.busca) + '"></label>' +
           seg('filtroG', S.filtroG, [['todos', 'Todos'], ['sem', 'Sem cliente'], ['com', 'Ligados']]) + '</div>' +
@@ -326,8 +357,11 @@ B7.ConfigWA = (function () {
           return '<div class="cwa-g' + (cid ? '' : ' sem') + (S.gMud[g.jid] !== undefined ? ' mud' : '') + (g.arquivada ? ' arq' : '') + '">' +
             '<span class="esc-av g" style="--c:' + corNome(g.nome) + '">' + (g.foto_url ? '<img src="' + esc(g.foto_url) + '" alt="" onerror="this.remove()">' : '') + '<b>' + esc(ini(g.nome)) + '</b></span>' +
             '<span class="cwa-g-t"><b>' + esc(g.nome || 'Grupo') + '</b><small>' + (g.arquivada ? 'Arquivado · ' : '') + (g.ultima_em ? 'última mensagem ' + new Date(g.ultima_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : 'sem mensagens') + '</small></span>' +
+            (cid ? '<span class="cwa-g-otto"><button type="button" class="cwa-g-reg' + (gcfg(g.jid).regras ? ' tem' : '') + '" data-g-reg="' + esc(g.jid) + '" title="Regras do ' + esc(S.ottoNome) + ' só neste grupo">' + (gcfg(g.jid).regras ? 'Regras ✓' : 'Regras') + '</button>' +
+              '<label title="' + esc(S.ottoNome) + ' neste grupo"><span>' + esc(S.ottoNome) + '</span><span class="asw-tg"><input type="checkbox" data-otto-g="' + esc(g.jid) + '"' + (gcfg(g.jid).desligado ? '' : ' checked') + '><span></span></span></label></span>' : '<span></span>') +
             '<i class="cwa-g-seta" aria-hidden="true">→</i>' +
-            '<select class="campo" data-escolha data-busca="Buscar cliente" data-vazio="Ligar a um cliente" data-titulo="Cliente do grupo" aria-label="Cliente do grupo ' + esc(g.nome || '') + '" data-g="' + esc(g.jid) + '">' + opts.replace('value="' + cid + '"', 'value="' + cid + '" selected') + '</select></div>';
+            '<select class="campo" data-escolha data-busca="Buscar cliente" data-vazio="Ligar a um cliente" data-titulo="Cliente do grupo" aria-label="Cliente do grupo ' + esc(g.nome || '') + '" data-g="' + esc(g.jid) + '">' + opts.replace('value="' + cid + '"', 'value="' + cid + '" selected') + '</select>' +
+            (cid && S.gReg === g.jid ? '<input class="campo cwa-g-regras" data-gr-regra="' + esc(g.jid) + '" maxlength="500" placeholder="Regras do ' + esc(S.ottoNome) + ' só neste grupo (ex.: não mandar áudio aqui)" value="' + esc(gcfg(g.jid).regras || '') + '">' : '') + '</div>';
         }).join('') + '</div>' : '<div class="asw-nada">Nenhum grupo com esse filtro.</div>'));
     }
     if (S.aba === 'arquivos') {
@@ -343,7 +377,7 @@ B7.ConfigWA = (function () {
     }
     if (S.aba === 'conexao') {
       const e = S.estado, on = e && e.estado === 'open';
-      return bloco('Número conectado', 'O WhatsApp da Branding7 ligado ao B7. Mensagens, Otto e avisos dependem dele.',
+      return bloco('', 'Mensagens, ' + esc(S.ottoNome) + ' e avisos dependem dele.',
           '<div class="cwa-drive ' + (e == null ? 'esp' : on ? 'ok' : 'ruim') + '"><i></i><div><b>' + (e == null ? 'Conferindo…' : on ? 'Conectado' : e.erro ? 'Não consegui conferir' : 'Desconectado') + '</b>' +
             '<small>' + (e && e.numero ? '+' + esc(e.numero) : '') + (e && e.instancia ? ' · conexão ' + esc(e.instancia) : '') + (e && e.erro ? esc(e.erro) : '') + '</small></div>' +
             '<button class="b ' + (on ? 'contorno' : 'pri') + '" data-acao="conexao">' + (on ? 'Detalhes' : 'Conectar') + '</button></div>') +
@@ -365,6 +399,8 @@ B7.ConfigWA = (function () {
     const t = e.target;
     if (t.closest && t.closest('#cwa-otto')) return;   /* a parte do Otto cuida dos próprios campos */
     if (t.dataset.busca != null) { S.busca = t.value; const pos = t.selectionStart; desenhar(); const i = raiz.querySelector('[data-busca]'); if (i) { i.focus(); i.setSelectionRange(pos, pos); } return; }
+    if (t.dataset.ottoG) { S.a.grupos[t.dataset.ottoG] = Object.assign({}, gcfg(t.dataset.ottoG), { desligado: !t.checked }); return marcarSujo(); }
+    if (t.dataset.grRegra) { S.a.grupos[t.dataset.grRegra] = Object.assign({}, gcfg(t.dataset.grRegra), { regras: t.value.slice(0, 500) }); return marcarSujo(); }
     if (t.dataset.g) { const g = S.grupos.find(x => x.jid === t.dataset.g); if (g && (g.cliente_id || '') === t.value) delete S.gMud[g.jid]; else S.gMud[t.dataset.g] = t.value; t.closest('.cwa-g').classList.toggle('mud', S.gMud[t.dataset.g] !== undefined); return marcarSujo(); }
     if (t.dataset.r != null) {
       const r = S.w.respostas[+t.dataset.r]; r[t.dataset.k] = t.dataset.k === 'atalho' ? t.value.toLowerCase().replace(/\s+/g, '') : t.value;
@@ -411,6 +447,7 @@ B7.ConfigWA = (function () {
     const di = t.closest('[data-dia]'); if (di && S.a) { const h = S.a.horario; const d = Number(di.dataset.dia); h.dias = (h.dias || []).map(Number); h.dias = h.dias.includes(d) ? h.dias.filter(x => x !== d) : h.dias.concat(d); return desenhar(); }
     const pu = t.closest('[data-push]'); if (pu && S.a) { const id = pu.dataset.push; S.a.push_para = (S.a.push_para || []).includes(id) ? S.a.push_para.filter(x => x !== id) : (S.a.push_para || []).concat(id); return desenhar(); }
     const tr = t.closest('[data-tira]'); if (tr) { S.w.respostas.splice(+tr.dataset.tira, 1); S.rrSel = Math.max(0, +tr.dataset.tira - 1); return desenhar(); }
+    const gr = t.closest('[data-g-reg]'); if (gr) { S.gReg = S.gReg === gr.dataset.gReg ? null : gr.dataset.gReg; desenhar(); const i = raiz.querySelector('.cwa-g-regras'); if (i) i.focus(); return; }
     const to = t.closest('[data-tira-outro]'); if (to) { S.a.avisos_regras.outros.splice(+to.dataset.tiraOutro, 1); return desenhar(); }
     const tre = t.closest('[data-tira-resp]'); if (tre) { S.a.avisos_regras.responsaveis.splice(+tre.dataset.tiraResp, 1); return desenhar(); }
     const rc = t.closest('[data-rr]'); if (rc) { S.rrSel = +rc.dataset.rr; return desenhar(); }

@@ -233,10 +233,7 @@ B7.AssistenteWA = (function () {
           '<ul class="asw-regras">' + (S.regras.map((r, i) => '<li><span class="asw-rtipo t' + TIPOS_REGRA.findIndex(([k]) => k === r.tipo) + '">' + esc((TIPOS_REGRA.find(([k]) => k === r.tipo) || ['', 'Regra'])[1]) + '</span><span>' + esc(r.texto) + '</span><button class="asw-x" data-tira-regra="' + i + '" aria-label="Tirar regra">✕</button></li>').join('') || '<li class="asw-nada">Nenhuma regra ainda.</li>') + '</ul>' +
           '<div class="asw-nova-regra"><select class="campo" id="asw-rtipo">' + TIPOS_REGRA.map(([k, r]) => '<option value="' + esc(k) + '">' + r + '</option>').join('') + '</select>' +
           '<input class="campo" id="asw-rtexto" placeholder="Ex.: prometer data de postagem sem olhar a agenda"><button class="b" data-mais-regra>Adicionar</button></div>' +
-          linha('Horário de atendimento', 'Fora dele, avisa que o time responde depois e leva a dúvida à equipe.', chave('horario.ativo', !!h.ativo)) +
-          '<div class="asw-horario' + (h.ativo ? '' : ' off') + '"><div class="asw-chips">' + DIAS.map(([d, r]) => '<button class="asw-chip' + ((h.dias || []).map(String).includes(d) ? ' on' : '') + '" data-dia="' + d + '">' + r + '</button>').join('') + '</div>' +
-          '<div class="asw-par">Das <input class="campo asw-hora" type="time" data-c="horario.ini" value="' + esc(h.ini || '08:00') + '"> às <input class="campo asw-hora" type="time" data-c="horario.fim" value="' + esc(h.fim || '18:00') + '"></div>' +
-          '<textarea class="campo" rows="2" data-c="horario.mensagem" placeholder="Mensagem fora do horário">' + esc(h.mensagem || '') + '</textarea></div>') + '</div>';
+          ''/* 4.83.0: horário de atendimento foi para Configurações → Avisos e horários */) + '</div>';
     }
     if (S.aba === 'equipe') {
       const ge = c.grupo_equipe || '';
@@ -520,6 +517,9 @@ B7.AssistenteWA = (function () {
       espera_min_s: Math.max(1, Number(c.espera_min_s) || 4), espera_max_s: Math.max(Number(c.espera_min_s) || 4, Number(c.espera_max_s) || 9),
       grupos: c.grupos || {}, horario: c.horario || {}, grupo_equipe: c.grupo_equipe || null,
       resumo_horas: Math.max(1, Number(c.resumo_horas) || 3), resumo_espera_min: Math.max(5, Number(c.resumo_espera_min) || 30), atualizado_em: new Date().toISOString() };
+    /* 4.83.0: avisos, horário, aviso no celular e grupos agora são das Configurações do WhatsApp (uma tela só para cada
+       coisa). O Otto não grava mais esses campos — senão um salvava por cima do outro. */
+    ['push_espera_min', 'push_para', 'horario', 'grupos', 'vigia_min', 'esperando_cliente_h', 'alertas_ligados', 'modo_clientes', 'resumo_dia_ligado', 'resumo_dia_hora'].forEach(k => { delete novo[k]; });
     const r = await sb().from('wa_assistente').update(novo).eq('id', 1);
     if (r.error) { B7.UI.toast('Não salvou: ' + r.error.message); return; }
     Object.assign(S.cfg, novo); S.orig = JSON.stringify(S.cfg);
@@ -532,5 +532,5 @@ B7.AssistenteWA = (function () {
   /* para as Configurações do WhatsApp: trocar de seção sem recarregar e saber se há algo por salvar */
   function irPara(aba) { if (!S || !raiz || !raiz.isConnected) return false; S.aba = aba; desenhar(); return true; }
   const temMudanca = () => !!(S && raiz && raiz.isConnected && mudou());
-  return { abrir, irPara, temMudanca, ABAS_OTTO: [['geral', 'Visão geral'], ['velocidade', 'Velocidade e voz'], ['jeito', 'Personalidade'], ['equipe', 'Equipe'], ['clientes', 'Clientes e grupos'], ['saber', 'Conhecimento'], ['controle', 'Permissões'], ['testar', 'Testar']], icone };
+  return { abrir, irPara, temMudanca, ABAS_OTTO: [['geral', 'Atividade'], ['jeito', 'Personalidade'], ['velocidade', 'Voz e velocidade'], ['equipe', 'Equipe do Otto'], ['saber', 'Conhecimento'], ['controle', 'Permissões'], ['testar', 'Testar']], icone };
 })();

@@ -280,3 +280,79 @@
   .cwa-resp-i{grid-template-columns:1fr 1fr;} .cwa-resp-seta{display:none;} .cwa-resp-i .cwa-resp-q:nth-of-type(3){grid-column:1 / -1;}
   .cwa-resp-i .cwa-x{grid-column:2;justify-self:end;grid-row:1;}
 }
+
+/* =====================================================================
+   4.83.0 — organização nova: topo enxuto com pílulas de situação, menu em 5 grupos
+   (Início · Para você · Equipe e clientes · Otto · Sistema) e cabeçalho em cada tela
+   ===================================================================== */
+.cwa-topo{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:24px;color:#fff;position:relative;overflow:hidden;
+  background:radial-gradient(120% 180% at 100% 0%,color-mix(in srgb,var(--sb-luz2) 55%,transparent),transparent 60%),linear-gradient(125deg,color-mix(in srgb,var(--sb-luz1) 85%,#000),color-mix(in srgb,var(--sb-luz1) 50%,#000));
+  box-shadow:0 26px 50px -38px var(--sb-luz1);}
+.cwa-volta{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#fff;background:rgba(255,255,255,.14);transition:background .15s;}
+.cwa-volta:hover{background:rgba(255,255,255,.24);}
+.cwa-volta svg{width:18px;height:18px;}
+.cwa-topo-ic{flex:none;width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);}
+.cwa-topo-ic svg{width:24px;height:24px;}
+.cwa-topo-t{min-width:0;flex:1;}
+.cwa-topo-t h1{margin:0;font:800 22px/1.15 'B7 Titulo',system-ui,sans-serif;letter-spacing:-.02em;}
+.cwa-topo-t p{margin:3px 0 0;font-size:13px;color:rgba(255,255,255,.8);}
+.cwa-pils{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
+.cwa-pil{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:99px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.12);
+  color:#fff;font:650 12.5px/1 inherit;cursor:pointer;white-space:nowrap;transition:background .15s;}
+.cwa-pil:hover{background:rgba(255,255,255,.22);}
+.cwa-pil i{width:8px;height:8px;border-radius:50%;background:#CBD5E1;}
+.cwa-pil.ok i{background:#4ADE80;box-shadow:0 0 0 3px rgba(74,222,128,.25);}
+.cwa-pil.meio i{background:#FBBF24;}
+.cwa-pil.ruim i{background:#F87171;box-shadow:0 0 0 3px rgba(248,113,113,.25);}
+.cwa-pil.off i{background:#94A3B8;}
+.cwa-pil.esp i{animation:cwaPisca 1.2s ease-in-out infinite;}
+
+/* menu em grupos */
+.cwa-nav{gap:0;padding:8px;}
+.cwa-ng{display:flex;flex-direction:column;gap:1px;}
+.cwa-ng + .cwa-ng{margin-top:8px;padding-top:8px;border-top:1px solid var(--borda);}
+.cwa-ng-t{display:flex;align-items:center;gap:6px;padding:4px 12px 5px;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);}
+.cwa-ng-t i{width:7px;height:7px;border-radius:50%;background:#94A3B8;}
+.cwa-ng-t i.on{background:#22C55E;}
+.cwa-nav button{padding:8px 12px;font-size:13.5px;}
+.cwa-nav button svg{width:17px;height:17px;}
+
+/* cabeçalho de cada tela */
+.cwa-cab{display:flex;align-items:flex-start;gap:14px;padding:4px 4px 2px;}
+.cwa-cab-ic{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));box-shadow:0 12px 24px -16px var(--sb-luz2);}
+.cwa-cab-ic svg{width:21px;height:21px;}
+.cwa-cab small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--sb-luz2);}
+.cwa-cab h2{margin:2px 0 0;font:800 22px/1.2 'B7 Titulo',system-ui;letter-spacing:-.02em;}
+.cwa-cab p{margin:4px 0 0;font-size:13.5px;color:var(--ink-3);max-width:70ch;}
+.cwa .cwa-otto .asw-emb-liga{margin-top:0;}
+
+/* grupos: coluna do Otto e regras do grupo */
+.cwa .cwa-g{grid-template-columns:auto minmax(0,1fr) auto auto minmax(220px,300px);}
+.cwa-g-otto{display:flex;align-items:center;gap:8px;}
+.cwa-g-otto label{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;color:var(--ink-3);cursor:pointer;}
+.cwa-g-reg{border:1px solid var(--borda);background:var(--card);color:var(--ink-3);border-radius:99px;padding:4px 10px;font:650 11.5px/1.3 inherit;cursor:pointer;}
+.cwa-g-reg:hover,.cwa-g-reg.tem{color:var(--sb-luz2);border-color:color-mix(in srgb,var(--sb-luz2) 45%,var(--borda));}
+.cwa-g-regras{grid-column:2 / -1;}
+.cwa-par{display:flex;align-items:center;gap:10px;}
+.cwa-hora{width:110px;}
+@media (max-width:1100px){ .cwa .cwa-g{grid-template-columns:auto minmax(0,1fr) auto;} .cwa .cwa-g .cwa-g-seta{display:none;} .cwa .cwa-g .esc-bt,.cwa .cwa-g-regras{grid-column:1 / -1;} }
+@media (max-width:760px){
+  .cwa-topo{flex-wrap:wrap;padding:14px;}
+  .cwa-pils{justify-content:flex-start;width:100%;}
+  .cwa-nav{padding:6px;}
+  .cwa-nav .cwa-ng{flex-direction:row;}
+  .cwa-ng + .cwa-ng{margin:0 0 0 6px;padding:0 0 0 6px;border-top:0;border-left:1px solid var(--borda);}
+  .cwa-ng-t{display:none;}
+  .cwa-cab h2{font-size:19px;}
+}
+@media (max-width:1000px){
+  .cwa-nav .cwa-ng{flex-direction:row;flex:none;}
+  .cwa-nav .cwa-ng + .cwa-ng{margin:0 0 0 6px;padding:0 0 0 6px;border-top:0;border-left:1px solid var(--borda);}
+  .cwa-nav .cwa-ng-t{display:none;}
+}
+@media (max-width:760px){
+  .cwa-topo-ic{display:none;}
+  .cwa-topo-t h1{font-size:19px;}
+  .cwa-topo-t p{font-size:12px;}
+  .cwa-pil{padding:6px 10px;font-size:11.5px;}
+}
