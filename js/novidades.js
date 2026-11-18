@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.80.5', versao: '4.80.5', em: '2026-11-18T11:30:00-03:00', rota: 'gravacoes',
+    titulo: 'Remarcar gravação já concluída',
+    itens: ['Gravação marcada como gravada agora pode ser remarcada (para regravar ou se foi concluída por engano): botão "Remarcar" no topo e também no menu ⋯ da gravação.',
+      'A gravação feita continua no histórico; a nova data entra na agenda e no calendário.'] },
   { id: 'v-4.80.3', versao: '4.80.3', em: '2026-11-18T11:00:00-03:00', rota: 'whatsapp',
     titulo: 'Áudios mais firmes, velocidade e renomear contato',
     itens: ['Áudio na Central: o botão mostra de verdade se está tocando ou pausado (mesmo quando chega mensagem nova), gira enquanto carrega e dá para pular tocando na onda.',

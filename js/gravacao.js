@@ -295,9 +295,10 @@ B7.Gravacao = (function () {
       !(ed || podeAgendar()) ? (podeConcluir() ? 'concluir' : '') :
       !g.data_gravacao ? 'agendar' :
       (dias != null && dias <= 0) || (S.itens.length && S.itens.every(i => i.gravado)) ? 'concluir' : 'agendar';
-    const btAgendar = podeAgendar() && !concluida
+    /* 4.80.5: gravação concluída também pode ser remarcada (regravar, ou concluída por engano) */
+    const btAgendar = podeAgendar()
       ? '<button type="button" class="b ' + (principal === 'agendar' ? 'pri' : 'contorno') + '" data-gv="agendar">' + IC.agenda +
-          '<span>' + (g.data_gravacao ? (cancelada ? 'Reativar com nova data' : 'Remarcar') : 'Marcar data') + '</span></button>' : '';
+          '<span>' + (concluida ? 'Remarcar' : g.data_gravacao ? (cancelada ? 'Reativar com nova data' : 'Remarcar') : 'Marcar data') + '</span></button>' : '';
     const btConcluir = podeConcluir() && ativa
       ? '<button type="button" class="b ' + (principal === 'concluir' ? 'pri' : 'contorno') + '" data-gv="concluir">' + IC.check + '<span>Concluir gravação</span></button>' : '';
     /* aberta de dentro do cliente (?de=cliente): o voltar leva de volta
@@ -600,6 +601,8 @@ B7.Gravacao = (function () {
     const g = S.g, sit = g.situacao || 'Pendente';
     const ops = [];
     if (podeEditar()) ops.push({ rotulo: 'Editar detalhes', dica: 'nome, mês de referência, responsável, local', ic: IC.lapis, fazer: modalEditar });
+    if (podeAgendar()) ops.push({ rotulo: !g.data_gravacao ? 'Marcar data' : sit === 'Cancelada' ? 'Reativar com nova data' : 'Remarcar gravação',
+      dica: sit === 'Gravada' ? 'regravar ou corrigir — a gravação feita fica no histórico' : 'a data antiga fica no histórico', ic: IC.agenda, fazer: modalAgendar });
     ops.push({ rotulo: 'Imprimir roteiros', dica: 'versão para levar na gravação', ic: IC.impressora, fazer: () => { location.hash = '#/gravacao/' + g.id + '/roteiros?imprimir=1'; } });
     if (B7.Perm && B7.Perm.podeRota('calendario')) ops.push({ rotulo: 'Ver no calendário', dica: 'a semana desta gravação, com o histórico de datas', ic: IC.agenda, fazer: () => { location.hash = '#/calendario?v=semana&tipo=gravacoes&d=' + (g.data_gravacao ? String(g.data_gravacao).slice(0, 10) : (B7.UI.hojeISO ? B7.UI.hojeISO() : '')); } });
     if (podeEditar() && sit !== 'Gravada' && sit !== 'Cancelada') ops.push({ rotulo: 'Cancelar gravação', dica: 'nada é apagado — fica no histórico', ic: IC.x, perigo: true, separar: true, fazer: modalCancelar });
@@ -741,7 +744,9 @@ B7.Gravacao = (function () {
     const hoje = new Date(), iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     const m = B7.UI.modal('<h3>' + (remarcar ? (g.situacao === 'Cancelada' ? 'Reativar com nova data' : 'Remarcar gravação') : 'Marcar data da gravação') + '</h3>' +
       '<div class="sub">' + esc(g.cliente_nome || '') + ' · ' + esc(g.nome || '') +
-        (remarcar ? '<br>Hoje está em <b>' + esc(quandoGravacao(g)) + '</b>. Essa data não some: fica no histórico e no calendário como "Remarcada".' : '') + '</div>' +
+        (remarcar ? (g.situacao === 'Gravada'
+          ? '<br>Esta gravação já foi <b>concluída</b> em ' + esc(quandoGravacao(g)) + '. Ao remarcar, ela volta para a agenda; a gravação feita continua no histórico.'
+          : '<br>Hoje está em <b>' + esc(quandoGravacao(g)) + '</b>. Essa data não some: fica no histórico e no calendário como "Remarcada".') : '') + '</div>' +
       '<div class="mb"><label class="rot" for="gv-ag-data">' + (remarcar ? 'NOVA DATA' : 'DATA') + '</label>' +
         '<input class="campo" type="date" id="gv-ag-data" data-foco min="' + iso(new Date(hoje.getFullYear() - 1, 0, 1)) + '"></div>' +
       '<div class="mb"><label class="rot">HORÁRIO <span class="leve">— opcional</span></label>' +
@@ -749,7 +754,7 @@ B7.Gravacao = (function () {
         '<span aria-hidden="true">até</span><input class="campo" type="time" id="gv-ag-fim" aria-label="Fim" value="' + esc(hhmm(g.hora_fim)) + '"></div>' +
         '<div class="ajuda gv-ajuda">Sem horário, a gravação fica o dia todo no calendário e o evento do Google não é criado.</div></div>' +
       (remarcar ? '<div class="mb"><label class="rot" for="gv-ag-motivo">MOTIVO <span class="leve">— opcional</span></label>' +
-        '<input class="campo" id="gv-ag-motivo" placeholder="Ex.: cliente pediu para mudar"></div>' : '') +
+        '<input class="campo" id="gv-ag-motivo" placeholder="' + (g.situacao === 'Gravada' ? 'Ex.: regravar o vídeo 3, áudio ruim' : 'Ex.: cliente pediu para mudar') + '"></div>' : '') +
       (!g.competencia_ano ? '<p class="gv-ajuda">Defina também o mês de referência em "Editar detalhes".</p>' : '') +
       '<div class="ajuda erro-txt" id="gv-ag-erro" role="alert"></div>' +
       '<div class="acoes"><button class="b" data-fecha>Voltar</button><button class="b pri" id="gv-ag-ok">' + (remarcar ? 'Salvar nova data' : 'Marcar data') + '</button></div>');
