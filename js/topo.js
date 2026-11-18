@@ -419,6 +419,11 @@ B7.Topo = (function () {
             papeis.map(x => '<i>' + esc(x) + '</i>').join('') + '</span></span>' +
       '</div>' +
       '<div class="tc-lista">' +
+        /* 4.83.2: no celular, Conversas e Novidades saíram do topo e moram aqui (com o número) */
+        (!cliente && B7.Conversas && (!B7.Conversas.liberado || B7.Conversas.liberado()) ? item('data-conta="conversas"', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>', 'violeta',
+          'Conversas' + ((B7.Conversas.naoLidas && B7.Conversas.naoLidas()) ? ' · ' + B7.Conversas.naoLidas() : ''), 'mensagens com a equipe', ' tp-so-celular') : '') +
+        (B7.Novidades && B7.Novidades.pendentes && B7.Novidades.pendentes() ? item('data-conta="novidades"', '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6-4.6-1.9 4.6-1.9z"/></svg>', 'laranja',
+          'Novidades · ' + B7.Novidades.pendentes(), 'o que mudou no B7', ' tp-so-celular') : '') +
         item('data-conta="perfil"', IC.perfil, 'violeta', 'Meu perfil', 'foto, nome, senha e notificações') +
         (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'azul', 'Preferências e configurações', 'tema, tela inicial e ajustes do aparelho') : '') +
         (B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin() ? item('data-conta="super"', IC.coroa, 'roxo', B7.Auth.superadmin() === 'supremo' ? 'Super admin · programador' : 'Super admin', 'administradores, aprovações, segurança e o sistema todo') : '') +
@@ -452,7 +457,9 @@ B7.Topo = (function () {
       atalhos: () => B7.UI.atalhos(),
       vercomo: () => B7.PreviaUsuario.abrirSeletor(),
       abertura: () => B7.reverAbertura(),
-      sair: () => B7.Auth.sair()
+      sair: () => B7.Auth.sair(),
+      conversas: () => B7.Conversas && B7.Conversas.abrir(),
+      novidades: () => B7.Novidades && B7.Novidades.abrir()
     };
     raiz.querySelectorAll('[data-conta]').forEach(b => b.onclick = () => { const k = b.dataset.conta; fechar(); acao[k] && acao[k](); });
     /* pílula do tema: desliza até a opção escolhida */

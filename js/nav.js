@@ -504,12 +504,16 @@ B7.Nav = (function () {
       barra.setAttribute('aria-label', 'Navegação principal');
       document.body.appendChild(barra);
     }
-    barra.innerHTML = '<span class="ni-luz" aria-hidden="true"></span><ul>' + r.inferior.map(id =>
+    /* 4.83.2: o "+" de criar saiu do topo do celular e veio para o meio desta barra */
+    const itensInf = r.inferior.map(id =>
       '<li><a href="' + ITENS[id].rota + '" data-inf="' + id + '" aria-label="' + esc(rotuloDe(id)) + '">' +
-        '<span class="ni-ic" aria-hidden="true">' + IC[id] + '</span><span class="ni-tx">' + esc(curtoDe(id)) + '</span></a></li>').join('') +
+        '<span class="ni-ic" aria-hidden="true">' + IC[id] + '</span><span class="ni-tx">' + esc(curtoDe(id)) + '</span></a></li>');
+    itensInf.splice(Math.ceil(itensInf.length / 2), 0, '<li class="ni-criar"><button type="button" data-inf-criar aria-label="Criar"><span class="ni-mais" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></button></li>');
+    barra.innerHTML = '<span class="ni-luz" aria-hidden="true"></span><ul>' + itensInf.join('') +
       '<li><button type="button" data-inf="mais" aria-haspopup="dialog" aria-label="Mais destinos">' +
         '<span class="ni-ic" aria-hidden="true">' + IC.mais + '</span><span class="ni-tx">Mais</span></button></li></ul>';
     barra.querySelector('[data-inf="mais"]').onclick = abrirMais;
+    barra.querySelector('[data-inf-criar]').onclick = () => { const t = document.getElementById('tp-criar'); if (t) t.click(); };
     marcarAtivo();
     ligarDeslizeAbas();
     if (B7.Vidro) B7.Vidro.aplicar(barra);

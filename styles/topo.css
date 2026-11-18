@@ -319,3 +319,25 @@ html .fundo-modal.tp-folha .modal:has(.tc){max-height:94vh;max-height:94dvh;}
   .topo-global .nv-topo svg{display:none;}
   .topo.topo-global{gap:2px;}
 }
+
+/* =====================================================================
+   4.83.2 — TOPO DO CELULAR LIMPO (escolha do Kevin: "limpo com título").
+   À esquerda a marca e o nome da tela; à direita só busca, sino e a foto.
+   Conversas e Novidades foram para o menu da foto (pontinho na foto quando
+   há algo novo); o "+" de criar foi para o meio da barra de baixo.
+   ===================================================================== */
+@media (max-width:760px){
+  html body .topo.topo-global{gap:0;padding-left:12px;padding-right:10px;}
+  html body .topo.topo-global .nv-topo,html body .topo.topo-global .conv-bt,html body .topo.topo-global #topo-criar{display:none !important;}
+  html body .topo.topo-global .busca.busca-gatilho,html body .topo.topo-global .sino{width:40px;height:40px;}
+  html body .topo.topo-global .busca.busca-gatilho{margin-left:auto;}
+  html body .topo.topo-global .topo-ctx + .espaco + * ,html body .topo.topo-global .topo-ctx{margin-right:0;}
+  html body .topo.topo-global .topo-ctx{padding:0 8px;}
+  html body .topo.topo-global .area-sessao{position:relative;margin-left:4px;}
+  html body .topo .ico-sessao{width:34px;height:34px;font-size:34px;margin:3px 0;}
+  /* pontinho na foto: conversas não lidas ou novidades */
+  html body .topo.topo-global:has(.nv-topo) .area-sessao::after,
+  html body .topo.topo-global:has(.conv-n:not([hidden]):not(:empty)) .area-sessao::after{
+    content:"";position:absolute;top:2px;right:0;width:11px;height:11px;border-radius:50%;background:var(--grad-curto,#E2409C);box-shadow:0 0 0 2px var(--fundo);pointer-events:none;}
+}
+@media (min-width:761px){ .tp-so-celular{display:none !important;} }
