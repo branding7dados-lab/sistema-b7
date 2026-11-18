@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.83.2', versao: '4.83.2', em: '2026-11-18T17:30:00-03:00',
+    titulo: 'Topo do celular mais limpo',
+    itens: ['No celular, o topo ficou só com a busca, o sino e a sua foto.',
+      'Conversas e Novidades agora ficam no menu da sua foto — quando tem algo novo, aparece um pontinho nela.'] },
   { id: 'v-4.83.0', versao: '4.83.0', em: '2026-11-18T17:00:00-03:00', rota: 'whatsapp',
     titulo: 'Ajuda da IA na caixa de mensagem voltou a funcionar',
     itens: ['No ✨ da caixa de mensagem: “Sugerir resposta” (o Otto escreve um rascunho pela conversa) e Corrigir, Mais formal, Mais leve e Mais curto para o que você escreveu. O menu ficou mais claro, com ícones.',

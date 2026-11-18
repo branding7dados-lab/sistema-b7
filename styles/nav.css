@@ -1084,13 +1084,3 @@ svg.phi.phd{--duo1:color-mix(in srgb,var(--acento) 16%,#fff);--duo2:var(--acento
   body[data-shell="interno"] .lateral .nav.multi .ng a.on svg.phi.phd{background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));
     box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 6px 14px -6px var(--sb-luz2);--duo1:rgba(255,255,255,.5);--duo2:#fff;}
 }
-
-/* 4.83.2: "+" de criar no meio da barra de baixo (saiu do topo do celular) */
-.nav-inferior .ni-criar button{min-height:54px;padding:0;background:none;border:0;}
-.nav-inferior .ni-mais{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;color:#fff;
-  background:var(--grad-curto,linear-gradient(135deg,#7C4DFF,#E2409C));box-shadow:0 10px 22px -10px var(--acento);transition:transform .15s;}
-.nav-inferior .ni-mais svg{width:22px;height:22px;}
-.nav-inferior .ni-criar button:active .ni-mais{transform:scale(.9);}
-body:has(#topo-criar[hidden]) .nav-inferior .ni-criar,body:has(#topo-criar.tp-criar-dup) .nav-inferior .ni-criar{display:none;}
-
-@media (max-width:420px){ .nav-inferior:has(.ni-criar) .ni-tx{font-size:10.5px;letter-spacing:-.1px;} }
