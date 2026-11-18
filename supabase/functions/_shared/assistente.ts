@@ -2635,10 +2635,15 @@ async function talvezAvisarCelular(sb: SupabaseClient, cfg: Config) {
   const { data: vez } = await sb.from('wa_assistente').update({ push_ultimo: new Date().toISOString() }).eq('id', 1)
     .or('push_ultimo.is.null,push_ultimo.lt.' + new Date(Date.now() - 2 * 60_000).toISOString()).select('id');
   if (!vez || !vez.length) return;
-  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde, push_avisado_em').not('cliente_id', 'is', null).eq('arquivada', false)
+  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde, push_avisado_em, ultima_em, vez, vez_motivo, vez_avaliada_em').not('cliente_id', 'is', null).eq('arquivada', false)
     .not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - min * 60_000).toISOString()).gt('esperando_desde', new Date(Date.now() - 24 * 3600_000).toISOString()).limit(20);
-  const pendentes = ((convs || []) as any[]).filter(c => !c.push_avisado_em || new Date(c.push_avisado_em) < new Date(c.esperando_desde));
+  /* 4.80.4: só avisa quem o Otto JÁ LEU e confirmou que espera a gente (vez = cliente, avaliado depois da última
+     mensagem). Sem veredito (IA fora do ar), espera mais 30 min e vai pela regra. */
+  const lido = (c: any) => c.vez_avaliada_em && c.ultima_em && new Date(c.vez_avaliada_em) >= new Date(c.ultima_em);
+  const confirmado = (c: any) => lido(c) ? c.vez === 'cliente' : new Date(c.esperando_desde).getTime() < Date.now() - (min + 30) * 60_000;
+  const pendentes = ((convs || []) as any[]).filter(c => (!c.push_avisado_em || new Date(c.push_avisado_em) < new Date(c.esperando_desde)) && confirmado(c));
   if (!pendentes.length) return;
+  const fonesEq = new Set((cfg.equipe || []).flatMap(e => fins8(e)));
   let para: string[] = Array.isArray((cfg as any).push_para) ? (cfg as any).push_para.filter(Boolean) : [];
   if (!para.length) { const { data } = await sb.rpc('wa_quem_ve_whatsapp'); para = ((data || []) as any[]).map(x => typeof x === 'string' ? x : x?.wa_quem_ve_whatsapp).filter(Boolean); }
   if (!para.length) return;
@@ -2650,12 +2655,22 @@ async function talvezAvisarCelular(sb: SupabaseClient, cfg: Config) {
     const { data: marcou } = await sb.from('wa_conversas').update({ push_avisado_em: new Date().toISOString() }).eq('jid', c.jid)
       .or('push_avisado_em.is.null,push_avisado_em.lt.' + c.esperando_desde).select('jid');
     if (!marcou || !marcou.length) continue;
-    const { data: ult } = await sb.from('wa_mensagens').select('autor_nome, texto, tipo').eq('jid', c.jid).eq('de_mim', false).order('criada_em', { ascending: false }).limit(1).maybeSingle();
-    const quem = String(ult?.autor_nome || 'Cliente').split(' ')[0];
-    const oque = ult ? (ult.texto ? String(ult.texto).replace(/^🎤 /, '').slice(0, 90) : ({ audio: '🎤 áudio', imagem: '📷 foto', video: '🎬 vídeo', documento: '📄 documento', figurinha: 'figurinha' } as any)[ult.tipo] || 'mensagem') : 'mensagem';
     const cliente = nomeCli.get(c.cliente_id) || c.nome || 'Cliente';
+    let corpo = '';
+    if (lido(c) && c.vez_motivo) corpo = String(c.vez_motivo);   /* o que falta, nas palavras do Otto */
+    else {
+      /* última mensagem do CLIENTE — não da equipe mandando do próprio celular (de_mim = false também) */
+      const { data: ms } = await sb.from('wa_mensagens').select('autor_jid, autor_nome, texto, tipo').eq('jid', c.jid).eq('de_mim', false).eq('nota', false).order('criada_em', { ascending: false }).limit(8);
+      const ids = [...new Set(((ms || []) as any[]).map(m => m.autor_jid).filter(Boolean))];
+      const { data: cts } = ids.length ? await sb.from('wa_contatos').select('jid, numero').in('jid', ids) : { data: [] as any[] };
+      const foneDe = new Map(((cts || []) as any[]).map(x => [x.jid, dig(x.numero)]));
+      const ult = ((ms || []) as any[]).find(m => !fonesEq.has(fim8(foneDe.get(m.autor_jid) || m.autor_jid || '')));
+      const quem = String(ult?.autor_nome || 'Cliente').split(' ')[0];
+      const oque = ult ? (ult.texto ? String(ult.texto).replace(/^🎤 /, '').slice(0, 90) : ({ audio: '🎤 áudio', imagem: '📷 foto', video: '🎬 vídeo', documento: '📄 documento', figurinha: 'figurinha' } as any)[ult.tipo] || 'mensagem') : 'mensagem';
+      corpo = quem + ': ' + oque;
+    }
     const { error } = await sb.rpc('wa_avisar_espera', { p_jid: c.jid, p_esperando: c.esperando_desde, p_client: c.cliente_id, p_titulo: cliente + ' está esperando resposta',
-      p_mensagem: quem + ': ' + oque + ' — há ' + ha(c.esperando_desde) + ' sem resposta', p_link: '#/whatsapp?jid=' + encodeURIComponent(c.jid), p_para: para });
+      p_mensagem: corpo + ' — há ' + ha(c.esperando_desde) + ' sem resposta', p_link: '#/whatsapp?jid=' + encodeURIComponent(c.jid), p_para: para });
     if (error) console.log('aviso celular', error.message);
   }
 }
