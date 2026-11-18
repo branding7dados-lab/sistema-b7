@@ -456,7 +456,8 @@ B7.Gravacao = (function () {
     criada: 'Gravação criada', data_definida: 'Data marcada', remarcada: 'Remarcada', concluida: 'Gravação concluída',
     cancelada: 'Gravação cancelada', item_adicionado: 'Item adicionado', item_removido: 'Item removido da gravação',
     item_gravado: 'Item gravado', item_desmarcado: 'Item desmarcado', mes_definido: 'Mês de referência definido',
-    responsavel_definido: 'Responsável definido'
+    responsavel_definido: 'Responsável definido', item_editado: 'Item editado', itens_reordenados: 'Ordem dos itens mudada',
+    local_alterado: 'Local alterado'
   };
   const ROTULO_TIPO_ITEM = { roteiro: 'roteiro', referencia: 'trend', avulso: 'avulso', conteudo: 'conteúdo' };
   function textoHist(h) {
@@ -468,7 +469,9 @@ B7.Gravacao = (function () {
       case 'data_definida': return quandoOc(d.para, d.para_sem_horario);
       case 'concluida': return (d.itens != null ? d.gravados + ' de ' + d.itens + ' itens gravados' : '');
       case 'cancelada': return d.motivo || '';
-      case 'item_adicionado': case 'item_removido': case 'item_gravado': case 'item_desmarcado':
+      case 'local_alterado': return (d.de ? d.de + ' → ' : '') + (d.para || 'sem local');
+      case 'itens_reordenados': return '';
+      case 'item_adicionado': case 'item_removido': case 'item_gravado': case 'item_desmarcado': case 'item_editado':
         return (ROTULO_TIPO_ITEM[d.tipo] ? ROTULO_TIPO_ITEM[d.tipo] + ' · ' : '') + (d.titulo || '') + (d.via ? ' (' + d.via + ')' : '');
       case 'mes_definido': return (d.de ? mesTx(d.de) + ' → ' : '') + mesTx(d.para);
       case 'responsavel_definido': return (d.de ? d.de + ' → ' : '') + (d.para || 'sem responsável');

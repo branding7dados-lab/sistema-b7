@@ -877,7 +877,7 @@ B7.AJUDA_DADOS = [
     "id": "clientes",
     "titulo": "Clientes",
     "onde": "Barra lateral → OPERAÇÃO → Clientes. Quem não tem a parte \"MEU TRABALHO\" cheia pode ver o item em \"PRODUÇÃO\".",
-    "quem": "Administrador e Coordenação (criam, editam, excluem). Designer e Videomaker conseguem abrir a página de um cliente só para ler o contexto, sem os botões de gestão (Nova gravação, Editar cliente, Excluir).",
+    "quem": "Administrador e Coordenação (criam, editam, excluem). Designer e Videomaker conseguem abrir a página de um cliente só para ler o contexto, sem os botões de gestão (Editar cliente, Excluir). O Videomaker também cria gravações (pela tela Gravações).",
     "serve": "Guardar a ficha de cada cliente (nome, logo, observações, forma de trabalho, grupo do WhatsApp, dia fixo de gravar) e ser a porta de entrada para tudo dele: linha editorial, gravações, roteiros, vídeos e design.",
     "antes": "Nada. O nome do cliente é o único dado obrigatório.",
     "passos": [

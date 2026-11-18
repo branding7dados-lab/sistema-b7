@@ -449,3 +449,13 @@ svg.phi{fill:currentColor !important;stroke:none !important;flex:none;}
   .lu5-ped-acoes .b{flex:1 1 40%;justify-content:center;}
   .lu6-cedidos header .lu6-ceder{width:100%;justify-content:center;}
 }
+
+/* 4.79.0 (QA): Lixeira no celular — o título ficava com ~80 px ao lado da etiqueta e dos botões, uma palavra por
+   linha. No celular: etiqueta e título em cima, botões embaixo. */
+@media (max-width:600px){
+  .lx-lista .lx-item{display:grid;grid-template-columns:1fr auto auto;grid-template-areas:"tipo tipo tipo" "nm nm nm" ". r a";gap:6px 8px;align-items:center;}
+  .lx-lista .lx-item > .chip-status{grid-area:tipo;justify-self:start;}
+  .lx-lista .lx-item > .nm{grid-area:nm;min-width:0;}
+  .lx-lista .lx-item > [data-restaurar]{grid-area:r;}
+  .lx-lista .lx-item > [data-apagar]{grid-area:a;}
+}

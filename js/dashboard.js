@@ -2856,8 +2856,8 @@ B7.Dashboard = (function () {
       '<p style="font-size:12.5px;color:var(--ink-3);margin-bottom:16px">' +
       'Nada aqui foi apagado do banco. Restaure quando quiser — ou exclua em definitivo, ' +
       'que aí não tem volta.</p>' +
-      (itens.length ? '<div class="lista-gravacoes">' + itens.map(i =>
-        '<div class="linha-gravacao" style="cursor:default">' +
+      (itens.length ? '<div class="lista-gravacoes lx-lista">' + itens.map(i =>
+        '<div class="linha-gravacao lx-item" style="cursor:default">' +
           '<span class="chip-status rascunho">' + i.tipo + '</span>' +
           '<div class="nm"><b>' + esc(i.nome) + '</b><small>' +
           (i.cliente ? esc(i.cliente) + ' · ' : '') + 'excluído ' + B7.UI.quando(i.quando) + '</small></div>' +

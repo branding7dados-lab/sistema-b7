@@ -61,3 +61,12 @@
 .op-tab tbody th.op-cli{box-shadow:1px 0 0 var(--borda);}
 .op-cel span{white-space:nowrap;}
 .op-tab td{min-width:132px;}
+.op-cel.so-ver:disabled{opacity:1;cursor:default;}
+/* 4.79.0 (QA): no computador os números do topo cortavam à direita sem aviso — agora quebram linha.
+   A tabela larga ganha uma sombra na borda direita mostrando que dá para rolar para o lado. */
+@media (min-width:761px){ .op-resumo{flex-wrap:wrap;overflow:visible;} }
+.op-rolo{background:
+  linear-gradient(to right, var(--card) 30%, transparent) left / 24px 100% no-repeat local,
+  linear-gradient(to left, var(--card) 30%, transparent) right / 24px 100% no-repeat local,
+  radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.14), transparent) left / 12px 100% no-repeat scroll,
+  radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.14), transparent) right / 12px 100% no-repeat scroll, var(--card);}

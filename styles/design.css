@@ -1289,3 +1289,9 @@ body.ds-lb-aberta{overflow:hidden;}
 .ds2-vazio b{font-family:'B7 Titulo',system-ui,sans-serif;font-size:21px;letter-spacing:-.02em;}
 .ds2-vazio p{margin:0;color:var(--ink-3);font-size:14px;}
 .ds2-vazio-acoes{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px;}
+/* 4.79.0 (QA): no detalhe da peça, o Responsável ficava cortado ("QA Teste De") na coluna estreita.
+   O Responsável ocupa a largura toda; prazo e o resto dividem a linha de baixo. */
+.ds-dr-grade{grid-template-columns:repeat(2,minmax(0,1fr));}
+.ds-dr-grade > .ds-dr-campo:first-child{grid-column:1 / -1;}
+.ds-dr-grade select.campo{min-width:0;width:100%;text-overflow:ellipsis;}
+@media (max-width:520px){ .ds-dr-grade{grid-template-columns:1fr;} }

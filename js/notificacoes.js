@@ -133,6 +133,10 @@ B7.Notif = (function () {
       'design.aprovado_interno', 'design.versao_enviada', 'design.finalizado',
       'video.aguardando_aprovacao', 'video.aprovado_cliente', 'video.entregue', 'roteiro.revisao', 'linha.revisao']]
   ];
+  /* 4.79.0 (QA): o cliente (Portal) via os filtros da equipe ("Atribuições", "Prazos", "Correções") e um texto de
+     "o que for atribuído a você". Para ele: só Todas e Aprovações, e o vazio fala do que é dele. */
+  const ehCli = () => !!(B7.Auth && B7.Auth.ehCliente && B7.Auth.ehCliente());
+  const filtrosDaPessoa = () => ehCli() ? FILTROS.filter(f => f[0] === 'todas' || f[0] === 'aprovacoes') : FILTROS;
   const tiposDoFiltro = () => { const f = FILTROS.find(x => x[0] === filtro); return f ? f[2] : null; };
 
   /* -------------------------------------------------------------- sino */
@@ -400,7 +404,7 @@ B7.Notif = (function () {
       '<button type="button" class="sino-acao so-ic" id="sino-prefs" title="Preferências: o que te avisa, som e push" aria-label="Preferências de notificação">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>' +
       '<div class="sino-filtros" role="group" aria-label="Filtrar notificações">' +
-        FILTROS.map(f => '<button type="button" data-filtro="' + f[0] + '" aria-pressed="' + (f[0] === filtro) + '">' + f[1] + '</button>').join('') +
+        filtrosDaPessoa().map(f => '<button type="button" data-filtro="' + f[0] + '" aria-pressed="' + (f[0] === filtro) + '">' + f[1] + '</button>').join('') +
       '</div>' +
       '<div class="sino-lista">' + esqueleto() + '</div>' +
       '<div class="sino-pe" hidden><button class="sino-mais" id="sino-mais">Carregar mais</button></div>';
@@ -503,7 +507,7 @@ B7.Notif = (function () {
     }
     if (!ultimas.length) {
       lista.innerHTML = filtro === 'todas'
-        ? '<div class="sino-vazio"><span class="sino-vazio-ic" aria-hidden="true">' + ICONE.sino + '</span><b>Tudo em dia.</b><small>O que for atribuído a você, seus prazos e as decisões do seu trabalho aparecem aqui.</small></div>'
+        ? '<div class="sino-vazio"><span class="sino-vazio-ic" aria-hidden="true">' + ICONE.sino + '</span><b>Tudo em dia.</b><small>' + (ehCli() ? 'Quando a equipe mandar algo para você aprovar ou responder um pedido, aparece aqui.' : 'O que for atribuído a você, seus prazos e as decisões do seu trabalho aparecem aqui.') + '</small></div>'
         : '<div class="sino-vazio"><span class="sino-vazio-ic" aria-hidden="true">' + ICONE.sino + '</span><b>Nada nesta categoria.</b><small>Veja em “Todas” o que chegou.</small></div>';
       const pe = p.querySelector('.sino-pe'); if (pe) pe.hidden = true;
       return;

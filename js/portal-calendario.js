@@ -95,7 +95,7 @@ B7.PortalCalendario = (function () {
           '<button type="button" class="b fina contorno" data-mes="1" aria-label="Próximo mês">›</button></div></header>' +
       '<div class="pcal-grade">' + grade + '</div>' +
       '<div class="pcal-agenda">' + (agenda || '<div class="pt-vazio"><b>Nada marcado neste mês.</b><p>As datas aparecem aqui quando a Branding7 libera o planejamento.</p></div>') + '</div>' +
-      '<p class="pcal-legenda"><span class="pcal-l post"></span>publicação <span class="pcal-l grav"></span>gravação · toque para abrir o que tem aprovação</p>' +
+      '<p class="pcal-legenda"><span class="pcal-li"><span class="pcal-l post"></span>publicação</span> <span class="pcal-li"><span class="pcal-l grav"></span>gravação</span> <span class="pcal-li">· toque para abrir o que tem aprovação</span></p>' +
     '</div>';
 
     painel.querySelectorAll('[data-mes]').forEach(b => b.onclick = () => abrir(+b.dataset.mes));

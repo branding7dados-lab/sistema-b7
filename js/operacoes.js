@@ -32,6 +32,10 @@ B7.Operacoes = (function () {
   let ano = hoje.getFullYear(), mes = hoje.getMonth() + 1, linhas = [], filtro = 'todos', busca = '';
 
   const admin = () => !!(B7.Auth && B7.Auth.papel && B7.Auth.papel() === 'admin');
+  /* 4.79.0: ajustar célula é da gestão (admin e coordenação, inclusive cargo extra de coordenador). Designer e
+     videomaker só olham — a situação deles já vem do que fazem no sistema. Mesma regra no banco (operacoes_marcar). */
+  const gestao = () => { const pp = B7.Auth && B7.Auth.papel ? B7.Auth.papel() : ''; const ex = (B7.Auth && B7.Auth.funcoesExtra && B7.Auth.funcoesExtra()) || [];
+    return pp === 'admin' || pp === 'coordenador' || ex.includes('coordenador'); };
 
   /* situação valendo numa célula: a marca manual vence o automático */
   function celula(l, k) {
@@ -51,7 +55,7 @@ B7.Operacoes = (function () {
     const m = params && params.get && params.get('mes');
     if (m && /^\d{4}-\d{2}$/.test(m)) { ano = +m.slice(0, 4); mes = +m.slice(5); }
     painel().innerHTML = '<div class="conteudo entra op-tela">' +
-      '<div class="cb-topo"><div class="cb-titulo"><h1>Operações</h1><p class="op-intro">Cada cliente numa linha, cada serviço numa coluna. A situação vem do que a equipe já faz no sistema; toque numa célula para ajustar.</p></div>' +
+      '<div class="cb-topo"><div class="cb-titulo"><h1>Operações</h1><p class="op-intro">Cada cliente numa linha, cada serviço numa coluna. A situação vem do que a equipe já faz no sistema' + (gestao() ? '; toque numa célula para ajustar.' : '.') + '</p></div>' +
         '<div class="cb-topo-acoes op-mes"><button class="cb-ic" data-mes="-1" aria-label="Mês anterior">‹</button><b id="op-mes-rot"></b><button class="cb-ic" data-mes="1" aria-label="Próximo mês">›</button></div></div>' +
       '<div class="op-resumo" id="op-resumo"></div>' +
       '<div class="op-barra"><div class="filtro op-filtro">' + [['todos', 'Todos'], ['abertos', 'Com pendência'], ['concluidos', 'Mês concluído']].map(([k, r]) =>
@@ -115,7 +119,8 @@ B7.Operacoes = (function () {
             esc(c ? 'Conferido por ' + (c.por || '') : fim ? 'Tudo feito. ' + (admin() ? 'Toque para marcar como conferido.' : '') : 'Ainda tem coisa em aberto') + '">' +
             '<span>' + (c ? '✓ Conferido' : fim ? 'Mês concluído' : 'Em aberto') + '</span></button></td></tr>';
       }).join('') + '</tbody></table></div>';
-    cx.querySelectorAll('[data-c]').forEach(b => b.onclick = () => editar(b.closest('tr').dataset.l, b.dataset.c));
+    if (gestao()) cx.querySelectorAll('[data-c]').forEach(b => b.onclick = () => editar(b.closest('tr').dataset.l, b.dataset.c));
+    else cx.querySelectorAll('[data-c]').forEach(b => { b.disabled = true; b.classList.add('so-ver'); });
   }
 
   function editar(id, k) {
