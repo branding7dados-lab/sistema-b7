@@ -15,7 +15,7 @@ import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, type Linha } from '../_shared/wa.ts';
 import { responderDuvida, testar as testarAssistente, mandarResumo, transcreverGuardada, sugerirResposta, corrigirTexto } from '../_shared/assistente.ts';
 import { falar, ultimoDiag } from '../_shared/otto-extras.ts';
-import { tokenDrive, pastaDaConversa, subir, ler, assinar, linkAssinado } from '../_shared/drive.ts';
+import { tokenDrive, ler, assinar, linkAssinado, midiaParaDrive, EXT } from '../_shared/drive.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
 const VERSAO = 'wa-evolution 18 (4.58.0)';
@@ -268,32 +268,8 @@ async function urlAssinada(path: string, s = 900, bucket = 'wa-midia') {
   const { data } = await admin().storage.from(bucket).createSignedUrl(path, s);
   return data?.signedUrl || null;
 }
-const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'video/mp4': 'mp4', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'application/pdf': 'pdf' };
-
-/* 4.53.0: com o Google Drive conectado, os arquivos vão para lá ("B7 · WhatsApp"/conversa/mês)
-   e saem do Storage do Supabase; a tela abre por um link assinado desta função. */
-async function paraDrive(m: any, dados?: { bin: Uint8Array; mime: string }): Promise<string | null> {
-  const sb = admin();
-  const tk = await tokenDrive(sb);
-  if (!tk) return null;
-  let bin = dados?.bin, mime = dados?.mime || m.midia_mime || 'application/octet-stream';
-  if (!bin && m.midia_path) {
-    const d = await sb.storage.from('wa-midia').download(m.midia_path);
-    if (d.error || !d.data) return null;
-    bin = new Uint8Array(await d.data.arrayBuffer()); mime = m.midia_mime || d.data.type || mime;
-  }
-  if (!bin) return null;
-  const { data: conv } = await sb.from('wa_conversas').select('nome').eq('jid', m.jid).maybeSingle();
-  const pasta = await pastaDaConversa(sb, tk, m.jid, conv?.nome || String(m.jid).split('@')[0], m.criada_em);
-  const ext = EXT[String(mime).split(';')[0]] || (String(m.midia_nome || '').includes('.') ? String(m.midia_nome).split('.').pop() : 'bin');
-  const quando = String(m.criada_em || new Date().toISOString()).slice(0, 16).replace('T', ' ').replace(':', 'h');
-  const base = m.midia_nome ? String(m.midia_nome) : ({ imagem: 'foto', video: 'video', audio: 'audio', figurinha: 'figurinha' } as Record<string, string>)[m.tipo] || 'arquivo';
-  const nome = quando + ' · ' + (m.de_mim ? (m.enviada_por_nome || 'B7') : (m.autor_nome || 'contato')) + ' · ' + base + (/\.[a-z0-9]{2,5}$/i.test(base) ? '' : '.' + ext);
-  const driveId = await subir(tk, pasta, nome, String(mime).split(';')[0], bin);
-  await sb.from('wa_mensagens').update({ drive_id: driveId, midia_mime: mime, midia_path: null }).eq('id', m.id);
-  if (m.midia_path) await sb.storage.from('wa-midia').remove([m.midia_path]);
-  return driveId;
-}
+/* 4.80.6: a ida para o Drive mora em _shared/drive.ts (o relógio do Otto também usa, para levar os antigos) */
+const paraDrive = (m: any, dados?: { bin: Uint8Array; mime: string }) => midiaParaDrive(admin(), m, dados);
 /* depois de enviar um arquivo pelo B7: leva a cópia para o Drive sem segurar a resposta */
 function levarDepois(id: string | null) {
   if (!id) return;

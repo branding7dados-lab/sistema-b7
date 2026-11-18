@@ -107,3 +107,47 @@ export async function linkAssinado(id: string, segundos = 6 * 3600) {
   const exp = Math.floor(Date.now() / 1000) + segundos;
   return Deno.env.get('SUPABASE_URL') + '/functions/v1/wa-evolution?m=' + encodeURIComponent(id) + '&e=' + exp + '&s=' + await assinar(id, exp);
 }
+
+export const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'video/mp4': 'mp4', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'application/pdf': 'pdf' };
+
+/* 4.53.0: com o Google Drive conectado, os arquivos vão para lá ("B7 · WhatsApp"/conversa/mês)
+   e saem do Storage do Supabase; a tela abre por um link assinado desta função. */
+export async function midiaParaDrive(sb: SupabaseClient, m: any, dados?: { bin: Uint8Array; mime: string }): Promise<string | null> {
+  const tk = await tokenDrive(sb);
+  if (!tk) return null;
+  let bin = dados?.bin, mime = dados?.mime || m.midia_mime || 'application/octet-stream';
+  if (!bin && m.midia_path) {
+    const d = await sb.storage.from('wa-midia').download(m.midia_path);
+    if (d.error || !d.data) return null;
+    bin = new Uint8Array(await d.data.arrayBuffer()); mime = m.midia_mime || d.data.type || mime;
+  }
+  if (!bin) return null;
+  const { data: conv } = await sb.from('wa_conversas').select('nome').eq('jid', m.jid).maybeSingle();
+  const pasta = await pastaDaConversa(sb, tk, m.jid, conv?.nome || String(m.jid).split('@')[0], m.criada_em);
+  const ext = EXT[String(mime).split(';')[0]] || (String(m.midia_nome || '').includes('.') ? String(m.midia_nome).split('.').pop() : 'bin');
+  const quando = String(m.criada_em || new Date().toISOString()).slice(0, 16).replace('T', ' ').replace(':', 'h');
+  const base = m.midia_nome ? String(m.midia_nome) : ({ imagem: 'foto', video: 'video', audio: 'audio', figurinha: 'figurinha' } as Record<string, string>)[m.tipo] || 'arquivo';
+  const nome = quando + ' · ' + (m.de_mim ? (m.enviada_por_nome || 'B7') : (m.autor_nome || 'contato')) + ' · ' + base + (/\.[a-z0-9]{2,5}$/i.test(base) ? '' : '.' + ext);
+  const driveId = await subir(tk, pasta, nome, String(mime).split(';')[0], bin);
+  await sb.from('wa_mensagens').update({ drive_id: driveId, midia_mime: mime, midia_path: null }).eq('id', m.id);
+  if (m.midia_path) await sb.storage.from('wa-midia').remove([m.midia_path]);
+  return driveId;
+}
+
+/** 4.80.6: arquivos que ficaram no armazenamento do sistema (Drive desconectado na época, ou abertos antes de existir
+ *  o Drive) vão para o Drive aos poucos — o relógio do Otto chama a cada 5 min. Sem Drive conectado, não faz nada. */
+export async function levarAntigosProDrive(sb: SupabaseClient, max = 15): Promise<number> {
+  if (!(await tokenDrive(sb))) return 0;
+  const { data } = await sb.from('wa_mensagens').select('id, jid, tipo, de_mim, autor_nome, enviada_por_nome, midia_path, midia_mime, midia_nome, criada_em')
+    .not('midia_path', 'is', null).is('drive_id', null).order('criada_em', { ascending: false }).limit(max);
+  let n = 0;
+  for (const m of (data || []) as any[]) {
+    try {
+      if (await midiaParaDrive(sb, m)) { n++; continue; }
+      if (!(await tokenDrive(sb))) break;   /* o Drive caiu no meio: tenta na próxima rodada */
+      /* o arquivo não está mais no armazenamento: solta a referência (ao abrir, o B7 busca de novo no WhatsApp) */
+      await sb.from('wa_mensagens').update({ midia_path: null }).eq('id', m.id).eq('midia_path', m.midia_path);
+    } catch (e) { console.log('drive antigos', String(e)); break; }
+  }
+  return n;
+}

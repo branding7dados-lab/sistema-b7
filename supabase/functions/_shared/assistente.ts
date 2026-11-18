@@ -19,6 +19,7 @@
 // Sem marcação ele fica calado (a não ser com "sem_marcacao" ligado).
 // Configuração: public.wa_assistente. Chamado pela wa-entrada (webhook).
 // =====================================================================
+import { levarAntigosProDrive } from './drive.ts';
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { evo, INST, gravar, jidCanonico } from './wa.ts';
 import { gerar, provedorAtual } from './ia/servico.ts';
@@ -646,7 +647,7 @@ export async function relogio(sb: SupabaseClient): Promise<string[]> {
   const tarefas: [string, Promise<unknown>][] = [
     ['bom dia', talvezBomDia(sb, cfg, false)], ['resumo dia', talvezResumoDia(sb, cfg, false)], ['pendências', talvezResumo(sb, cfg)],
     ['avisos', talvezAvisos(sb, cfg)], ['vigia', talvezVigiar(sb, cfg)], ['esperando cliente', talvezEsperandoCliente(sb, cfg)],
-    ['aviso celular', talvezAvisarCelular(sb, cfg)], ['quem responde', avaliarVezes(sb, cfg)]];
+    ['aviso celular', talvezAvisarCelular(sb, cfg)], ['quem responde', avaliarVezes(sb, cfg)], ['arquivos pro Drive', levarAntigosProDrive(sb)]];
   const r = await Promise.allSettled(tarefas.map(t => t[1]));
   return r.map((x, i) => tarefas[i][0] + ': ' + (x.status === 'fulfilled' ? 'ok' : 'erro ' + String((x as PromiseRejectedResult).reason).slice(0, 120)));
 }
