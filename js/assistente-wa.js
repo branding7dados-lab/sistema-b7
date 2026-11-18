@@ -247,6 +247,7 @@ B7.AssistenteWA = (function () {
               '<div class="asw-pes-c">' +
               '<label><span>WhatsApp</span><input class="campo" data-p="numero" inputmode="tel" placeholder="55 77 9…" value="' + esc(p.numero || '') + '"></label>' +
               '<label><span>Apelidos</span><input class="campo" data-p="apelidos" maxlength="120" placeholder="Pedrão, PP" value="' + esc(p.apelidos || '') + '"></label>' +
+              '<label class="larga"><span>Outros números</span><input class="campo" data-p="outros_numeros" inputmode="tel" maxlength="80" placeholder="Celular pessoal etc., separados por vírgula" title="O Otto reconhece a pessoa por qualquer um destes números (ex.: quando ela escreve do celular pessoal num grupo de cliente)" value="' + esc(p.outros_numeros || '') + '"></label>' +
               '<label class="larga"><span>Cuida de</span><input class="campo" data-p="assuntos" placeholder="Artes, gravações…" value="' + esc(p.assuntos || '') + '"></label>' +
               '<label class="larga"><span>Usuário no B7</span><select class="campo" data-p="perfil_id" title="Em nome de quem ele mexe nas demandas quando esta pessoa pede"><option value="">Pelo nome</option>' +
                 (S.perfis || []).map(u => '<option value="' + esc(u.id) + '"' + (u.id === p.perfil_id ? ' selected' : '') + '>' + esc(u.nome) + '</option>').join('') + '</select></label></div>' +
@@ -486,7 +487,8 @@ B7.AssistenteWA = (function () {
     S.cfg.regras = regrasTexto(S.regras);
     const c = S.cfg;
     const novo = { ativo: !!c.ativo, nome: String(c.nome || '').trim() || 'Otto', jeito: c.jeito || '', regras: c.regras || '',
-      equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: ((d) => d.length === 10 || d.length === 11 ? '55' + d : d)(String(p.numero).replace(/\D/g, '')), assuntos: (p.assuntos || '').trim(), ...((p.apelidos || '').trim() ? { apelidos: String(p.apelidos).split(',').map(x => x.trim()).filter(Boolean).slice(0, 6).join(', ') } : {}), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
+      equipe: (c.equipe || []).filter(p => p.nome && p.numero).map(p => ({ nome: p.nome.trim(), numero: ((d) => d.length === 10 || d.length === 11 ? '55' + d : d)(String(p.numero).replace(/\D/g, '')), assuntos: (p.assuntos || '').trim(), ...((p.apelidos || '').trim() ? { apelidos: String(p.apelidos).split(',').map(x => x.trim()).filter(Boolean).slice(0, 6).join(', ') } : {}),
+        ...((p.outros_numeros || '').trim() ? { outros_numeros: String(p.outros_numeros).split(/[,;\n]/).map(x => x.replace(/\D/g, '')).map(d => d.length === 10 || d.length === 11 ? '55' + d : d).filter(d => d.length >= 12).slice(0, 4).join(', ') } : {}), duvidas: p.duvidas !== false, ...(p.perfil_id ? { perfil_id: p.perfil_id } : {}) })),
       dono_perfil_id: c.dono_perfil_id || null,
       bom_dia_ligado: c.bom_dia_ligado !== false, bom_dia_hora: /^\d{2}:\d{2}$/.test(c.bom_dia_hora || '') ? c.bom_dia_hora : '08:00',
       push_espera_min: Math.max(0, Math.min(240, Number(c.push_espera_min ?? 15) || 0)), push_para: (Array.isArray(c.push_para) ? c.push_para : []).filter(Boolean),

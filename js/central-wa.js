@@ -816,8 +816,13 @@ B7.CentralWA = (function () {
     const ult = msgs[msgs.length - 1];
     const min = c.esperando_desde ? (Date.now() - new Date(c.esperando_desde)) / 60000 : 0;
     const nivel = !c.esperando_desde ? 'ok' : min >= 1440 ? 'quente' : min >= 60 ? 'morno' : 'leve';
-    const txtEspera = !c.esperando_desde ? 'Em dia' : min < 1 ? 'Esperando agora' : 'Esperando há ' + (min < 60 ? Math.round(min) + ' min' : min < 1440 ? Math.floor(min / 60) + ' h' : Math.floor(min / 1440) + (Math.floor(min / 1440) === 1 ? ' dia' : ' dias'));
-    const subEspera = !c.esperando_desde ? 'Ninguém esperando resposta nesta conversa.' : 'Desde ' + new Date(c.esperando_desde).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às');
+    /* 4.80.0: quando a última palavra foi da equipe, a vez é do cliente */
+    const durTx = m => m < 60 ? Math.round(m) + ' min' : m < 1440 ? Math.floor(m / 60) + ' h' : Math.floor(m / 1440) + (Math.floor(m / 1440) === 1 ? ' dia' : ' dias');
+    const minC = c.aguardando_cliente_desde ? (Date.now() - new Date(c.aguardando_cliente_desde)) / 60000 : 0;
+    const txtEspera = c.esperando_desde ? (min < 1 ? 'Esperando agora' : 'Esperando há ' + durTx(min))
+      : c.aguardando_cliente_desde && minC >= 60 ? 'Aguardando o cliente há ' + durTx(minC) : 'Em dia';
+    const subEspera = c.esperando_desde ? 'O cliente espera a nossa resposta desde ' + new Date(c.esperando_desde).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às')
+      : c.aguardando_cliente_desde && minC >= 60 ? 'A última mensagem foi da equipe — a vez é do cliente.' : 'Ninguém esperando resposta nesta conversa.';
     const quemUlt = ult ? (ult.do_assistente ? 'Otto' : ult.de_mim ? (ult.enviada_por_nome ? ult.enviada_por_nome.split(' ')[0] : 'Você') : (ult.autor_nome || c.nome || 'Contato').split(' ')[0]) : '';
     const resumoUlt = ult ? (ult.texto ? semCodigos(ult.texto) : ({ imagem: '📷 Foto', video: '🎬 Vídeo', audio: '🎤 Áudio', figurinha: '💟 Figurinha', documento: '📄 ' + (ult.midia_nome || 'Documento') })[ult.tipo] || 'Mensagem') : '';
     const fotos = msgs.filter(m => (m.tipo === 'imagem' || m.tipo === 'video') && m.miniatura).slice(-6).reverse();

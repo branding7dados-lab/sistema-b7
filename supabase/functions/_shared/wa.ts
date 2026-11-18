@@ -160,7 +160,9 @@ let equipeCache: { em: number; nums: Set<string> } | null = null;
 async function numerosDaEquipe(sb: SupabaseClient): Promise<Set<string>> {
   if (equipeCache && Date.now() - equipeCache.em < 60_000) return equipeCache.nums;
   const { data } = await sb.from('wa_assistente').select('equipe').eq('id', 1).maybeSingle();
-  const nums = new Set<string>(((data?.equipe || []) as any[]).map(p => String(p?.numero || '').replace(/\D/g, '').slice(-8)).filter(n => n.length === 8));
+  /* 4.80.0: o número principal e os "outros números" de cada pessoa (ex.: celular pessoal) */
+  const nums = new Set<string>(((data?.equipe || []) as any[]).flatMap(p => [p?.numero, ...String(p?.outros_numeros || '').split(/[,;\n]/)])
+    .map(n => String(n || '').replace(/\D/g, '')).filter(n => n.length >= 10).map(n => n.slice(-8)));
   equipeCache = { em: Date.now(), nums };
   return nums;
 }
@@ -203,7 +205,7 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
     if (fone) daEquipe = (await numerosDaEquipe(sb)).has(fone.slice(-8));
   }
   /* a conversa: prévia, hora, não lidas, "esperando resposta" */
-  const { data: c } = await sb.from('wa_conversas').select('ultima_em, nao_lidas, esperando_desde').eq('jid', jid).maybeSingle();
+  const { data: c } = await sb.from('wa_conversas').select('ultima_em, nao_lidas, esperando_desde, aguardando_cliente_desde').eq('jid', jid).maybeSingle();
   const maisNova = !c?.ultima_em || new Date(String(l.criada_em)) >= new Date(c.ultima_em);
   const patch: Linha = { atualizado_em: new Date().toISOString() };
   if (maisNova) {
@@ -211,8 +213,10 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
     patch.previa = previaDe(l);
     patch.previa_autor = l.de_mim ? (l.enviada_por_nome || null) : (ehGrupo(jid) ? l.autor_nome : null);
     patch.previa_de_mim = !!l.de_mim;
-    if (l.de_mim || daEquipe) patch.esperando_desde = null;
-    else if (!c?.esperando_desde) patch.esperando_desde = l.criada_em;
+    /* 4.80.0: DE QUEM É A VEZ. Última palavra da equipe (número do B7 ou celular de alguém da equipe) → a gente
+       está esperando o cliente; última palavra do cliente → o cliente está esperando a gente. Um zera o outro. */
+    if (l.de_mim || daEquipe) { patch.esperando_desde = null; if (!c?.aguardando_cliente_desde) patch.aguardando_cliente_desde = l.criada_em; }
+    else { patch.aguardando_cliente_desde = null; if (!c?.esperando_desde) patch.esperando_desde = l.criada_em; }
   }
   if (!l.de_mim && !opcoes.historico) patch.nao_lidas = (c?.nao_lidas || 0) + 1;
   await sb.from('wa_conversas').update(patch).eq('jid', jid);

@@ -35,11 +35,14 @@ import { limparResposta, estiloEquipe, identidade, papelDoOtto, nomesDoOtto, fer
 import { conhecerFigurinha, talvezReagir, ehBot, podeResponderBot, decidirJeito, reagirNaMensagem, type Bot } from './otto-social.ts';
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
-type Pessoa = { nome?: string; numero?: string; assuntos?: string; duvidas?: boolean; apelidos?: string };
+type Pessoa = { nome?: string; numero?: string; outros_numeros?: string; assuntos?: string; duvidas?: boolean; apelidos?: string };
+/** 4.80.0: TODOS os números da pessoa (o principal + "outros números" da tela, ex.: celular pessoal), 8 últimos dígitos */
+const fins8 = (p: Pessoa | undefined) => [p?.numero, ...String(p?.outros_numeros || '').split(/[,;\n]/)].map(n => dig(n)).filter(n => n.length >= 10).map(n => n.slice(-8));
+const ehDaPessoa = (p: Pessoa | undefined, fone: unknown) => { const f = fim8(fone); return !!f && fins8(p).includes(f); };
 /** 4.67.3: apelidos da pessoa da equipe (tela do Otto), sem acento e em minúsculas */
 const apelidosDe = (p: Pessoa | undefined) => String(p?.apelidos || '').split(',').map(x => semAcento(x).trim()).filter(x => x.length >= 2);
 /** 4.67.3: o número é de alguém da equipe? (pelos 8 últimos dígitos — nunca pelo nome) */
-const numeroDaEquipe = (cfg: Config, fone: string) => !!fone && (cfg.equipe || []).some(e => dig(e.numero).length >= 10 && fim8(e.numero) === fim8(fone));
+const numeroDaEquipe = (cfg: Config, fone: string) => !!fone && (cfg.equipe || []).some(e => ehDaPessoa(e, fone));
 type Horario = { ativo?: boolean; ini?: string; fim?: string; dias?: number[]; mensagem?: string };
 export type Config = {
   ativo: boolean; nome: string; jeito: string; regras: string; equipe: Pessoa[]; sem_marcacao: boolean;
@@ -107,7 +110,7 @@ export async function lerConfig(sb: SupabaseClient): Promise<Config | null> {
 }
 function daEquipe(cfg: Config, numero: string): Pessoa | null {
   const f = numero.slice(-8);
-  return f ? (cfg.equipe || []).find(p => fim8(p.numero) === f) || null : null;
+  return f ? (cfg.equipe || []).find(p => ehDaPessoa(p, numero)) || null : null;
 }
 
 /** Dentro do horário de atendimento? (fuso de Brasília) */
@@ -144,7 +147,7 @@ async function semCodigos(sb: SupabaseClient, texto: string, marcados: string[])
   const valido = (n: unknown) => n && !/^\+?[\d\s-]+$/.test(String(n));
   for (const d of achados) {
     const c = ((data || []) as any[]).find(x => dig(x.jid) === d && valido(x.nome))?.nome
-      || (cfgE?.equipe || []).find(p => p.numero && fim8(p.numero) === d.slice(-8))?.nome
+      || (cfgE?.equipe || []).find(p => ehDaPessoa(p, d))?.nome
       || ((au || []) as any[]).find(x => dig(x.autor_jid) === d && valido(x.autor_nome))?.autor_nome;
     const nomeC = c ? String(c).replace(/\s*[-|–].*$/, '').split(/\s+/)[0] : '';
     /* sem nome nenhum: some o código — e a vírgula que vinha junto ("@123, relaxa" → "Relaxa") */
@@ -201,7 +204,7 @@ export async function participantesDoGrupo(sb: SupabaseClient, cfg: Config, jid:
       const id = String(x?.id || ''); if (!id) continue;
       const fone = dig(x?.phoneNumber || (/@s\.whatsapp\.net$/.test(id) ? id : ''));
       if (fone && meu && fim8(fone) === fim8(meu)) continue;   /* o próprio número do B7 */
-      const eq = (cfg.equipe || []).find(e => fone && fim8(e.numero) === fim8(fone));
+      const eq = (cfg.equipe || []).find(e => fone && ehDaPessoa(e, fone));
       const ct = ((porId || []) as any[]).find(k => k.jid === id) || ((porFone || []) as any[]).find(k => fone && dig(k.numero) === fone);
       const bom = (v: unknown) => typeof v === 'string' && v.trim() && !/^\+?\d+$/.test(v.trim()) ? v.trim() : '';
       const nome = bom(eq?.nome) || bom(ct?.nome) || '';
@@ -217,14 +220,14 @@ export function comMarcacoes(cfg: Config, texto: string, grupo: Marcavel[] = [])
   const pessoas: Marcavel[] = grupo.filter(p => p.nome).slice();
   for (const e of cfg.equipe || []) {
     if (!e.nome || dig(e.numero).length < 10) continue;
-    if (pessoas.some(p => p.fone && fim8(p.fone) === fim8(e.numero))) continue;
+    if (pessoas.some(p => p.fone && ehDaPessoa(e, p.fone))) continue;
     if (grupo.length) continue;   /* num grupo, só quem está nele */
     const d = foneBR(e.numero); pessoas.push({ nome: e.nome, token: d, mencao: d, fone: d });
   }
   const pri = (n: string) => semAcento(n).split(/\s+/)[0];
   const porApelido = (n: string) => {
     const e = (cfg.equipe || []).find(x => apelidosDe(x).includes(n));
-    return e ? pessoas.find(p => p.fone && fim8(p.fone) === fim8(String(e.numero || ''))) || null : null;
+    return e ? pessoas.find(p => p.fone && ehDaPessoa(e, p.fone)) || null : null;
   };
   const achar = (nome: string) => {
     const n = semAcento(nome).replace(/^@/, '').trim();
@@ -243,7 +246,7 @@ export function comMarcacoes(cfg: Config, texto: string, grupo: Marcavel[] = [])
     const formas = [p.nome];
     if (pessoas.filter(x => pri(x.nome) === pri(p.nome)).length === 1) formas.push(p.nome.split(/\s+/)[0]);
     /* 4.67.3: "@Pedrão" (apelido da tela) também marca */
-    const eqA = (cfg.equipe || []).find(x => p.fone && dig(x.numero).length >= 10 && fim8(x.numero) === fim8(p.fone));
+    const eqA = (cfg.equipe || []).find(x => p.fone && ehDaPessoa(x, p.fone));
     for (const a of String(eqA?.apelidos || '').split(',').map(x => x.trim()).filter(x => x.length >= 2)) formas.push(a);
     for (const forma of formas) {
       const re = new RegExp('(?<![\\p{L}\\d._-])@' + forma.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\d])', 'giu');
@@ -1091,7 +1094,7 @@ async function marcadosNaMensagem(sb: SupabaseClient, cfg: Config, raw: any, aqu
     let fone = g?.fone || (/@s\.whatsapp\.net$/.test(id) ? dig(id) : '');
     if (!fone && /@lid$/.test(id)) { const { data: ct } = await sb.from('wa_contatos').select('numero').eq('jid', id).maybeSingle(); fone = dig(ct?.numero); }
     if (fone && meu && fim8(fone) === fim8(meu)) continue;   /* marcaram o próprio Otto */
-    const eq = (cfg.equipe || []).find(e => fone && dig(e.numero).length >= 10 && fim8(e.numero) === fim8(fone));
+    const eq = (cfg.equipe || []).find(e => fone && ehDaPessoa(e, fone));
     let nome = eq?.nome || g?.nome || '';
     if (!nome) { const { data: ct } = await sb.from('wa_contatos').select('nome').eq('jid', id).maybeSingle(); nome = String(ct?.nome || 'alguém'); }
     linhas.push('- ' + nome + (eq ? ' (da equipe)' : ' (NÃO é da equipe)'));
@@ -1629,7 +1632,7 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
     .lt('esperando_desde', new Date(Date.now() - espera * 60_000).toISOString()).gt('esperando_desde', new Date(Date.now() - 24 * 3600_000).toISOString())
     .order('esperando_desde', { ascending: true }).limit(15);
   /* quem é da equipe (para saber se alguém já respondeu do celular pessoal) */
-  const fones = new Set((cfg.equipe || []).map(e => fim8(e.numero)).filter(Boolean));
+  const fones = new Set((cfg.equipe || []).flatMap(e => fins8(e)));
   const { data: ps } = await sb.from('perfis').select('nome').eq('estado', 'ativa').neq('papel', 'cliente');
   const nomesEq = new Set([...((ps || []) as any[]).map(p => semAcento(p.nome)), ...(cfg.equipe || []).map(e => semAcento(String(e.nome || '')))].filter(Boolean));
   let feitos = 0;
@@ -1686,9 +1689,10 @@ async function talvezEsperandoCliente(sb: SupabaseClient, cfg: Config) {
   const limite = new Date(Date.now() - horas * 3600_000).toISOString();
   /* grupos de cliente parados há X horas (até 7 dias); quem falou por último (equipe ou cliente) é conferido abaixo, pelo número —
      o "esperando_desde" não serve: marca espera quando alguém da equipe escreve do celular pessoal */
+  /* 4.80.0: o B7 já sabe de quem é a vez (aguardando_cliente_desde = a última palavra foi da equipe) */
   const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, ultima_em').eq('tipo', 'grupo').not('cliente_id', 'is', null).eq('arquivada', false)
-    .lt('ultima_em', limite).gt('ultima_em', new Date(Date.now() - 7 * 86400_000).toISOString()).order('ultima_em', { ascending: false }).limit(40);
-  const fones = new Set((cfg.equipe || []).map(e => fim8(e.numero)).filter(Boolean));
+    .not('aguardando_cliente_desde', 'is', null).lt('aguardando_cliente_desde', limite).lt('ultima_em', limite).gt('ultima_em', new Date(Date.now() - 7 * 86400_000).toISOString()).order('ultima_em', { ascending: false }).limit(40);
+  const fones = new Set((cfg.equipe || []).flatMap(e => fins8(e)));
   const cands: { c: any; ult: any; txt: string; chave: string }[] = [];
   for (const c of (convs || []) as any[]) {
     if (((cfg.grupos || {})[c.jid] || {}).desligado) continue;
