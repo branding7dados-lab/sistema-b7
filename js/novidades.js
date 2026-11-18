@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.83.0', versao: '4.83.0', em: '2026-11-18T17:00:00-03:00', rota: 'whatsapp',
+    titulo: 'Ajuda da IA na caixa de mensagem voltou a funcionar',
+    itens: ['No ✨ da caixa de mensagem: “Sugerir resposta” (o Otto escreve um rascunho pela conversa) e Corrigir, Mais formal, Mais leve e Mais curto para o que você escreveu. O menu ficou mais claro, com ícones.',
+      'As Configurações do WhatsApp (⚙️) foram reorganizadas em grupos: Para você, Equipe e clientes, Otto e Sistema.'] },
   { id: 'v-4.81.1', versao: '4.81.1', em: '2026-11-18T15:00:00-03:00', rota: 'whatsapp',
     titulo: 'Fotinha de quem fala nos grupos',
     itens: ['Nas conversas em grupo, cada mensagem mostra a foto de perfil de quem escreveu (ou as iniciais, quando a pessoa não tem foto), como no WhatsApp.',
