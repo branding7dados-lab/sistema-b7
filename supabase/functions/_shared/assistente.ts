@@ -1866,7 +1866,7 @@ async function talvezAvisos(sb: SupabaseClient, cfg: Config) {
   const { data: vez } = await sb.from('wa_assistente').update({ alertas_ultimo: new Date().toISOString() }).eq('id', 1)
     .or('alertas_ultimo.is.null,alertas_ultimo.lt.' + limite).select('id');
   if (!vez || !vez.length) return;
-  const avisos = (await avisosPendentes(sb)).filter(a => (cfg as any).modo_clientes === 'atende' || !a.chave.startsWith('espera:'));
+  const avisos = (await avisosPendentes(sb, (cfg.equipe || []) as any)).filter(a => (cfg as any).modo_clientes === 'atende' || !a.chave.startsWith('espera:'));
   if (!avisos.length) return;
   const ok = new Set(await marcarAvisados(sb, avisos.map(a => a.chave)));
   const lista = avisos.filter(a => ok.has(a.chave)).slice(0, 12);

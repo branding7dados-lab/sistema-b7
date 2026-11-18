@@ -207,7 +207,22 @@ export async function falar(texto: string, v: Voz | string = 'Orus'): Promise<Au
 const APROVOU = /\b(aprovad[oa]s?|aprovo|aprovei|pode (postar|subir|publicar)|gostei( de todos| muito)?|ficou (otimo|top|lindo|perfeito|show|incrivel)|amei|perfeito,? pode)\b/;
 export type Aviso = { chave: string; linha: string; marcar?: string | null; item?: string };
 /** junta o que merece aviso agora (sem repetir o que já foi avisado) */
-export async function avisosPendentes(sb: SupabaseClient): Promise<Aviso[]> {
+/** 4.83.1: a IA lê as últimas mensagens e confirma: foi o CLIENTE aprovando um material que a agência entregou?
+ *  Qualquer dúvida (ou IA fora do ar) = não. A mensagem candidata já não é de ninguém da equipe. */
+async function confirmaAprovacao(sb: SupabaseClient, m: any): Promise<boolean> {
+  const { data: ant } = await sb.from('wa_mensagens').select('de_mim, autor_nome, tipo, texto, criada_em').eq('jid', m.jid).lte('criada_em', m.criada_em)
+    .eq('nota', false).order('criada_em', { ascending: false }).limit(10);
+  const linhas = ((ant || []) as any[]).reverse().map(x => (x.de_mim ? '[AGÊNCIA] ' : '') + (x.autor_nome || (x.de_mim ? 'Branding7' : 'Contato')) + ': ' + (x.texto ? String(x.texto).slice(0, 220) : '(' + x.tipo + ')'));
+  try {
+    const r = await gerar(provedorAtual(n => Deno.env.get(n)), [
+      { role: 'system', content: 'Você confere avisos de uma agência de conteúdo. Responda SÓ "sim" ou "nao". "sim" apenas se a ÚLTIMA mensagem é do CLIENTE aprovando claramente um material que a AGÊNCIA mandou (arte, vídeo, roteiro, legenda). "nao" se quem escreveu parece ser da agência (assinatura de alguém da equipe, gestor, designer), se é o cliente mandando referência/ideia, pedindo algo novo, ou se há qualquer dúvida.' },
+      { role: 'user', content: linhas.join('\n') }
+    ], { maxTokens: 40, temperatura: 0, prazoMs: 15000, limpar: (t: string) => String(t || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim() });
+    return !!(r.ok && /^\s*sim\b/i.test(String(r.texto || '')));
+  } catch (_e) { return false; }
+}
+
+export async function avisosPendentes(sb: SupabaseClient, equipe: { nome?: string; numero?: string; outros_numeros?: string }[] = []): Promise<Aviso[]> {
   const hoje = hojeISO();
   const amanha = new Date(Date.parse(hoje + 'T12:00:00Z') + 86400_000).toISOString().slice(0, 10);
   const [{ data: ds }, { data: ps }, { data: convs }, { data: cls }] = await Promise.all([
@@ -238,16 +253,38 @@ export async function avisosPendentes(sb: SupabaseClient): Promise<Aviso[]> {
     const h = Math.round((Date.now() - Date.parse(c.esperando_desde)) / 3600_000);
     avisos.push({ chave: 'espera:' + c.jid + ':' + c.esperando_desde, linha: (cliente.get(c.cliente_id) || c.nome) + ' está esperando resposta há ' + h + 'h', marcar: coord, item: (cliente.get(c.cliente_id) || c.nome) + ' · há ' + h + 'h' });
   }
-  /* cliente aprovou alguma coisa nos últimos 40 min */
-  const { data: ms } = await sb.from('wa_mensagens').select('id, jid, texto, autor_nome, criada_em').eq('de_mim', false).eq('tipo', 'texto')
+  /* cliente aprovou alguma coisa nos últimos 40 min.
+     4.83.1: "Gostei muito desse modelo. Vamos fazer esse" era do MATHEUS (celular dele) e virou "cliente aprovou?".
+     Agora: (1) mensagem de alguém da equipe nunca conta — pelo número (todos os números da pessoa, inclusive o @lid)
+     ou pelo nome; (2) a frase de aprovação é só o gatilho: a IA lê a conversa e confirma que foi o CLIENTE aprovando
+     um material que a agência mandou. Na dúvida, não avisa. */
+  const { data: ms } = await sb.from('wa_mensagens').select('id, jid, texto, autor_nome, autor_jid, criada_em').eq('de_mim', false).eq('tipo', 'texto')
     .gte('criada_em', new Date(Date.now() - 40 * 60_000).toISOString()).limit(200);
   const jids = [...new Set(((ms || []) as any[]).map(m => m.jid))];
   if (jids.length) {
     const { data: cv } = await sb.from('wa_conversas').select('jid, nome, cliente_id').in('jid', jids).not('cliente_id', 'is', null);
     const ehCliente = new Map(((cv || []) as any[]).map(c => [c.jid, c]));
-    for (const m of (ms || []) as any[]) {
-      const c = ehCliente.get(m.jid); if (!c) continue;
-      if (APROVOU.test(sem(m.texto))) avisos.push({ chave: 'aprov:' + m.id, linha: (cliente.get(c.cliente_id) || c.nome) + ' disse "' + String(m.texto).slice(0, 80) + '" — parece aprovação. Quer que eu marque como aprovado/entregue?', marcar: coord, item: (cliente.get(c.cliente_id) || c.nome) + ': "' + String(m.texto).replace(/\s+/g, ' ').slice(0, 80) + '"' });
+    const fim8 = (x: unknown) => String(x || '').split('@')[0].replace(/\D/g, '').slice(-8);
+    const fonesEq = new Set(equipe.flatMap(e => [e.numero, ...String(e.outros_numeros || '').split(/[,;\s]+/)]).map(fim8).filter(x => x.length === 8));
+    const semAc = (x: unknown) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const { data: ps } = await sb.from('perfis').select('nome').eq('estado', 'ativa').neq('papel', 'cliente');
+    const nomesEq = [...equipe.map(e => e.nome), ...((ps || []) as any[]).map(p => p.nome)].map(semAc).filter(n => n && n.includes(' '));
+    const candidatas = ((ms || []) as any[]).filter(m => ehCliente.has(m.jid) && APROVOU.test(sem(m.texto)));
+    const ids = [...new Set(candidatas.map(m => m.autor_jid).filter(Boolean))];
+    const { data: cts } = ids.length ? await sb.from('wa_contatos').select('jid, numero').in('jid', ids) : { data: [] as any[] };
+    const foneDe = new Map(((cts || []) as any[]).map(x => [x.jid, x.numero]));
+    const daEquipe = (m: any) => {
+      if (fonesEq.has(fim8(foneDe.get(m.autor_jid) || m.autor_jid))) return true;
+      const n = semAc(m.autor_nome); if (nomesEq.some(x => n.startsWith(x.split(' ')[0]) && n.includes(x.split(' ').slice(-1)[0]))) return true;
+      /* assinatura de alguém da equipe no começo ("*Matheus:*") */
+      const ass = /^\*([^*\n]{2,30}):\*/.exec(String(m.texto || '')); if (ass && nomesEq.some(x => x.split(' ')[0] === semAc(ass[1]).trim())) return true;
+      return /branding ?7|\bb7\b|gestor de m[ií]dias/i.test(String(m.autor_nome || ''));
+    };
+    for (const m of candidatas) {
+      if (daEquipe(m)) continue;
+      const c = ehCliente.get(m.jid);
+      if (!(await confirmaAprovacao(sb, m))) continue;
+      avisos.push({ chave: 'aprov:' + m.id, linha: (cliente.get(c.cliente_id) || c.nome) + ' disse "' + String(m.texto).slice(0, 80) + '" — parece aprovação. Quer que eu marque como aprovado/entregue?', marcar: coord, item: (cliente.get(c.cliente_id) || c.nome) + ': "' + String(m.texto).replace(/\s+/g, ' ').slice(0, 80) + '"' });
     }
   }
   if (!avisos.length) return [];
