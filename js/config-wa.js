@@ -18,6 +18,7 @@ B7.ConfigWA = (function () {
   const eu = () => (B7.Auth && B7.Auth.usuario && B7.Auth.usuario()) || {};
   const primeiro = n => String(n || '').trim().split(/\s+/)[0] || '';
   const ini = n => String(n || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0] || '').join('').toUpperCase();
+  const corNome = n => { let h = 0; for (const ch of String(n || '')) h = (h * 31 + ch.charCodeAt(0)) % 360; return 'hsl(' + h + ' 62% 52%)'; };
   let S = null, raiz = null;
 
   const IC = {
@@ -37,6 +38,12 @@ B7.ConfigWA = (function () {
   const bloco = (t, d, html, cls) => '<section class="asw-bl ' + (cls || '') + '"><header><h3>' + t + '</h3>' + (d ? '<p>' + d + '</p>' : '') + '</header>' + html + '</section>';
   const seg = (k, val, ops) => '<div class="asw-seg" role="radiogroup">' + ops.map(([v, r]) => '<label class="' + (String(val) === String(v) ? 'on' : '') + '"><input type="radio" name="' + k + '" data-c="' + k + '" value="' + esc(v) + '"' + (String(val) === String(v) ? ' checked' : '') + '><span>' + r + '</span></label>').join('') + '</div>';
   const num = (k, v, min, max, suf) => '<label class="cwa-num"><input type="number" inputmode="numeric" data-c="' + k + '" value="' + esc(v) + '" min="' + min + '" max="' + max + '"><span>' + suf + '</span></label>';
+  /* 4.81.0: número com − e + e sugestões (no lugar da caixinha de número) */
+  const passo = (k, v, min, max, suf, sug) => '<div class="cwa-passo" data-passo-k="' + k + '" data-min="' + min + '" data-max="' + max + '">' +
+    '<div class="cwa-passo-c"><button type="button" data-passo="-1" aria-label="Menos"' + (v <= min ? ' disabled' : '') + '>−</button>' +
+    '<label><input type="number" inputmode="numeric" data-c="' + k + '" value="' + esc(v) + '" min="' + min + '" max="' + max + '"><span>' + (Number(v) === 0 ? 'desligado' : suf) + '</span></label>' +
+    '<button type="button" data-passo="1" aria-label="Mais"' + (v >= max ? ' disabled' : '') + '>+</button></div>' +
+    (sug ? '<div class="cwa-sug">' + sug.map(([x, r]) => '<button type="button" class="' + (Number(v) === x ? 'on' : '') + '" data-sug="' + x + '">' + r + '</button>').join('') + '</div>' : '') + '</div>';
   const tam = b => !b ? '0 MB' : b > 1e9 ? (b / 1e9).toFixed(1).replace('.', ',') + ' GB' : Math.max(1, Math.round(b / 1e6)) + ' MB';
   const DIAS = [['1', 'Seg'], ['2', 'Ter'], ['3', 'Qua'], ['4', 'Qui'], ['5', 'Sex'], ['6', 'Sáb'], ['0', 'Dom']];
   const NOME_MODELO = { video: ['Vídeo pronto', 'Edição de vídeo → Enviar no WhatsApp'], design: ['Arte pronta', 'Design → Enviar no WhatsApp'], gravacao: ['Confirmar gravação', 'Gravações → Enviar no WhatsApp'],
@@ -55,7 +62,7 @@ B7.ConfigWA = (function () {
       adm ? sb().from('wa_assistente').select('id,nome,ativo,push_espera_min,push_para,vigia_min,esperando_cliente_h,alertas_ligados,horario').eq('id', 1).maybeSingle() : Promise.resolve({ data: null }),
       adm ? sb().from('perfis').select('id,nome,papel').eq('estado', 'ativa').neq('papel', 'cliente').order('nome') : Promise.resolve({ data: [] }),
       adm ? sb().from('wa_conversas').select('jid,nome,cliente_id,arquivada,ultima_em,foto_url').eq('tipo', 'grupo').order('ultima_em', { ascending: false, nullsFirst: false }).limit(500) : Promise.resolve({ data: [] }),
-      adm ? sb().from('clientes').select('id,nome').is('deleted_at', null).order('nome').limit(600) : Promise.resolve({ data: [] }),
+      adm ? sb().from('clientes_resumo').select('id,nome,logo_url').is('deleted_at', null).order('nome').limit(600) : Promise.resolve({ data: [] }),
       adm ? sb().rpc('wa_quem_ve_whatsapp') : Promise.resolve({ data: [] })
     ];
     const [cf, as, pf, gr, cl, qv] = await Promise.all(q.map(p => Promise.resolve(p).catch(e => ({ error: e }))));
@@ -170,6 +177,7 @@ B7.ConfigWA = (function () {
       '</div>' +
       '<div class="asw-barra" aria-hidden="true"><span>Alterações ainda não salvas</span><button class="b" data-desfazer>Desfazer</button><button class="b pri" data-salvar>Salvar</button></div>';
     raiz.scrollTop = sc;
+    if (B7.Escolha) B7.Escolha.melhorar(raiz);
     marcarSujo();
   }
 
@@ -192,25 +200,39 @@ B7.ConfigWA = (function () {
     }
     if (S.aba === 'meu') {
       const nomeAss = esc(p.nome || primeiro(eu().nome) || 'Seu nome');
-      return bloco('Assinatura', 'Vale só para você. Aparece em negrito no começo das mensagens que você manda pelo B7, para o cliente saber quem falou.',
-          linha('Assinar minhas mensagens', 'Desligado: a mensagem vai sem nome, como se fosse da Branding7.', chave('p.assinatura', p.assinatura)) +
+      const chat = '<div class="cwa-tel"><div class="cwa-tel-cab"><span class="esc-av" style="--c:#7C4DFF"><b>SF</b></span><span><b>Sabor da Feira</b><small>grupo · 6 pessoas</small></span></div>' +
+        '<div class="cwa-tel-msgs"><div class="cwa-msg ele">Bom dia! A arte da Black Friday sai hoje? 🙏<i>09:12</i></div>' +
+        '<div class="cwa-msg eu">' + (p.assinatura ? '<b>' + nomeAss + ':</b><br>' : '') + 'Bom dia! Sai sim, até as 15h te mando aqui 🎨<i>09:14 ✓✓</i></div></div></div>';
+      return '<div class="cwa-duo">' +
+        bloco('Assinatura', 'Vale só para você. O nome entra em negrito no começo das mensagens que você manda pelo B7, para o cliente saber quem falou.',
+          linha('Assinar minhas mensagens', 'Desligado: a mensagem sai sem nome, como se fosse da Branding7.', chave('p.assinatura', p.assinatura)) +
           linha('Nome na assinatura', 'Em branco usa o seu primeiro nome.', '<input class="campo cwa-txt" data-c="p.nome" maxlength="40" placeholder="' + esc(primeiro(eu().nome) || 'Seu nome') + '" value="' + esc(p.nome) + '">', p.assinatura ? '' : 'off') +
-          '<div class="cwa-prev"><small>Assim o cliente vê</small><div class="cwa-bolha">' + (p.assinatura ? '<b>' + nomeAss + ':</b><br>' : '') + 'Oi! A arte da Black Friday já está pronta 🎨</div></div>') +
-        bloco('Escrever e ouvir', '',
           linha('Enter envia a mensagem', 'Desligado: Enter pula linha e você envia no botão. No celular, Enter sempre pula linha.', chave('p.enter', p.enter)) +
-          linha('Velocidade dos áudios', 'A que já começa marcada em todo áudio da Central. Dá para trocar no próprio áudio.', seg('p.vel', p.vel, [[1, '1×'], [1.5, '1,5×'], [2, '2×']])));
+          linha('Velocidade dos áudios', 'Já começa marcada em todo áudio da Central. Dá para trocar no próprio áudio.', seg('p.vel', p.vel, [[1, '1×'], [1.5, '1,5×'], [2, '2×']]))) +
+        '<aside class="cwa-lado"><small class="cwa-rot">Assim o cliente vê</small>' + chat + '</aside></div>';
     }
     if (S.aba === 'respostas') {
       const lista = w.respostas || [];
-      return bloco('Respostas rápidas', 'Na conversa, digite <b>/</b> e o atalho (ex.: <code>/ok</code>) para colar a resposta. <code>{cliente}</code> vira o nome do cliente da conversa e <code>{eu}</code> o seu nome.' + (S.adm ? '' : ' Só o administrador cria e muda.'),
-        (lista.length ? '<div class="cwa-rr">' + lista.map((r, i) =>
-          '<div class="cwa-rr-i">' +
-            '<div class="cwa-rr-top"><label class="cwa-atalho"><span>/</span><input data-r="' + i + '" data-k="atalho" value="' + esc(r.atalho) + '" maxlength="20" placeholder="atalho"' + (S.adm ? '' : ' readonly') + '></label>' +
-              '<input class="campo cwa-rr-tit" data-r="' + i + '" data-k="titulo" value="' + esc(r.titulo || '') + '" maxlength="60" placeholder="Nome (opcional)"' + (S.adm ? '' : ' readonly') + '>' +
-              (S.adm ? '<button class="wz-ic cwa-x" data-tira="' + i + '" title="Apagar resposta" aria-label="Apagar resposta">✕</button>' : '') + '</div>' +
-            '<textarea class="campo" data-r="' + i + '" data-k="texto" rows="2" maxlength="2000" placeholder="Texto da resposta"' + (S.adm ? '' : ' readonly') + '>' + esc(r.texto) + '</textarea>' +
-          '</div>').join('') + '</div>' : '<div class="asw-nada">Nenhuma resposta rápida ainda.</div>') +
-        (S.adm ? '<button class="b contorno cwa-mais" data-acao="nova-resposta">+ Nova resposta rápida</button>' : ''));
+      if (S.rrSel == null || S.rrSel >= lista.length) S.rrSel = lista.length ? 0 : -1;
+      const r = lista[S.rrSel];
+      const cliEx = 'Sabor da Feira';
+      const prev = r ? esc(String(r.texto || '').replace(/\{cliente\}/g, cliEx).replace(/\{eu\}/g, primeiro(eu().nome) || 'Você')).replace(/\n/g, '<br>') : '';
+      const ro = S.adm ? '' : ' readonly';
+      return bloco('Respostas rápidas', 'Na conversa, digite <b>/</b> e o atalho — a resposta entra pronta, é só revisar e enviar. <code>{cliente}</code> vira o nome do cliente e <code>{eu}</code> o seu.' + (S.adm ? '' : ' Só o administrador cria e muda.'),
+        '<div class="cwa-rr2">' +
+          '<div class="cwa-rr-lista">' + lista.map((x, i) => '<button type="button" class="cwa-rr-card' + (i === S.rrSel ? ' on' : '') + (!x.atalho || !String(x.texto || '').trim() ? ' inc' : '') + '" data-rr="' + i + '">' +
+              '<span class="cwa-rr-at">/' + esc(x.atalho || '…') + '</span><b>' + esc(x.titulo || x.atalho || 'Nova resposta') + '</b><small>' + esc(String(x.texto || 'Sem texto ainda').replace(/\s+/g, ' ').slice(0, 64)) + '</small></button>').join('') +
+            (S.adm ? '<button type="button" class="cwa-rr-nova" data-acao="nova-resposta"><span>+</span>Nova resposta</button>' : '') +
+            (!lista.length && !S.adm ? '<div class="asw-nada">Nenhuma resposta rápida ainda.</div>' : '') + '</div>' +
+          (r ? '<div class="cwa-rr-ed">' +
+            '<div class="cwa-rr-campos"><label class="cwa-atalho"><span>/</span><input data-r="' + S.rrSel + '" data-k="atalho" value="' + esc(r.atalho) + '" maxlength="20" placeholder="atalho"' + ro + '></label>' +
+              '<input class="campo" data-r="' + S.rrSel + '" data-k="titulo" value="' + esc(r.titulo || '') + '" maxlength="60" placeholder="Nome (opcional)"' + ro + '>' +
+              (S.adm ? '<button type="button" class="wz-ic cwa-x" data-tira="' + S.rrSel + '" title="Apagar esta resposta" aria-label="Apagar esta resposta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>' : '') + '</div>' +
+            '<textarea class="campo" data-r="' + S.rrSel + '" data-k="texto" rows="5" maxlength="2000" placeholder="Escreva a resposta… use {cliente} para o nome do cliente"' + ro + '>' + esc(r.texto) + '</textarea>' +
+            (S.adm ? '<div class="cwa-vars"><span>Inserir:</span><button type="button" data-var="{cliente}">nome do cliente</button><button type="button" data-var="{eu}">meu nome</button></div>' : '') +
+            '<div class="cwa-rr-prev"><small class="cwa-rot">Prévia — conversa com ' + cliEx + '</small><div class="cwa-msg eu">' + (prev || '<span class="leve">…</span>') + '</div></div>' +
+          '</div>' : '<div class="cwa-rr-ed vazio"><b>Nenhuma resposta rápida</b><small>Crie a primeira: “/ok” para confirmar recebimento, “/aprova” para cobrar aprovação…</small></div>') +
+        '</div>');
     }
     if (S.aba === 'modelos') {
       return bloco('Modelos de texto', 'O texto que já vem escrito quando você usa “Enviar no WhatsApp” nas outras telas. Vale só para você. Em branco volta ao padrão.',
@@ -220,34 +242,48 @@ B7.ConfigWA = (function () {
     }
     if (S.aba === 'avisos' && a) {
       const h = a.horario || {};
-      return bloco('Cliente esperando a gente', 'Depois que o ' + esc(S.ottoNome) + ' lê a conversa e confirma que o cliente espera resposta.',
-          linha('Aviso no celular', 'Notificação para quem cuida do WhatsApp. 0 desliga.', num('a.push_espera_min', a.push_espera_min, 0, 600, 'min sem resposta')) +
-          linha('Quem recebe', 'Sem ninguém marcado, recebe quem tem acesso ao WhatsApp.', '<div class="asw-chips cwa-pessoas">' + S.pessoas.filter(x => S.quemVe.has(x.id) || (a.push_para || []).includes(x.id)).map(x => '<button class="asw-chip' + ((a.push_para || []).includes(x.id) ? ' on' : '') + '" data-push="' + x.id + '">' + esc(primeiro(x.nome)) + '</button>').join('') + '</div>') +
-          linha('Aviso no grupo da equipe', 'O ' + esc(S.ottoNome) + ' manda o print da conversa e marca a coordenação.', num('a.vigia_min', a.vigia_min, 5, 600, 'min sem resposta'))) +
+      const passoTl = (on, ic, t, d) => '<div class="cwa-tl-p' + (on ? '' : ' off') + '"><span class="cwa-tl-ic">' + ic + '</span><b>' + t + '</b><small>' + d + '</small></div>';
+      const tl = '<div class="cwa-tl">' +
+        passoTl(true, '💬', 'Cliente escreve', 'e ninguém responde') +
+        passoTl(a.push_espera_min > 0, '📱', a.push_espera_min > 0 ? a.push_espera_min + ' min depois' : 'Celular', a.push_espera_min > 0 ? 'aviso no celular' : 'desligado') +
+        passoTl(true, '👥', a.vigia_min + ' min depois', esc(S.ottoNome) + ' avisa no grupo') +
+      '</div>';
+      const pessoas = S.pessoas.filter(x => S.quemVe.has(x.id) || (a.push_para || []).includes(x.id));
+      return bloco('Cliente esperando a gente', 'Só conta depois que o ' + esc(S.ottoNome) + ' lê a conversa e confirma que o cliente espera resposta — “ok” e “obrigado” não disparam nada.',
+          tl +
+          linha('Aviso no celular', 'Notificação para quem cuida do WhatsApp.', passo('a.push_espera_min', a.push_espera_min, 0, 600, 'min', [[0, 'Desligado'], [10, '10 min'], [15, '15 min'], [30, '30 min'], [60, '1 h']]), 'cwa-pilha2') +
+          linha('Quem recebe', (a.push_para || []).length ? '' : 'Ninguém marcado: recebe todo mundo que tem acesso ao WhatsApp.',
+            '<div class="cwa-pessoas">' + pessoas.map(x => '<button type="button" class="cwa-pes' + ((a.push_para || []).includes(x.id) ? ' on' : '') + '" data-push="' + x.id + '"><span class="esc-av" style="--c:' + corNome(x.nome) + '"><b>' + esc(ini(x.nome)) + '</b></span>' + esc(primeiro(x.nome)) + '<i>✓</i></button>').join('') + '</div>', 'cwa-pilha2') +
+          linha('Aviso no grupo da equipe', 'Print da conversa e marcação da coordenação.', passo('a.vigia_min', a.vigia_min, 5, 600, 'min', [[10, '10 min'], [20, '20 min'], [30, '30 min'], [60, '1 h']]), 'cwa-pilha2')) +
         bloco('A gente esperando o cliente', 'Mandamos algo que pede retorno (aprovação, material, confirmação) e o cliente sumiu.',
-          linha('Lembrar a equipe', 'Uma mensagem no grupo da equipe com tudo parado. 0 desliga.', num('a.esperando_cliente_h', a.esperando_cliente_h, 0, 240, 'h sem resposta')) +
+          linha('Lembrar a equipe', 'Uma mensagem no grupo da equipe com tudo o que está parado.', passo('a.esperando_cliente_h', a.esperando_cliente_h, 0, 240, 'h', [[0, 'Desligado'], [12, '12 h'], [24, '1 dia'], [48, '2 dias']]), 'cwa-pilha2') +
           linha('Avisos de prazo e aprovação', 'Demandas atrasadas, vencendo amanhã e aprovações paradas.', chave('a.alertas_ligados', a.alertas_ligados))) +
-        bloco('Horário de atendimento', 'Fora dele, os avisos esperam o próximo horário e o ' + esc(S.ottoNome) + ' avisa o cliente que o time responde depois.',
+        bloco('Horário de atendimento', 'Fora dele os avisos esperam o próximo horário e o ' + esc(S.ottoNome) + ' avisa o cliente que o time responde depois.',
           linha('Usar horário de atendimento', '', chave('a.horario.ativo', !!h.ativo)) +
-          '<div class="asw-horario' + (h.ativo ? '' : ' off') + '"><div class="asw-chips">' + DIAS.map(([d, r]) => '<button class="asw-chip' + ((h.dias || []).map(String).includes(d) ? ' on' : '') + '" data-dia="' + d + '">' + r + '</button>').join('') + '</div>' +
-          '<div class="cwa-horas"><input class="campo" type="time" data-c="a.horario.ini" value="' + esc(h.ini || '08:00') + '"><span>até</span><input class="campo" type="time" data-c="a.horario.fim" value="' + esc(h.fim || '18:00') + '"></div>' +
+          '<div class="asw-horario cwa-hor' + (h.ativo ? '' : ' off') + '"><div class="cwa-dias">' + DIAS.map(([d, r]) => '<button type="button" class="' + ((h.dias || []).map(String).includes(d) ? 'on' : '') + '" data-dia="' + d + '">' + r + '</button>').join('') + '</div>' +
+          '<div class="cwa-horas"><label><small>Começa</small><input class="campo" type="time" data-c="a.horario.ini" value="' + esc(h.ini || '08:00') + '"></label><i>→</i><label><small>Termina</small><input class="campo" type="time" data-c="a.horario.fim" value="' + esc(h.fim || '18:00') + '"></label></div>' +
           '<label class="cwa-lbl">Mensagem para o cliente fora do horário<textarea class="campo" data-c="a.horario.mensagem" rows="2" maxlength="400">' + esc(h.mensagem || '') + '</textarea></label></div>');
     }
     if (S.aba === 'grupos') {
       const f = S.busca.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
       const cliDe = g => S.gMud[g.jid] !== undefined ? S.gMud[g.jid] : g.cliente_id;
+      const ativos = S.grupos.filter(g => !g.arquivada), ligados = ativos.filter(g => cliDe(g)).length;
       let lista = S.grupos.filter(g => !f || String(g.nome || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(f));
       if (S.filtroG === 'sem') lista = lista.filter(g => !cliDe(g) && !g.arquivada);
       if (S.filtroG === 'com') lista = lista.filter(g => cliDe(g));
-      const opts = '<option value="">— sem cliente —</option>' + S.clientes.map(c => '<option value="' + c.id + '">' + esc(c.nome) + '</option>').join('');
+      const opts = '<option value="">Nenhum cliente</option>' + S.clientes.map(c => '<option value="' + c.id + '"' + (c.logo_url ? ' data-img="' + esc(c.logo_url) + '"' : '') + '>' + esc(c.nome) + '</option>').join('');
+      const pct = ativos.length ? Math.round(ligados / ativos.length * 100) : 100;
       return bloco('Grupos e clientes', 'Cada grupo ligado ao cliente certo: é assim que o ' + esc(S.ottoNome) + ', os avisos e o painel da Central sabem de quem é a conversa.',
-        '<div class="cwa-gtopo"><label class="wz-busca cwa-busca"><input data-busca placeholder="Buscar grupo" value="' + esc(S.busca) + '"></label>' +
-          seg('filtroG', S.filtroG, [['todos', 'Todos'], ['sem', 'Sem cliente'], ['com', 'Com cliente']]) + '</div>' +
+        '<div class="cwa-prog"><div><b>' + ligados + ' de ' + ativos.length + '</b> grupos ativos ligados a um cliente</div><i style="--p:' + pct + '%"></i></div>' +
+        '<div class="cwa-gtopo"><label class="esc-busca cwa-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-3.6-3.6"/></svg><input data-busca placeholder="Buscar grupo" value="' + esc(S.busca) + '"></label>' +
+          seg('filtroG', S.filtroG, [['todos', 'Todos'], ['sem', 'Sem cliente'], ['com', 'Ligados']]) + '</div>' +
         (lista.length ? '<div class="cwa-gl">' + lista.slice(0, 200).map(g => {
           const cid = cliDe(g) || '';
-          return '<div class="cwa-g' + (cid ? '' : ' sem') + (S.gMud[g.jid] !== undefined ? ' mud' : '') + '"><span class="asw-av g">' + (g.foto_url ? '<img src="' + esc(g.foto_url) + '" alt="" onerror="this.remove()">' : '') + esc(ini(g.nome)) + '</span>' +
+          return '<div class="cwa-g' + (cid ? '' : ' sem') + (S.gMud[g.jid] !== undefined ? ' mud' : '') + (g.arquivada ? ' arq' : '') + '">' +
+            '<span class="esc-av g" style="--c:' + corNome(g.nome) + '">' + (g.foto_url ? '<img src="' + esc(g.foto_url) + '" alt="" onerror="this.remove()">' : '') + '<b>' + esc(ini(g.nome)) + '</b></span>' +
             '<span class="cwa-g-t"><b>' + esc(g.nome || 'Grupo') + '</b><small>' + (g.arquivada ? 'Arquivado · ' : '') + (g.ultima_em ? 'última mensagem ' + new Date(g.ultima_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : 'sem mensagens') + '</small></span>' +
-            '<select class="campo cwa-sel" data-g="' + esc(g.jid) + '">' + opts.replace('value="' + cid + '"', 'value="' + cid + '" selected') + '</select></div>';
+            '<i class="cwa-g-seta" aria-hidden="true">→</i>' +
+            '<select class="campo" data-escolha data-busca="Buscar cliente" data-vazio="Ligar a um cliente" data-titulo="Cliente do grupo" aria-label="Cliente do grupo ' + esc(g.nome || '') + '" data-g="' + esc(g.jid) + '">' + opts.replace('value="' + cid + '"', 'value="' + cid + '" selected') + '</select></div>';
         }).join('') + '</div>' : '<div class="asw-nada">Nenhum grupo com esse filtro.</div>'));
     }
     if (S.aba === 'arquivos') {
@@ -285,7 +321,13 @@ B7.ConfigWA = (function () {
     const t = e.target;
     if (t.dataset.busca != null) { S.busca = t.value; const pos = t.selectionStart; desenhar(); const i = raiz.querySelector('[data-busca]'); if (i) { i.focus(); i.setSelectionRange(pos, pos); } return; }
     if (t.dataset.g) { const g = S.grupos.find(x => x.jid === t.dataset.g); if (g && (g.cliente_id || '') === t.value) delete S.gMud[g.jid]; else S.gMud[t.dataset.g] = t.value; t.closest('.cwa-g').classList.toggle('mud', S.gMud[t.dataset.g] !== undefined); return marcarSujo(); }
-    if (t.dataset.r != null) { S.w.respostas[+t.dataset.r][t.dataset.k] = t.dataset.k === 'atalho' ? t.value.toLowerCase().replace(/\s+/g, '') : t.value; return marcarSujo(); }
+    if (t.dataset.r != null) {
+      const r = S.w.respostas[+t.dataset.r]; r[t.dataset.k] = t.dataset.k === 'atalho' ? t.value.toLowerCase().replace(/\s+/g, '') : t.value;
+      const card = raiz.querySelector('[data-rr="' + t.dataset.r + '"]');
+      if (card) { card.querySelector('.cwa-rr-at').textContent = '/' + (r.atalho || '…'); card.querySelector('b').textContent = r.titulo || r.atalho || 'Nova resposta'; card.querySelector('small').textContent = String(r.texto || 'Sem texto ainda').replace(/\s+/g, ' ').slice(0, 64); card.classList.toggle('inc', !r.atalho || !String(r.texto || '').trim()); }
+      const pv = raiz.querySelector('.cwa-rr-prev .cwa-msg'); if (pv) pv.innerHTML = esc(String(r.texto || '').replace(/\{cliente\}/g, 'Sabor da Feira').replace(/\{eu\}/g, primeiro(eu().nome) || 'Você')).replace(/\n/g, '<br>') || '…';
+      return marcarSujo();
+    }
     if (t.dataset.m) { S.p.modelos[t.dataset.m] = t.value; return marcarSujo(); }
     const c = t.dataset.c; if (!c) return;
     if (c === 'filtroG') { S.filtroG = t.value; return desenhar(); }
@@ -297,7 +339,7 @@ B7.ConfigWA = (function () {
     marcarSujo();
   }
   function atualizarPrevia() {
-    const b = raiz.querySelector('.cwa-bolha b'); if (b) b.textContent = (S.p.nome || primeiro(eu().nome) || 'Seu nome') + ':';
+    const b = raiz.querySelector('.cwa-msg.eu b'); if (b) b.textContent = (S.p.nome || primeiro(eu().nome) || 'Seu nome') + ':';
   }
   async function clique(e) {
     const t = e.target;
@@ -306,12 +348,26 @@ B7.ConfigWA = (function () {
     if (t.closest('[data-desfazer]')) { const o = JSON.parse(S.orig); S.w = o.w; S.a = o.a; S.p = o.p; S.gMud = {}; return desenhar(); }
     const di = t.closest('[data-dia]'); if (di && S.a) { const h = S.a.horario; const d = Number(di.dataset.dia); h.dias = (h.dias || []).map(Number); h.dias = h.dias.includes(d) ? h.dias.filter(x => x !== d) : h.dias.concat(d); return desenhar(); }
     const pu = t.closest('[data-push]'); if (pu && S.a) { const id = pu.dataset.push; S.a.push_para = (S.a.push_para || []).includes(id) ? S.a.push_para.filter(x => x !== id) : (S.a.push_para || []).concat(id); return desenhar(); }
-    const tr = t.closest('[data-tira]'); if (tr) { S.w.respostas.splice(+tr.dataset.tira, 1); return desenhar(); }
+    const tr = t.closest('[data-tira]'); if (tr) { S.w.respostas.splice(+tr.dataset.tira, 1); S.rrSel = Math.max(0, +tr.dataset.tira - 1); return desenhar(); }
+    const rc = t.closest('[data-rr]'); if (rc) { S.rrSel = +rc.dataset.rr; return desenhar(); }
+    const pa = t.closest('[data-passo]'), sg = t.closest('[data-sug]');
+    if (pa || sg) {
+      const box = t.closest('[data-passo-k]'), k = box.dataset.passoK, min = +box.dataset.min, max = +box.dataset.max;
+      const atual = Number(box.querySelector('input').value) || 0;
+      const passoDe = v => v >= 120 ? 30 : v >= 60 ? 10 : v >= 20 ? 5 : 1;
+      let v = sg ? +sg.dataset.sug : atual + (+pa.dataset.passo) * passoDe(+pa.dataset.passo > 0 ? atual : Math.max(0, atual - 1));
+      v = Math.max(min, Math.min(max, v)); setar(k, v); return desenhar();
+    }
+    const va = t.closest('[data-var]'); if (va) {
+      const ta = raiz.querySelector('.cwa-rr-ed textarea'); if (!ta) return;
+      const i = ta.selectionStart ?? ta.value.length; ta.value = ta.value.slice(0, i) + va.dataset.var + ta.value.slice(ta.selectionEnd ?? i);
+      ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus(); ta.setSelectionRange(i + va.dataset.var.length, i + va.dataset.var.length); return;
+    }
     const ac = t.closest('[data-acao]'); if (!ac) return;
     const a = ac.dataset.acao;
     if (a === 'nova-resposta') {
-      S.w.respostas = (S.w.respostas || []).concat([{ atalho: '', titulo: '', texto: '' }]); desenhar();
-      const ult = raiz.querySelectorAll('.cwa-atalho input'); if (ult.length) ult[ult.length - 1].focus();
+      S.w.respostas = (S.w.respostas || []).concat([{ atalho: '', titulo: '', texto: '' }]); S.rrSel = S.w.respostas.length - 1; desenhar();
+      const at = raiz.querySelector('.cwa-rr-ed .cwa-atalho input'); if (at) at.focus();
       return;
     }
     if (a === 'conexao') { if (B7.WaCentral) B7.WaCentral.abrir(); return; }
