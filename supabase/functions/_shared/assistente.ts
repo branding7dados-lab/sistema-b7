@@ -658,7 +658,7 @@ export async function relogio(sb: SupabaseClient): Promise<string[]> {
   if (fdsQuieto(cfg)) return ['fim de semana em silêncio', 'quem responde: ' + await avaliarVezes(sb, cfg).catch(() => 0)];
   const tarefas: [string, Promise<unknown>][] = [
     ['bom dia', talvezBomDia(sb, cfg, false)], ['resumo dia', talvezResumoDia(sb, cfg, false)], ['pendências', talvezResumo(sb, cfg)],
-    ['avisos', talvezAvisos(sb, cfg)], ['vigia', talvezVigiar(sb, cfg)], ['esperando cliente', talvezEsperandoCliente(sb, cfg)],
+    ['avisos', talvezAvisos(sb, cfg)], ['vigia', talvezVigiar(sb, cfg)], ['lembrete espera', talvezLembrarEspera(sb, cfg)], ['esperando cliente', talvezEsperandoCliente(sb, cfg)],
     ['aviso celular', talvezAvisarCelular(sb, cfg)], ['quem responde', avaliarVezes(sb, cfg)], ['arquivos pro Drive', levarAntigosProDrive(sb)], ['arquivar paradas', arquivarParadas(sb)]];
   const r = await Promise.allSettled(tarefas.map(t => t[1]));
   return r.map((x, i) => tarefas[i][0] + ': ' + (x.status === 'fulfilled' ? 'ok' : 'erro ' + String((x as PromiseRejectedResult).reason).slice(0, 120)));
@@ -1698,7 +1698,7 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
   if (!vez || !vez.length) return;
   const espera = Math.max(5, Number((cfg as any).vigia_min) || 20);
   const { data: convs } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').not('cliente_id', 'is', null).not('esperando_desde', 'is', null)
-    .lt('esperando_desde', new Date(Date.now() - espera * 60_000).toISOString()).gt('esperando_desde', new Date(Date.now() - 24 * 3600_000).toISOString())
+    .lt('esperando_desde', new Date(Date.now() - espera * 60_000).toISOString()).gt('esperando_desde', new Date(Date.now() - 7 * 86400_000).toISOString())
     .order('esperando_desde', { ascending: true }).limit(15);
   /* quem é da equipe (para saber se alguém já respondeu do celular pessoal) */
   const fones = new Set((cfg.equipe || []).flatMap(e => fins8(e)));
@@ -1707,7 +1707,7 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
   let feitos = 0;
   for (const c of (convs || []) as any[]) {
     if (feitos >= 3) break;
-    if (((cfg.grupos || {})[c.jid] || {}).desligado) continue;
+    /* 4.81.2: Otto desligado no grupo = não fala LÁ. O aviso vai no grupo da equipe, então vale também */
     const chave = 'vigia:' + c.jid + ':' + c.esperando_desde;
     const { data: ja } = await sb.from('wa_otto_avisos').select('chave').eq('chave', chave).maybeSingle();
     if (ja) continue;
@@ -1743,6 +1743,38 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
     await registrar(sb, { tipo: 'aviso', jid: cfg.grupo_equipe, grupo: c.nome, autor: cfg.nome, pergunta: 'vigia ' + (c.nome || ''), resposta: legenda.slice(0, 800) });
     feitos++;
   }
+}
+
+/** 4.81.2: LEMBRETE de quem ainda espera a gente. O vigia avisa uma vez por espera (com o print); se continua sem
+ *  resposta, a cada 3 h no horário vai UMA mensagem organizada no grupo da equipe com todos, do mais antigo ao mais novo,
+ *  marcando a coordenação. Só conta o que o Otto já leu e confirmou (vez = cliente) — "ok" e "obrigado" não entram. */
+async function talvezLembrarEspera(sb: SupabaseClient, cfg: Config) {
+  if (!cfg.grupo_equipe || (cfg as any).modo_clientes === 'atende') return;
+  if (!dentroDoHorario(cfg.horario?.ativo ? cfg.horario : HORARIO_PADRAO)) return;
+  const agora = new Date(), loc = new Date(agora.getTime() - 3 * 3600_000);
+  const bloco = loc.toISOString().slice(0, 10) + ':' + Math.floor(loc.getUTCHours() / 3);
+  const espera = Math.max(5, Number((cfg as any).vigia_min) || 20);
+  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde, vez, vez_motivo, vez_avaliada_em, ultima_em')
+    .not('cliente_id', 'is', null).eq('arquivada', false).not('esperando_desde', 'is', null)
+    .lt('esperando_desde', new Date(agora.getTime() - Math.max(60, espera * 3) * 60_000).toISOString()).gt('esperando_desde', new Date(agora.getTime() - 14 * 86400_000).toISOString())
+    .order('esperando_desde', { ascending: true }).limit(12);
+  const lista = ((convs || []) as any[]).filter(c => c.vez === 'cliente' && c.vez_avaliada_em && (!c.ultima_em || c.vez_avaliada_em >= c.ultima_em));
+  if (!lista.length) return;
+  /* o primeiro aviso de cada espera é do vigia (com print); o lembrete só entra depois dele */
+  const { data: vig } = await sb.from('wa_otto_avisos').select('chave').in('chave', lista.map(c => 'vigia:' + c.jid + ':' + c.esperando_desde));
+  const jaAvisou = new Set(((vig || []) as any[]).map(v => v.chave));
+  const velhos = lista.filter(c => jaAvisou.has('vigia:' + c.jid + ':' + c.esperando_desde) || Date.now() - Date.parse(c.esperando_desde) > 6 * 3600_000);
+  if (!velhos.length) return;
+  if (!(await marcarAvisados(sb, ['lembrete-espera:' + bloco])).length) return;   /* um por bloco de 3 h */
+  const { data: cls } = await sb.from('clientes').select('id, nome').in('id', [...new Set(velhos.map(c => c.cliente_id))]);
+  const nomeCli = new Map(((cls || []) as any[]).map(x => [x.id, x.nome]));
+  const tempo = (iso: string) => { const m = Math.round((Date.now() - Date.parse(iso)) / 60_000); return m < 60 ? m + ' min' : m < 1440 ? Math.floor(m / 60) + 'h' + (m % 60 ? String(m % 60).padStart(2, '0') : '') : Math.floor(m / 1440) + (Math.floor(m / 1440) === 1 ? ' dia' : ' dias'); };
+  const linhas = velhos.map(c => '• *' + (nomeCli.get(c.cliente_id) || c.nome || 'Cliente') + '* — há ' + tempo(c.esperando_desde) + '\n   _' + String(c.vez_motivo || 'esperando resposta').replace(/[_*]/g, '').slice(0, 110) + '_');
+  const co = await coordenacao(sb);
+  const quem = co.length ? co.map(n => '@' + n).join(' ') : '';
+  const texto = '⏳ *Clientes esperando a gente* (' + velhos.length + ')\n\n' + linhas.join('\n\n') + '\n\n' + (quem ? quem + ', ' : '') + (velhos.length === 1 ? 'esse ainda está' : 'esses ainda estão') + ' sem resposta.';
+  await enviar(sb, cfg, cfg.grupo_equipe, texto);
+  await registrar(sb, { tipo: 'aviso', jid: cfg.grupo_equipe, grupo: 'equipe', autor: cfg.nome, pergunta: 'lembrete de espera', resposta: texto.slice(0, 800) });
 }
 
 /** 4.78.0: o OUTRO lado da vigia — a gente esperando o CLIENTE. A equipe mandou algo que pede retorno (aprovação,
