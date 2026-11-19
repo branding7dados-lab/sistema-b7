@@ -214,7 +214,11 @@ B7.PerfilLateral = (function () {
   function posicionar(pop, card) {
     const r = card.getBoundingClientRect();
     pop.style.left = Math.round(r.right + 12) + 'px';
-    pop.style.bottom = Math.max(12, Math.round(innerHeight - r.bottom)) + 'px';
+    const baixo = Math.max(12, Math.round(innerHeight - r.bottom));
+    pop.style.bottom = baixo + 'px';
+    /* 4.83.4: a altura cabe no espaço ACIMA do pé do cartão — antes passava do topo da janela e o começo (foto,
+       nome, cargo) ficava cortado; o que não couber rola por dentro */
+    pop.style.maxHeight = Math.max(240, innerHeight - baixo - 12) + 'px';
   }
   function fechar() { if (aberto) { const a = aberto; aberto = null; a.fechar(); } }
   addEventListener('hashchange', fechar);
