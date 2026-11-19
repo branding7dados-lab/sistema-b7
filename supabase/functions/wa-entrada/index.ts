@@ -26,6 +26,17 @@ Deno.serve(async (req: Request) => {
     /* 4.83.3: número desconectado = nada sai. Antes o relógio gerava o bom dia, marcava como enviado e a mensagem não
        chegava (19/11). Agora confere a conexão primeiro: sem ela, não roda (nem marca) nada — quando o número voltar,
        o bom dia e os avisos saem normalmente. A situação fica guardada para a tela de Configurações. */
+    /* 4.83.3: sessão "aberta" mas morta ("Connection Closed", 19/11) — reinicia a instância do Evolution.
+       Pedido manual ({"reiniciar":true}) ou automático (o envio do Otto marcou wa_assistente.reiniciar_pedido). */
+    let corpoR: any = {}; try { corpoR = await req.clone().json(); } catch (_e) { /* sem corpo */ }
+    const { data: pend } = await sbR.from('wa_assistente').select('reiniciar_pedido').eq('id', 1).maybeSingle().then(r => r, () => ({ data: null }));
+    if (corpoR?.reiniciar || pend?.reiniciar_pedido) {
+      const rr = await evo('/instance/restart/' + INST(), 'POST', undefined, 30000).catch(e => ({ ok: false, status: 0, dados: String(e) }));
+      const rr2 = rr.ok ? rr : await evo('/instance/restart/' + INST(), 'PUT', undefined, 30000).catch(e => ({ ok: false, status: 0, dados: String(e) }));
+      await sbR.from('wa_assistente').update({ reiniciar_pedido: false }).eq('id', 1).then(() => null, () => null);
+      await sbR.from('wa_assistente_registro').insert({ tipo: 'erro', autor: 'B7', pergunta: 'reiniciou a conexão do WhatsApp', resposta: JSON.stringify({ status: rr2.status, ok: rr2.ok, dados: rr2.dados }).slice(0, 500) }).then(() => null, () => null);
+      if (corpoR?.reiniciar) return ok({ ok: rr2.ok, reinicio: rr2 });
+    }
     let conexao = 'desconhecido';
     try { const st = await evo('/instance/connectionState/' + INST(), 'GET', undefined, 10000); conexao = String(st.dados?.instance?.state || st.dados?.state || (st.ok ? '?' : 'erro ' + st.status)); } catch (e) { conexao = 'erro ' + String((e as Error)?.message || e).slice(0, 60); }
     try { await sbR.from('wa_assistente').update({ conexao_estado: conexao, conexao_conferida_em: new Date().toISOString() }).eq('id', 1); } catch (_e) { /* coluna nova pode faltar */ }

@@ -386,6 +386,8 @@ async function enviarUma(sb: SupabaseClient, cfg: Config, jid: string, texto: st
     console.log('assistente envio', r.status, JSON.stringify(r.dados).slice(0, 200));
     /* 4.83.3: falha de envio fica registrada (antes sumia: o bom dia de 19/11 "saiu" e não chegou) */
     await registrar(sb, { tipo: 'erro', jid, autor: cfg.nome, pergunta: 'envio falhou (' + r.status + ')', resposta: JSON.stringify(r.dados || {}).slice(0, 600) }).catch(() => null);
+    /* sessão morta: pede para o relógio reiniciar a conexão (na próxima volta, em até 5 min) */
+    if (/connection closed/i.test(JSON.stringify(r.dados || {}))) await sb.from('wa_assistente').update({ reiniciar_pedido: true }).eq('id', 1).then(() => null, () => null);
     return null;
   }
   try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava depois */ }
