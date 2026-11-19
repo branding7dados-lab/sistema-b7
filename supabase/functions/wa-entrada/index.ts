@@ -7,7 +7,7 @@
 // por tempo real. Autenticação: cabeçalho x-b7-token (HMAC da chave do
 // Evolution, configurado pela wa-evolution ao ligar o webhook).
 // =====================================================================
-import { admin, gravar, garantirConversa, tokenWebhook, STATUS_ORDEM } from '../_shared/wa.ts';
+import { admin, gravar, garantirConversa, tokenWebhook, STATUS_ORDEM, evo, INST } from '../_shared/wa.ts';
 import { iguais } from '../_shared/cors.ts';
 import { aoReceber, relogio } from '../_shared/assistente.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
@@ -23,7 +23,14 @@ Deno.serve(async (req: Request) => {
     const sbR = admin();
     const { data: seg } = await sbR.from('wa_relogio').select('segredo').eq('id', 1).maybeSingle();
     if (!seg?.segredo || !iguais(rl, String(seg.segredo))) return new Response('Sem permissão', { status: 401 });
-    try { return ok({ ok: true, tarefas: await relogio(sbR) }); }
+    /* 4.83.3: número desconectado = nada sai. Antes o relógio gerava o bom dia, marcava como enviado e a mensagem não
+       chegava (19/11). Agora confere a conexão primeiro: sem ela, não roda (nem marca) nada — quando o número voltar,
+       o bom dia e os avisos saem normalmente. A situação fica guardada para a tela de Configurações. */
+    let conexao = 'desconhecido';
+    try { const st = await evo('/instance/connectionState/' + INST(), 'GET', undefined, 10000); conexao = String(st.dados?.instance?.state || st.dados?.state || (st.ok ? '?' : 'erro ' + st.status)); } catch (e) { conexao = 'erro ' + String((e as Error)?.message || e).slice(0, 60); }
+    try { await sbR.from('wa_assistente').update({ conexao_estado: conexao, conexao_conferida_em: new Date().toISOString() }).eq('id', 1); } catch (_e) { /* coluna nova pode faltar */ }
+    if (conexao !== 'open') return ok({ ok: false, conexao, tarefas: ['parado: WhatsApp não está conectado'] });
+    try { return ok({ ok: true, conexao, tarefas: await relogio(sbR) }); }
     catch (e) { console.error('relogio', (e as Error)?.message); return ok({ ok: false }); }
   }
   const tk = req.headers.get('x-b7-token') || new URL(req.url).searchParams.get('t') || '';
