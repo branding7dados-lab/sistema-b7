@@ -30,10 +30,15 @@ Deno.serve(async (req: Request) => {
        Pedido manual ({"reiniciar":true}) ou automático (o envio do Otto marcou wa_assistente.reiniciar_pedido). */
     let corpoR: any = {}; try { corpoR = await req.clone().json(); } catch (_e) { /* sem corpo */ }
     const { data: pend } = await sbR.from('wa_assistente').select('reiniciar_pedido').eq('id', 1).maybeSingle().then(r => r, () => ({ data: null }));
-    if (corpoR?.reiniciar || pend?.reiniciar_pedido) {
+    /* com o envio quebrado, tenta reiniciar no máximo a cada 15 min */
+    let tentarAgora = !!corpoR?.reiniciar;
+    if (!tentarAgora && pend?.reiniciar_pedido) {
+      const { data: ult } = await sbR.from('wa_assistente_registro').select('em').eq('pergunta', 'reiniciou a conexão do WhatsApp').order('em', { ascending: false }).limit(1).maybeSingle();
+      tentarAgora = !ult || Date.now() - Date.parse(ult.em) > 15 * 60_000;
+    }
+    if (tentarAgora) {
       const rr = await evo('/instance/restart/' + INST(), 'POST', undefined, 30000).catch(e => ({ ok: false, status: 0, dados: String(e) }));
       const rr2 = rr.ok ? rr : await evo('/instance/restart/' + INST(), 'PUT', undefined, 30000).catch(e => ({ ok: false, status: 0, dados: String(e) }));
-      await sbR.from('wa_assistente').update({ reiniciar_pedido: false }).eq('id', 1).then(() => null, () => null);
       await sbR.from('wa_assistente_registro').insert({ tipo: 'erro', autor: 'B7', pergunta: 'reiniciou a conexão do WhatsApp', resposta: JSON.stringify({ status: rr2.status, ok: rr2.ok, dados: rr2.dados }).slice(0, 500) }).then(() => null, () => null);
       if (corpoR?.reiniciar) return ok({ ok: rr2.ok, reinicio: rr2 });
     }
@@ -41,6 +46,9 @@ Deno.serve(async (req: Request) => {
     try { const st = await evo('/instance/connectionState/' + INST(), 'GET', undefined, 10000); conexao = String(st.dados?.instance?.state || st.dados?.state || (st.ok ? '?' : 'erro ' + st.status)); } catch (e) { conexao = 'erro ' + String((e as Error)?.message || e).slice(0, 60); }
     try { await sbR.from('wa_assistente').update({ conexao_estado: conexao, conexao_conferida_em: new Date().toISOString() }).eq('id', 1); } catch (_e) { /* coluna nova pode faltar */ }
     if (conexao !== 'open') return ok({ ok: false, conexao, tarefas: ['parado: WhatsApp não está conectado'] });
+    /* "open" mas o último envio deu "Connection Closed": não roda nada (nem marca bom dia/avisos como feitos) até
+       chegar ou sair uma mensagem de verdade — aí a bandeira cai sozinha (webhook) */
+    if (pend?.reiniciar_pedido) return ok({ ok: false, conexao: 'open, mas o envio falha (Connection Closed)', tarefas: ['parado: sessão do WhatsApp caiu — conecte o número de novo'] });
     try { return ok({ ok: true, conexao, tarefas: await relogio(sbR) }); }
     catch (e) { console.error('relogio', (e as Error)?.message); return ok({ ok: false }); }
   }
@@ -49,6 +57,8 @@ Deno.serve(async (req: Request) => {
 
   let corpo: any = null;
   try { corpo = await req.json(); } catch (_e) { return ok({ ok: false }); }
+  /* 4.83.3: chegou evento do WhatsApp = sessão viva de novo — o relógio volta a rodar */
+  if (/messages\.upsert|send\.message|messages_upsert|send_message/i.test(String(corpo?.event || ''))) admin().from('wa_assistente').update({ reiniciar_pedido: false }).eq('id', 1).eq('reiniciar_pedido', true).then(() => null, () => null);
   const evento = String(corpo?.event || '').toLowerCase().replace(/_/g, '.');
   const dados = corpo?.data;
   const sb = admin();
