@@ -382,7 +382,12 @@ async function enviarUma(sb: SupabaseClient, cfg: Config, jid: string, texto: st
   /* assinatura igual à da equipe: *Otto:* e a mensagem embaixo (só na primeira de uma sequência) */
   texto = (assinar ? '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':*\n' : '') + noJeitoDoWhats(cfg, texto);
   const r = await evo('/message/sendText/' + I(), 'POST', { number: jid, text: texto.slice(0, 3000), ...extra }, 30000);
-  if (!r.ok) { console.log('assistente envio', r.status, JSON.stringify(r.dados).slice(0, 200)); return null; }
+  if (!r.ok) {
+    console.log('assistente envio', r.status, JSON.stringify(r.dados).slice(0, 200));
+    /* 4.83.3: falha de envio fica registrada (antes sumia: o bom dia de 19/11 "saiu" e não chegou) */
+    await registrar(sb, { tipo: 'erro', jid, autor: cfg.nome, pergunta: 'envio falhou (' + r.status + ')', resposta: JSON.stringify(r.dados || {}).slice(0, 600) }).catch(() => null);
+    return null;
+  }
   try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava depois */ }
   if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
   return r.dados;
