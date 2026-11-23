@@ -929,8 +929,9 @@ Deno.serve(comCors(async (req) => {
       const clientId = String(corpo.client_id || '');
       const { data: cli } = await sb.from('clientes').select('id, nome, servico').eq('id', clientId).maybeSingle();
       if (!cli) return json({ erro: 'Empresa não encontrada.' }, 404);
-      /* 4.86.0: contas do portal (convidar, nova senha, remover) são acessos — ficam com o administrador, não com o Financeiro */
-      if (autor.papel === 'admin' && autor.financeiro) return json({ erro: 'As contas do portal ficam com o administrador.' }, 403);
+      /* 4.86.0: o Financeiro convida pessoas para o portal (decisão do Yury); nova senha (daria para entrar como o cliente)
+         e remover conta continuam só com o administrador */
+      if (autor.papel === 'admin' && autor.financeiro && acao !== 'cliente_convidar') return json({ erro: 'Isso fica com o administrador.' }, 403);
       if (autor.papel !== 'admin') {
         const { data: v } = await sb.from('perfil_clientes').select('papel')
           .eq('perfil_id', autor.id).eq('client_id', clientId).maybeSingle();
