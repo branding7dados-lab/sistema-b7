@@ -1129,6 +1129,7 @@ B7.Dashboard = (function () {
      ================================================================= */
   const SECOES_CLIENTE = [
     { k: 'geral', r: 'Visão geral' },
+    { k: 'cadastro', r: 'Cadastro', cadastro: true },
     { k: 'linhas', r: 'Editorial', rota: 'linha' },
     { k: 'gravacoes', r: 'Gravações', rota: 'gravacao' },
     { k: 'roteiros', r: 'Roteiros', rota: 'gravacao' },
@@ -1141,7 +1142,7 @@ B7.Dashboard = (function () {
   ];
   const podeIrRota = r => !B7.Perm || B7.Perm.podeRota(r);
   const souEquipeCli = () => !(B7.Auth && B7.Auth.usuario()) || (B7.Auth.ehEquipe && B7.Auth.ehEquipe());
-  const secaoVisivel = s => (!s.rota || podeIrRota(s.rota)) && (!s.equipe || souEquipeCli());
+  const secaoVisivel = s => (!s.rota || podeIrRota(s.rota)) && (!s.equipe || souEquipeCli()) && (!s.cadastro || !!B7.Cadastro);
   /* zzz164: como a B7 trabalha com o cliente — linha editorial (padrão),
      conteúdo por semana ou só roteiros. Só muda o que a tela mostra. */
   /* zzz166: as formas de trabalho SOMAM — um cliente pode ter linha
@@ -1156,6 +1157,7 @@ B7.Dashboard = (function () {
   const campoModo = atual => '<div class="mb" data-campo-modo><label class="rot">COMO TRABALHAMOS COM ESTE CLIENTE <span class="leve">— marque tudo o que vale</span></label><div class="cli-modos">' +
     MODOS_CLIENTE.map(x => '<label class="cli-modo"><input type="checkbox" name="cli-modo" value="' + x[0] + '"' + (modosDe({ modo: atual }).includes(x[0]) ? ' checked' : '') + '>' +
       '<span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></label>').join('') + '</div></div>';
+  const rotulosModo = modo => modosDe({ modo }).map(k => (MODOS_CLIENTE.find(x => x[0] === k) || [, k])[1]).join(' · ');
   const lerModo = m => { const l = [...m.querySelectorAll('input[name="cli-modo"]:checked')].map(r => r.value); return (l.length ? l : ['linha']).join(','); };
   const hrefSecao = (id, k) => '#/cliente/' + id + (k === 'geral' ? '' : '/' + k);
   /* zzz274: contrato — mensal (produção todo mês) ou avulso (comprou um
@@ -1437,6 +1439,7 @@ B7.Dashboard = (function () {
        : sec === 'arquivados' ? '<div id="aba-arquivados">' + B7.UI.skeleton('cards', { n: 3, titulo: false }) + '</div>'
        : sec === 'video' ? secaoVideoCliente(cliente, lista)
        : sec === 'design' ? secaoDesignCliente(cliente, lista)
+       : sec === 'cadastro' ? '<div id="cli-cadastro">' + B7.UI.skeleton('lista', { n: 4 }) + '</div>'
        : sec === 'projetos' ? '<div id="cli-projetos">' + B7.UI.skeleton('lista', { n: 2 }) + '</div>'
        : abaRoteirosCliente(cliente, roteiros), seq)) return;
 
@@ -1469,6 +1472,7 @@ B7.Dashboard = (function () {
     }
     if (sec === 'gravacoes') ligarFiltrosGravacoes(gravacoes);
     if (sec === 'arquivados') carregarArquivadosCliente(id);
+    if (sec === 'cadastro' && B7.Cadastro) { const el = document.getElementById('cli-cadastro'); if (el) montarCadastro(el, cliente); }
     if (sec === 'video' || sec === 'design') ligarFiltroSecao();
     /* zzz274: projetos avulsos — seção própria e, no cliente avulso, logo no topo da visão geral */
     if (B7.Projetos && (sec === 'projetos' || (sec === 'geral' && cliente.contrato === 'avulso'))) {
@@ -3165,6 +3169,8 @@ B7.Dashboard = (function () {
 
   /* ==================================================== novo cliente */
   function modalNovoCliente(aoCriar) {
+    /* 4.88.0: cadastro em etapas (js/cadastro-cliente.js) */
+    if (B7.Cadastro) return B7.Cadastro.novo(aoCriar);
     const m = B7.UI.modal(
       '<h3>Novo cliente</h3><div class="sub">Só o nome é obrigatório. Logo e observações você pode ' +
       'adicionar agora ou depois.</div>' +
@@ -3257,79 +3263,27 @@ B7.Dashboard = (function () {
       return { mudou: atual !== inicial, valor };
     };
   }
-  async function modalEditarCliente(id) {
-    let c;
-    try { c = await B7.DB.cliente(id); }
-    catch (e) { return B7.UI.toast('Não consegui carregar o cliente', { tipo: 'erro' }); }
-    /* zzz206: dia fixo de gravar (só admin/coordenador) */
-    const podeFixa = !!(B7.Auth && B7.Auth.ehEquipe && B7.Auth.ehEquipe());
+  /* 4.88.0: editar o cliente é na aba Cadastro da página dele (js/cadastro-cliente.js) */
+  function modalEditarCliente(id) { location.hash = '#/cliente/' + id + '/cadastro'; }
+  function resumoGravacaoFixa(f) {
+    if (!f || !f.ativa) return 'Sem dia fixo';
+    const hh = t => (t ? String(t).slice(0, 5) : '');
+    return (f.freq === 'mensal' ? 'Todo mês, dia ' + f.dia_mes : 'Toda ' + String(DIAS_SEMANA[f.dia_semana] || '').toLowerCase()) +
+      (f.hora_inicio ? ', das ' + hh(f.hora_inicio) + (f.hora_fim ? ' às ' + hh(f.hora_fim) : '') : '') + ' · criada ' + (f.antecedencia_dias || 7) + ' dias antes';
+  }
+  async function montarCadastro(el, cliente) {
+    const id = cliente.id, podeFixa = !!(B7.Auth && B7.Auth.ehEquipe && B7.Auth.ehEquipe());
     let fixa = null;
     if (podeFixa) { try { fixa = await B7.DB.gravacaoFixaDoCliente(id); } catch (e) { fixa = null; } }
-
-    const m = B7.UI.modal(
-      '<h3>Editar cliente</h3><div class="sub">Trocar o nome não afeta gravações, roteiros nem cenas — ' +
-      'o sistema trabalha pelo identificador do cliente.</div>' +
-      '<div class="mb"><label class="rot">NOME DO CLIENTE</label>' +
-      '<input class="campo" id="ec-nome" data-foco value="' + esc(c.nome) + '"></div>' +
-      campoLogo(c.logo_url) +
-      '<div class="mb"><label class="rot">OBSERVAÇÕES <span class="leve">— opcional</span></label>' +
-      '<textarea class="campo" id="ec-obs" rows="2">' + esc(c.observacoes || '') + '</textarea></div>' +
-      (c.contrato !== undefined ? campoContrato(c.contrato) : '') +
-      (c.modo !== undefined ? campoModo(c.modo) : '') +
-      /* zzz170: o grupo do cliente no WhatsApp ("Enviar no WhatsApp" abre ele) */
-      (c.whatsapp_grupo !== undefined
-        ? '<div class="mb"><label class="rot" for="ec-wa">GRUPO DO WHATSAPP <span class="leve">— opcional</span></label>' +
-          '<input class="campo" id="ec-wa" maxlength="120" placeholder="Nome do grupo, igual aparece no WhatsApp" value="' + esc(c.whatsapp_grupo || '') + '"></div>'
-        : '') +
-      (podeFixa ? blocoGravacaoFixa(fixa) : '') +
-      '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
-      '<button class="b pri" data-ok>Salvar alterações</button></div>');
-
-    const logo = ligarCampoLogo(m, c.logo_url);
-    ligarContrato(m);
-    const lerFixa = podeFixa ? ligarGravacaoFixa(m) : null;
-    const nome = m.querySelector('#ec-nome');
-    const botao = m.querySelector('[data-ok]');
-
-    botao.onclick = async () => {
-      if (!nome.value.trim()) { nome.classList.add('erro'); nome.focus(); return; }
-      botao.disabled = true;
-      const patch = { nome: nome.value.trim(), observacoes: m.querySelector('#ec-obs').value };
-      if (c.modo !== undefined) patch.modo = lerModo(m);
-      if (c.contrato !== undefined) patch.contrato = lerContrato(m);
-      if (c.whatsapp_grupo !== undefined) patch.whatsapp_grupo = m.querySelector('#ec-wa').value.trim();
-      try {
-        /* a logo resolve primeiro: se o envio falhar, nada é gravado e a
-           logo antiga continua onde estava */
-        const nova = await logo.resolver(c.id, c.logo_path);
-        if (nova) Object.assign(patch, nova);
-        await B7.Save.acao(() => B7.DB.atualizarCliente(c.id, patch), 'Cliente atualizado');
-        if (lerFixa) {
-          const f = lerFixa();
-          if (f.mudou) {
-            try {
-              await B7.DB.salvarGravacaoFixa(c.id, f.valor);
-              if (f.valor.ativa) {
-                const n = await B7.DB.gerarGravacoesFixasAgora().catch(() => 0);
-                if (n) B7.UI.toast(n === 1 ? 'Gravação fixa salva e 1 gravação criada.' : 'Gravação fixa salva e ' + n + ' gravações criadas.');
-              }
-            } catch (e2) {
-              botao.disabled = false;
-              B7.UI.toast((e2 && e2.message) || 'O cliente foi salvo, mas a gravação fixa não.', { tipo: 'erro' });
-              return;
-            }
-          }
-        }
-        m.fechar();
-        esquecerSecoes(c.id);
-        B7.Rota.recarregar();
-      } catch (e) {
-        botao.disabled = false;
-        if (String(e.message || '').includes('duplicate') || e.code === '23505') {
-          B7.UI.toast('Já existe um cliente com esse nome', { tipo: 'erro' });
-        }
-      }
-    };
+    if (!el.isConnected) return;
+    B7.Cadastro.ficha(el, id, {
+      aoMudarCliente: () => { esquecerSecoes(id); B7.Rota.recarregar(); },
+      gravacaoFixa: podeFixa ? { atual: fixa, html: blocoGravacaoFixa, ligar: ligarGravacaoFixa, resumo: resumoGravacaoFixa,
+        salvar: async valor => {
+          await B7.Save.acao(() => B7.DB.salvarGravacaoFixa(id, valor), 'Gravação fixa salva');
+          if (valor.ativa) { const n = await B7.DB.gerarGravacoesFixasAgora().catch(() => 0); if (n) B7.UI.toast(n === 1 ? '1 gravação criada.' : n + ' gravações criadas.'); }
+          return B7.DB.gravacaoFixaDoCliente(id).catch(() => null);
+        } } : null });
   }
 
   /* ============================================ desativar / reativar (4.43.0)
@@ -3757,6 +3711,7 @@ B7.Dashboard = (function () {
            prepararSecaoCliente, pintarSecaoCliente, esquecerSecoes, secaoVigente: seq => seq === trocaSeq,
            abrirLixeira, abrirArquivados, arquivarGravacao, paraLixeira,
            modalNovaGravacao, modalNovoCliente, modalEditarCliente, excluirCliente,
+           cad: { campoLogo, ligarCampoLogo, campoContrato, ligarContrato, lerContrato, campoModo, lerModo, rotulosModo },
            buscar, duplicarGravacao, excluirGravacao, IC,
            get ultima() { return ultimaGravacao; } };
 })();
