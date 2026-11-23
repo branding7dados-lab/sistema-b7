@@ -72,12 +72,15 @@ const texto = (pg, s) => pg.$eval(s, e => e.innerText.replace(/\s+/g, ' ')).catc
   await pg.exposeFunction('aoCriarTeste', c => { criouCb = c; });
   await pg.evaluate(() => { B7.Dashboard.modalNovoCliente(c => window.aoCriarTeste(c)); });
   await pg.waitForSelector('.cd-janela #cd-nome');
-  ok((await pg.$$eval('.cd-passos li', l => l.map(e => e.innerText.replace(/\s+/g, ' ').trim()).join('|'))) === '1 Cliente|2 Marca|3 Pacote|4 Equipe|5 Observações', 'janela abre com as 5 etapas');
+  ok((await pg.$$eval('.cd-passos li b', l => l.map(e => e.innerText.trim()).join('|'))) === 'Cliente|Marca|Pacote|Equipe|Observações' && (await pg.$$('.cd-passos button:disabled')).length === 4, 'janela abre com as 5 etapas; antes de criar o cliente só a primeira está liberada');
   ok(!(await pg.$('#ec-wa, [id*="grupo"]')) && !/grupo do whatsapp/i.test(await texto(pg, '.cd-janela')), 'o grupo do WhatsApp não está no cadastro');
   await pg.click('[data-cd-ok]'); await pg.waitForTimeout(200);
   ok(criados === 0 && await pg.$eval('#cd-nome', e => e.classList.contains('erro')), 'sem nome não cria');
   await pg.fill('#cd-nome', 'Alfa'); await pg.fill('#cd-cnpj', '123'); await pg.click('[data-cd-ok]'); await pg.waitForTimeout(200);
   ok(criados === 0, 'CNPJ incompleto segura na etapa 1');
+  const rodape = await pg.evaluate(() => { const m = document.querySelector('.cd-janela').getBoundingClientRect(), p = document.querySelector('.cd-palco').getBoundingClientRect(), b = document.querySelector('[data-cd-ok]').getBoundingClientRect(); return b.bottom <= m.bottom - 8 && b.right <= m.right - 8 && b.left >= p.left; });
+  ok(rodape, 'o rodapé com os botões fica inteiro dentro da janela');
+  await pg.waitForTimeout(4200);   /* os avisos somem antes da captura */
   await pg.fill('#cd-cnpj', ''); await print(pg, 'cadastro-novo-1');
   await pg.click('[data-cd-ok]'); await pg.waitForSelector('[data-cd-cor-mais]', { timeout: 4000 }).catch(() => null);
   ok(criados === 1 && /Marca/.test(await texto(pg, '.cd-passos li.on')), 'só com o nome: cliente criado e a janela vai para a Marca');
@@ -100,6 +103,11 @@ const texto = (pg, s) => pg.$eval(s, e => e.innerText.replace(/\s+/g, ' ')).catc
   await pg.click('[data-cd-ok]'); await pg.waitForSelector('#cd-eq-designer', { timeout: 4000 }).catch(() => null);
   const p1 = salvos().pop().pacote;
   ok(p1 && p1.pacote_id === 'p1' && p1.ajuste.find(i => i.tipo === 'Card').qtd === 10 && /^\d{4}-\d{2}-01$/.test(p1.desde), 'pacote salvo com o ajuste e "vale desde" no dia 1º (' + JSON.stringify(p1) + ')');
+  /* o trilho leva direto a outra etapa, salvando a atual antes */
+  await pg.selectOption('#cd-eq-designer', 'd1'); const nT = salvos().length;
+  await pg.click('[data-cd-ir="1"]'); await pg.waitForSelector('[data-cd-cor-mais]', { timeout: 4000 }).catch(() => null);
+  ok(salvos().length === nT + 1 && salvos().pop().equipe.designer === 'd1' && /Marca/.test(await texto(pg, '.cd-passos li.on')) && /etapa 2 de 5/i.test(await texto(pg, '.cd-etapa')), 'clicar numa etapa do trilho salva a atual e vai para ela');
+  ok((await pg.$$('.cd-cor')).length === 1, 'voltando à Marca, a cor salva está lá');
   /* fechar no meio não perde nem duplica o cliente */
   await pg.keyboard.press('Escape'); await pg.waitForTimeout(400);
   ok(criados === 1 && criouCb && criouCb.id === 'c1' && criouCb.nome === 'Alfa', 'fechar na etapa 4: o cliente continua criado (1 vez) e a tela é avisada');
@@ -127,8 +135,10 @@ const texto = (pg, s) => pg.$eval(s, e => e.innerText.replace(/\s+/g, ' ')).catc
   const t = await texto(pg, '.cd-ficha');
   ok(/12\.345\.678\/0001-90/.test(t) && /\(77\) 99999-0000/.test(t) && /@alfa/.test(t) && /Dani/.test(t), 'a ficha mostra os valores, com CNPJ e telefone formatados');
   ok(/<img src=x/.test(t) && !(await pg.evaluate(() => window.XSS)) && !(await pg.$('.cd-ficha img[src="x"]')) && !(await pg.$('.cd-amostra small b')), 'texto com HTML aparece como texto (responsável e nome da cor)');
-  ok(/ajustado para este cliente/.test(t) && /10 cards \+ 4 reels/.test(t) && /12 cards \+ 4 reels/.test(t) && /01\/11\/2026/.test(t), 'pacote: ajustado, com a entrega dele, o padrão e desde quando');
-  ok((await pg.$$('[data-cd-bloco]')).length === 5 && /Completar/.test(await texto(pg, '[data-cd-bloco="obs"]')) && /Editar/.test(await texto(pg, '[data-cd-bloco="marca"]')), '5 blocos; bloco vazio convida a "Completar"');
+  ok(/ajustado para este cliente/.test(t) && /10 Cards/.test(t) && /4 Reels/.test(t) && /14 no mês/.test(t) && /12 cards \+ 4 reels/.test(t) && /01\/11\/2026/.test(t), 'pacote: ajustado, com a entrega dele, o padrão e desde quando');
+  ok((await pg.$$('[data-cd-bloco]')).length === 5 && /Completar/.test(await texto(pg, '[data-cd-bloco="obs"]')) && /Editar/.test(await texto(pg, '[data-cd-bloco="marca"]')) && !/—/.test(t) && /Falta: .*site|Falta: área de atuação/.test(t), '5 blocos; bloco vazio convida a "Completar"; sem lista de traços, e o que falta vem numa linha só');
+  ok(/4 de 5 partes/.test(await texto(pg, '.cd-resumo')) && /Falta observações/.test(await texto(pg, '.cd-resumo')) && (await pg.$$('.cd-prog li.ok')).length === 4, 'resumo no topo diz quantas partes estão preenchidas e o que falta (' + (await texto(pg, '.cd-resumo')).slice(0, 90) + ')');
+  ok(/wa\.me\/5577999990000/.test(await pg.$eval('.cd-contato a', a => a.href).catch(() => '')), 'o WhatsApp do responsável abre a conversa');
   await print(pg, 'cadastro-ficha');
   /* editar o bloco Cliente: cancelar não grava; salvar manda só interno e perfil */
   const n0 = salvos().length;
@@ -196,6 +206,9 @@ const texto = (pg, s) => pg.$eval(s, e => e.innerText.replace(/\s+/g, ' ')).catc
   await pg.waitForSelector('.cd-janela #cd-nome');
   const larg = await pg.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth, [...document.querySelectorAll('.cd-acoes .b')].filter(b => !b.hidden).every(b => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= window.innerWidth + 1; })]);
   ok(larg[0] <= larg[1] + 1 && larg[2], 'no celular a janela cabe na tela, sem rolar para o lado');
+  await pg.waitForTimeout(800);   /* a janela sobe animada */
+  const rod = await pg.evaluate(() => { const m = document.querySelector('.cd-janela').getBoundingClientRect(), b = document.querySelector('[data-cd-ok]').getBoundingClientRect(); return b.bottom <= m.bottom + 1 && b.bottom <= window.innerHeight + 1 && b.left >= m.left; });
+  ok(rod, 'no celular o botão de continuar fica inteiro dentro da janela');
   await print(pg, 'cadastro-novo-celular');
   await ctx.close(); }
 
