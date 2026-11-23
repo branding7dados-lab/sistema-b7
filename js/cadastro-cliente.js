@@ -30,12 +30,13 @@ B7.Cadastro = (function () {
   const fmtData = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? m[3] + '/' + m[2] + '/' + m[1] : ''; };
   const hojeMes1 = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01'; };
 
+  /* [chave, nome, o que é (trilho), frase da etapa] */
   const BLOCOS = [
-    ['cliente', 'Cliente', 'quem é o cliente e com quem a gente fala'],
-    ['marca', 'Marca', 'logo, cores e fontes — opcional'],
-    ['pacote', 'Pacote', 'o que ele contratou por mês: é a entrega mínima'],
-    ['equipe', 'Equipe', 'quem cuida da conta aqui na B7'],
-    ['obs', 'Observações', 'o que foi combinado e o que é bom lembrar']
+    ['cliente', 'Cliente', 'quem é', 'Quem é o cliente e com quem a gente fala.'],
+    ['marca', 'Marca', 'logo e cores', 'Logo, cores e fontes, para a equipe usar. Pode ficar para depois.'],
+    ['pacote', 'Pacote', 'entrega do mês', 'O que ele contratou por mês. É a entrega mínima.'],
+    ['equipe', 'Equipe', 'quem cuida', 'Quem cuida da conta aqui na B7.'],
+    ['obs', 'Observações', 'o combinado', 'O que foi combinado e o que é bom lembrar.']
   ];
   const FUNCOES = [['coordenador', 'Coordenação'], ['designer', 'Design'], ['videomaker', 'Vídeo']];
   const VAZIO = () => ({
@@ -48,7 +49,7 @@ B7.Cadastro = (function () {
   });
 
   const campo = (rot, id, valor, op) => { op = op || {};
-    return '<div class="mb' + (op.meio ? ' cd-meio' : '') + '"><label class="rot" for="' + id + '">' + rot + (op.obr ? '' : ' <span class="leve">— opcional</span>') + '</label>' +
+    return '<div class="mb' + (op.meio ? ' cd-meio' : '') + '"><label class="rot" for="' + id + '">' + rot + '</label>' +
       (op.area ? '<textarea class="campo" id="' + id + '" rows="' + (op.linhas || 3) + '" maxlength="' + (op.max || 4000) + '" placeholder="' + esc(op.ph || '') + '">' + esc(valor) + '</textarea>'
         : '<input class="campo" id="' + id + '" type="' + (op.tipo || 'text') + '" maxlength="' + (op.max || 160) + '"' + (op.modo ? ' inputmode="' + op.modo + '"' : '') +
           (op.foco ? ' data-foco' : '') + ' placeholder="' + esc(op.ph || '') + '" value="' + esc(valor) + '">') + '</div>'; };
@@ -58,28 +59,28 @@ B7.Cadastro = (function () {
     cx = cx || {};
     if (bloco === 'cliente') {
       const i = d.interno, p = d.perfil, c = d.cliente, h = D();
-      return campo('NOME DO CLIENTE', 'cd-nome', c.nome, { obr: true, foco: true, ph: 'Ex: Mercato Sadia', max: 120 }) +
-        '<div class="cd-grade">' +
+      return '<div class="cd-nome">' + campo('NOME DO CLIENTE', 'cd-nome', c.nome, { obr: true, foco: true, ph: 'Ex: Mercato Sadia', max: 120 }) + '</div>' +
+        '<fieldset class="cd-grupo"><legend>Empresa</legend><div class="cd-grade">' +
           campo('ÁREA DE ATUAÇÃO', 'cd-nicho', p.nicho, { meio: true, ph: 'Ex: Clínica odontológica' }) +
           campo('CNPJ', 'cd-cnpj', fmtCnpj(i.cnpj), { meio: true, ph: '00.000.000/0000-00', modo: 'numeric', max: 18 }) +
           campo('CIDADE / ESTADO', 'cd-cidade', i.cidade, { meio: true, ph: 'Ex: Vitória da Conquista - BA' }) +
           campo('INÍCIO DO SERVIÇO', 'cd-inicio', i.inicio_servico || '', { meio: true, tipo: 'date' }) +
           campo('INSTAGRAM', 'cd-insta', p.instagram ? '@' + p.instagram : '', { meio: true, ph: '@usuario', max: 60 }) +
           campo('SITE', 'cd-site', p.site, { meio: true, ph: 'https://…', max: 300 }) +
-        '</div>' +
-        '<div class="cd-sub">Responsável do cliente <small>quem fechou ou responde pela conta</small></div>' +
-        '<div class="cd-grade">' +
+        '</div></fieldset>' +
+        '<fieldset class="cd-grupo"><legend>Responsável do cliente <small>quem fechou ou responde pela conta</small></legend><div class="cd-grade">' +
           campo('NOME', 'cd-rnome', i.resp_nome, { meio: true, ph: 'Nome do responsável' }) +
           campo('CARGO', 'cd-rcargo', i.resp_cargo, { meio: true, ph: 'Ex: Dona, Gerente' }) +
           campo('WHATSAPP', 'cd-rwa', fmtFone(i.resp_whatsapp), { meio: true, ph: '(DDD) 90000-0000', modo: 'tel', max: 20 }) +
           campo('E-MAIL', 'cd-remail', i.resp_email, { meio: true, ph: 'email@empresa.com', tipo: 'email' }) +
-        '</div>' +
-        (h.campoContrato ? h.campoContrato(c.contrato) : '') + (h.campoModo ? h.campoModo(c.modo) : '');
+        '</div></fieldset>' +
+        '<fieldset class="cd-grupo"><legend>Como a B7 trabalha com ele</legend>' +
+          (h.campoContrato ? h.campoContrato(c.contrato) : '') + (h.campoModo ? h.campoModo(c.modo) : '') + '</fieldset>';
     }
     if (bloco === 'marca') {
       const m = d.marca, h = D();
       return (h.campoLogo ? h.campoLogo(d.cliente.logo_url) : '') +
-        '<div class="mb"><span class="rot">CORES DA MARCA <span class="leve">— até 8</span></span>' +
+        '<div class="mb"><span class="rot">CORES DA MARCA <span class="leve">até 8</span></span>' +
           '<div class="cd-cores" data-cd-cores></div>' +
           '<button type="button" class="b fina contorno" data-cd-cor-mais>+ Adicionar cor</button></div>' +
         '<div class="cd-grade">' +
@@ -92,7 +93,7 @@ B7.Cadastro = (function () {
     if (bloco === 'pacote') {
       const p = d.pacote, lista = (cx.pacotes || []).slice();
       if (p.pacote_id && !lista.some(x => x.id === p.pacote_id)) lista.unshift({ id: p.pacote_id, nome: (p.nome || 'Pacote') + (p.arquivado ? ' (arquivado)' : ''), itens: p.padrao || [] });
-      return '<div class="mb"><label class="rot" for="cd-pacote">PACOTE <span class="leve">— opcional</span></label>' +
+      return '<div class="mb"><label class="rot" for="cd-pacote">PACOTE</label>' +
           '<select class="campo" id="cd-pacote"><option value="">Sem pacote por enquanto</option>' +
             lista.map(x => '<option value="' + esc(x.id) + '"' + (x.id === p.pacote_id ? ' selected' : '') + '>' + esc(x.nome) + ' — ' + B7.Pacotes.total(x) + ' no mês</option>').join('') + '</select>' +
           '<div class="gv-ajuda" data-cd-pc-resumo></div>' +
@@ -211,27 +212,35 @@ B7.Cadastro = (function () {
     let passo = 0, criado = null, d = VAZIO(), ler = null, cx = { pacotes: [], pessoas: {} }, ocupado = false, fechou = false;
     apoio().then(a => { cx = a; if (passo >= 2 && m.isConnected) pintar(); });
     const m = B7.UI.modal(
-      '<h3>Novo cliente</h3><div class="sub">Só o nome é obrigatório. O resto você completa agora ou depois, na aba Cadastro do cliente.</div>' +
-      '<ol class="cd-passos" data-cd-passos></ol><div class="cd-corpo" data-cd-corpo></div>' +
-      '<div class="acoes cd-acoes"><button class="b" data-cd-voltar>Voltar</button><span class="cd-esp"></span>' +
-        '<button class="b contorno" data-cd-pular>Pular</button><button class="b pri" data-cd-ok>Continuar</button></div>',
+      '<div class="cd-w"><aside class="cd-trilho"><h3>Novo cliente</h3>' +
+        '<p class="cd-trilho-sub">Só o nome é obrigatório. O resto você completa agora ou depois, na aba Cadastro.</p>' +
+        '<ol class="cd-passos" data-cd-passos></ol></aside>' +
+      '<section class="cd-palco"><header class="cd-palco-cab" data-cd-cab></header>' +
+        '<div class="cd-corpo" data-cd-corpo></div>' +
+        '<div class="acoes cd-acoes"><button class="b" data-cd-voltar>Voltar</button><span class="cd-esp"></span>' +
+          '<button class="cb-link cd-pular" data-cd-pular>Pular esta etapa</button><button class="b pri" data-cd-ok>Continuar</button></div></section></div>',
       { larga: true, extra: 'cd-janela', aoFechar: () => { fechou = true; if (criado) { if (aoCriar) aoCriar(criado); else B7.Rota.recarregar(); } } });
     const q = s => m.querySelector(s);
+    const CERTO = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
     function pintar() {
-      const [k] = BLOCOS[passo];
-      q('[data-cd-passos]').innerHTML = BLOCOS.map(([, r], i) => '<li class="' + (i === passo ? 'on' : i < passo ? 'feito' : '') + '"' + (i === passo ? ' aria-current="step"' : '') + '><i>' + (i + 1) + '</i>' + esc(r) + '</li>').join('');
-      q('[data-cd-corpo]').innerHTML = '<p class="cd-nota cd-de">' + esc(BLOCOS[passo][2]) + '</p>' + campos(k, d, cx);
+      const [k, nome, , frase] = BLOCOS[passo];
+      /* depois que o cliente existe, dá para ir direto a qualquer etapa (a atual é salva antes) */
+      q('[data-cd-passos]').innerHTML = BLOCOS.map(([, r, curto], i) => '<li class="' + (i === passo ? 'on' : i < passo ? 'feito' : '') + '"' + (i === passo ? ' aria-current="step"' : '') + '>' +
+        '<button type="button" data-cd-ir="' + i + '"' + (!criado && i !== 0 ? ' disabled' : '') + '><i>' + (i < passo ? CERTO : i + 1) + '</i><span><b>' + esc(r) + '</b><small>' + esc(curto) + '</small></span></button></li>').join('');
+      q('[data-cd-passos]').querySelectorAll('[data-cd-ir]').forEach(b => b.onclick = () => { const i = +b.dataset.cdIr; if (i !== passo) seguir(i); });
+      q('[data-cd-cab]').innerHTML = '<span class="cd-etapa">Etapa ' + (passo + 1) + ' de ' + BLOCOS.length + '</span><h4>' + esc(nome) + '</h4><p>' + esc(frase) + '</p>';
+      q('[data-cd-corpo]').innerHTML = campos(k, d, cx);
       ler = ligar(k, q('[data-cd-corpo]'), d, cx);
       q('[data-cd-voltar]').hidden = passo === 0;
       q('[data-cd-pular]').hidden = passo === 0;
-      q('[data-cd-pular]').textContent = passo === BLOCOS.length - 1 ? 'Fechar sem preencher' : 'Pular';
-      q('[data-cd-ok]').textContent = passo === 0 && !criado ? 'Criar e continuar' : passo === BLOCOS.length - 1 ? 'Concluir' : 'Salvar e continuar';
-      const foco = q('[data-cd-corpo] [data-foco]') || q('[data-cd-corpo] input, [data-cd-corpo] select, [data-cd-corpo] textarea');
+      q('[data-cd-pular]').textContent = passo === BLOCOS.length - 1 ? 'Fechar sem preencher' : 'Pular esta etapa';
+      q('[data-cd-ok]').textContent = passo === 0 && !criado ? 'Criar cliente e continuar' : passo === BLOCOS.length - 1 ? 'Concluir' : 'Salvar e continuar';
+      const foco = q('[data-cd-corpo] [data-foco]');
       if (foco && passo === 0) foco.focus();
       q('.cd-corpo').scrollTop = 0;
     }
     const anda = n => { passo = Math.max(0, Math.min(BLOCOS.length - 1, passo + n)); pintar(); };
-    async function seguir() {
+    async function seguir(alvo) {
       if (ocupado) return;
       const lido = ler();
       if (lido.erro) { B7.UI.toast(lido.erro, { tipo: 'erro' }); if (lido.foco) { lido.foco.classList.add('erro'); lido.foco.focus(); } return; }
@@ -246,12 +255,13 @@ B7.Cadastro = (function () {
         }
         const r = await gravar(criado.id, lido, d);
         d = r; criado = Object.assign({}, criado, r.cliente);
+        if (typeof alvo === 'number') { passo = alvo; return pintar(); }
         if (passo === BLOCOS.length - 1) return m.fechar();
         anda(1);
       } catch (e) { avisoErro(e); }
       finally { ocupado = false; const b = q('[data-cd-ok]'); if (b) b.disabled = false; }
     }
-    q('[data-cd-ok]').onclick = seguir;
+    q('[data-cd-ok]').onclick = () => seguir();
     q('[data-cd-voltar]').onclick = () => { if (!ocupado) anda(-1); };
     q('[data-cd-pular]').onclick = () => { if (!ocupado) (passo === BLOCOS.length - 1 ? m.fechar() : anda(1)); };
     m.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input:not([type=checkbox]):not([type=color])')) { e.preventDefault(); seguir(); } });
@@ -260,42 +270,70 @@ B7.Cadastro = (function () {
   }
 
   /* ================================================================ FICHA (aba Cadastro) */
-  const linhaV = (rot, html) => '<div class="cd-v"><dt>' + rot + '</dt><dd>' + (html || '<span class="cd-vazio">—</span>') + '</dd></div>';
+  const linhaV = (rot, html) => (html ? '<div class="cd-v"><dt>' + rot + '</dt><dd>' + html + '</dd></div>' : '');
   const txt = s => (s ? esc(s) : '');
   const multi = s => (s ? esc(s).replace(/\n/g, '<br>') : '');
   const linkExt = (u, r) => (/^https?:\/\//i.test(u || '') ? '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(r || u) + '</a>' : txt(u));
+  const lista = html => (html ? '<dl class="cd-vs">' + html + '</dl>' : '');
+  const falta = nomes => (nomes.length ? '<p class="cd-falta">Falta: ' + nomes.map(esc).join(', ') + '</p>' : '');
+  const convite = t => '<p class="cd-convite">' + t + '</p>';
+  const iniciais = n => String(n || '').trim().split(/\s+/).slice(0, 2).map(x => x[0] || '').join('').toUpperCase();
+  const tiposPl = t => ((B7.Pacotes && B7.Pacotes.TIPOS.find(x => x[0] === t)) || [t, t])[1];
+
+  /* o que ainda não foi preenchido em cada bloco (nomes para a linha "Falta: …") */
+  function faltando(bloco, d) {
+    const i = d.interno, p = d.perfil, m = d.marca, f = [];
+    const se = (v, n) => { if (!v) f.push(n); };
+    if (bloco === 'cliente') { se(p.nicho, 'área de atuação'); se(i.cnpj, 'CNPJ'); se(i.cidade, 'cidade'); se(i.inicio_servico, 'início do serviço'); se(p.instagram, 'Instagram'); se(p.site, 'site');
+      se(i.resp_nome, 'responsável'); se(i.resp_whatsapp, 'WhatsApp do responsável'); se(i.resp_email, 'e-mail do responsável'); }
+    if (bloco === 'marca') { se(d.cliente.logo_url, 'logo'); se((m.cores || []).length, 'cores'); se(m.fonte_titulo || m.fonte_texto, 'fontes'); se(m.link, 'material da marca'); }
+    if (bloco === 'equipe') FUNCOES.forEach(([k, r]) => se(d.equipe[k], r.toLowerCase()));
+    if (bloco === 'obs') { se(i.observacoes, 'observações'); se(i.combinado, 'o que foi combinado'); }
+    return f;
+  }
 
   function ver(bloco, d) {
     const i = d.interno, p = d.perfil, c = d.cliente;
     if (bloco === 'cliente') {
-      const h = D(), modos = h.rotulosModo ? h.rotulosModo(c.modo) : c.modo;
-      return linhaV('Nome', txt(c.nome)) + linhaV('Área de atuação', txt(p.nicho)) + linhaV('CNPJ', txt(fmtCnpj(i.cnpj))) + linhaV('Cidade / estado', txt(i.cidade)) +
-        linhaV('Início do serviço', txt(fmtData(i.inicio_servico))) +
-        linhaV('Instagram', p.instagram ? linkExt('https://instagram.com/' + encodeURIComponent(p.instagram), '@' + p.instagram) : '') + linhaV('Site', linkExt(p.site)) +
-        linhaV('Responsável', [i.resp_nome, i.resp_cargo].filter(Boolean).map(esc).join(' · ')) +
-        linhaV('WhatsApp do responsável', txt(fmtFone(i.resp_whatsapp))) + linhaV('E-mail do responsável', txt(i.resp_email)) +
-        linhaV('Contrato', c.contrato === 'avulso' ? 'Avulso' : 'Mensal') + linhaV('Como trabalhamos', txt(modos));
+      const h = D(), modos = h.rotulosModo ? h.rotulosModo(c.modo) : c.modo, wa = soNum(i.resp_whatsapp);
+      const resp = (i.resp_nome || wa || i.resp_email) ? '<div class="cd-contato"><span class="cd-av" aria-hidden="true">' + esc(iniciais(i.resp_nome) || '?') + '</span>' +
+        '<span class="cd-contato-tx"><b>' + (txt(i.resp_nome) || 'Responsável sem nome') + '</b>' + (i.resp_cargo ? '<small>' + esc(i.resp_cargo) + '</small>' : '') + '</span>' +
+        '<span class="cd-contato-bt">' +
+          (wa ? '<a class="b fina contorno" href="https://wa.me/' + esc(wa.length <= 11 ? '55' + wa : wa) + '" target="_blank" rel="noopener noreferrer">' + esc(fmtFone(wa)) + '</a>' : '') +
+          (i.resp_email ? '<a class="b fina contorno" href="mailto:' + esc(i.resp_email) + '">' + esc(i.resp_email) + '</a>' : '') + '</span></div>' : '';
+      return '<p class="cd-chips"><span class="cd-chip">' + (c.contrato === 'avulso' ? 'Contrato avulso' : 'Contrato mensal') + '</span>' +
+          String(modos || '').split(' · ').filter(Boolean).map(x => '<span class="cd-chip">' + esc(x) + '</span>').join('') + '</p>' +
+        lista(linhaV('Área de atuação', txt(p.nicho)) + linhaV('CNPJ', txt(fmtCnpj(i.cnpj))) + linhaV('Cidade / estado', txt(i.cidade)) +
+          linhaV('Início do serviço', txt(fmtData(i.inicio_servico))) +
+          linhaV('Instagram', p.instagram ? linkExt('https://instagram.com/' + encodeURIComponent(p.instagram), '@' + p.instagram) : '') + linhaV('Site', linkExt(p.site))) +
+        resp + falta(faltando('cliente', d));
     }
     if (bloco === 'marca') {
       const m = d.marca;
-      return linhaV('Logo', c.logo_url ? '<img class="cd-logo" src="' + esc(c.logo_url) + '" alt="Logo de ' + esc(c.nome) + '">' : '') +
-        linhaV('Cores', (m.cores || []).length ? '<span class="cd-amostras">' + m.cores.map(x => validar.cor(x.hex)
-          ? '<button type="button" class="cd-amostra" data-cd-copiar="' + esc(x.hex) + '" aria-label="Copiar ' + esc(x.hex) + (x.nome ? ' (' + esc(x.nome) + ')' : '') + '"><i style="background:' + esc(x.hex) + '"></i><b>' + esc(x.hex) + '</b>' + (x.nome ? '<small>' + esc(x.nome) + '</small>' : '') + '</button>' : '').join('') + '</span>' : '') +
-        linhaV('Fonte dos títulos', txt(m.fonte_titulo)) + linhaV('Fonte dos textos', txt(m.fonte_texto)) +
-        linhaV('Material da marca', m.link ? linkExt(m.link, 'Abrir o material') : '') + linhaV('Estilo', multi(m.estilo));
+      if (!temAlgo('marca', d)) return convite('Guarde aqui a logo, as cores e as fontes do cliente. Fica à mão para o design.');
+      return (c.logo_url ? '<img class="cd-logo" src="' + esc(c.logo_url) + '" alt="Logo de ' + esc(c.nome) + '">' : '') +
+        ((m.cores || []).length ? '<div class="cd-amostras">' + m.cores.map(x => validar.cor(x.hex)
+          ? '<button type="button" class="cd-amostra" data-cd-copiar="' + esc(x.hex) + '" title="Copiar o código" aria-label="Copiar ' + esc(x.hex) + (x.nome ? ' (' + esc(x.nome) + ')' : '') + '"><i style="background:' + esc(x.hex) + '"></i><b>' + esc(x.hex) + '</b>' + (x.nome ? '<small>' + esc(x.nome) + '</small>' : '') + '</button>' : '').join('') + '</div>' : '') +
+        lista(linhaV('Fonte dos títulos', txt(m.fonte_titulo)) + linhaV('Fonte dos textos', txt(m.fonte_texto)) +
+          linhaV('Material da marca', m.link ? linkExt(m.link, 'Abrir o material') : '') + linhaV('Estilo', multi(m.estilo))) + falta(faltando('marca', d));
     }
     if (bloco === 'pacote') {
       const p2 = d.pacote;
-      if (!p2.pacote_id) return '<p class="cd-nota">Sem pacote definido. Sem pacote, o cliente fica fora do Contratado × entregue.</p>';
-      return linhaV('Pacote', esc(p2.nome || 'Pacote') + (p2.arquivado ? ' <span class="cd-tag">arquivado</span>' : '') + (p2.ajustado ? ' <span class="cd-tag on">ajustado para este cliente</span>' : '')) +
-        linhaV('Entrega do mês', esc(B7.Pacotes ? B7.Pacotes.resumo({ itens: p2.itens }) : '')) +
-        (p2.ajustado ? linhaV('No pacote padrão', esc(B7.Pacotes.resumo({ itens: p2.padrao })) + (d.pode_editar ? ' <button type="button" class="cb-link" data-cd-padrao>Voltar ao padrão</button>' : '')) : '') +
-        linhaV('Vale desde', txt(fmtData(p2.desde)));
+      if (!p2.pacote_id) return convite('Sem pacote, o cliente fica fora do Contratado × entregue. Escolha o pacote para a Gestão acompanhar a entrega dele.');
+      const total = (p2.itens || []).reduce((n, x) => n + (Number(x.qtd) || 0), 0);
+      return '<p class="cd-pc-nome"><b>' + esc(p2.nome || 'Pacote') + '</b>' + (p2.arquivado ? ' <span class="cd-tag">arquivado</span>' : '') + (p2.ajustado ? ' <span class="cd-tag on">ajustado para este cliente</span>' : '') + '</p>' +
+        '<div class="cd-qtds" role="list" aria-label="Entrega do mês">' + (p2.itens || []).map(x => '<span class="cd-qt" role="listitem"><b>' + (Number(x.qtd) || 0) + '</b><small>' + esc(tiposPl(x.tipo)) + (x.tipo === 'Reel' && x.producao === 'edicao' ? ' · só edição' : '') + '</small></span>').join('') +
+          '<span class="cd-qt total" role="listitem"><b>' + total + '</b><small>no mês</small></span></div>' +
+        (p2.ajustado ? '<p class="cd-pc-padrao">No pacote padrão: ' + esc(B7.Pacotes.resumo({ itens: p2.padrao })) + '.' + (d.pode_editar ? ' <button type="button" class="cb-link" data-cd-padrao>Voltar ao padrão</button>' : '') + '</p>' : '') +
+        '<p class="cd-pc-desde">' + (p2.desde ? 'Vale desde ' + esc(fmtData(p2.desde)) + '.' : 'Conta desde sempre.') + '</p>';
     }
-    if (bloco === 'equipe') return FUNCOES.map(([f, r]) => linhaV(r, d.equipe[f] ? esc(d.equipe[f].nome) : '')).join('');
-    return linhaV('Observações', multi(i.observacoes)) + linhaV('O que foi combinado', multi(i.combinado));
+    if (bloco === 'equipe' && !temAlgo('equipe', d)) return convite('Diga quem cuida deste cliente na B7: coordenação, design e vídeo.');
+    if (bloco === 'equipe') return '<ul class="cd-eq">' + FUNCOES.map(([f, r]) => { const e = d.equipe[f];
+      return '<li' + (e ? '' : ' class="sem"') + '><span class="cd-av" aria-hidden="true">' + (e ? esc(iniciais(e.nome)) : '') + '</span><span><b>' + (e ? esc(e.nome) : 'Ninguém definido') + '</b><small>' + r + '</small></span></li>'; }).join('') + '</ul>';
+    if (!temAlgo('obs', d)) return convite('Anote o tom de voz, as particularidades e o que ficou combinado com o cliente.');
+    return lista(linhaV('Observações', multi(i.observacoes)) + linhaV('O que foi combinado', multi(i.combinado))) + falta(faltando('obs', d));
   }
-  const temAlgo = (bloco, d) => bloco === 'cliente' ? true
+  const temAlgo = (bloco, d) => bloco === 'cliente' ? faltando('cliente', d).length < 9
     : bloco === 'marca' ? !!(d.cliente.logo_url || d.marca.cores.length || d.marca.fonte_titulo || d.marca.fonte_texto || d.marca.link || d.marca.estilo)
     : bloco === 'pacote' ? !!d.pacote.pacote_id : bloco === 'equipe' ? FUNCOES.some(([f]) => d.equipe[f]) : !!(d.interno.observacoes || d.interno.combinado);
 
@@ -313,18 +351,34 @@ B7.Cadastro = (function () {
     if (!alvo.isConnected) return;
     const pode = !!d.pode_editar && op.podeEditar !== false;
     let aberto = null;
-    const cab = (k, r, sub, cheio) => '<header class="cd-b-cab"><div><h2>' + esc(r) + '</h2><small>' + esc(sub) + '</small></div>' +
-      (pode && aberto !== k ? '<button type="button" class="b fina contorno" data-cd-editar="' + k + '">' + (cheio ? 'Editar' : 'Completar') + '</button>' : '') + '</header>';
+    const SUB = { cliente: 'Empresa e responsável', marca: 'Logo, cores e fontes', pacote: 'A entrega mínima do mês', equipe: 'Quem cuida da conta na B7', obs: 'O combinado e o que é bom lembrar' };
+    const cab = (k, r, cheio) => '<header class="cd-b-cab"><div><h2>' + esc(r) + '</h2><small>' + esc(SUB[k] || '') + '</small></div>' +
+      (pode && aberto !== k ? '<button type="button" class="b fina contorno' + (cheio ? '' : ' cd-completar') + '" data-cd-editar="' + k + '">' + (cheio ? 'Editar' : 'Completar') + '</button>' : '') + '</header>';
+    const BOTOES = '<div class="acoes"><button class="b" data-cd-cancelar>Cancelar</button><button class="b pri" data-cd-salvar>Salvar</button></div>';
+    const bloco = k => { const [, r] = BLOCOS.find(b => b[0] === k), cheio = temAlgo(k, d);
+      return '<section class="cd-b cd-b-' + k + (aberto === k ? ' editando' : '') + (cheio ? '' : ' cd-pend') + '" data-cd-bloco="' + k + '">' + cab(k, r, cheio) +
+        (aberto === k ? '<div class="cd-b-ed" data-cd-ed>' + campos(k, d, cx) + BOTOES + '</div>' : '<div class="cd-b-ver">' + ver(k, d) + '</div>') + '</section>'; };
+    const fixa = () => { const g = op.gravacaoFixa; if (!g) return '';
+      const on = !!(g.atual && g.atual.ativa);
+      return '<section class="cd-b cd-b-fixa' + (aberto === 'fixa' ? ' editando' : '') + (on ? '' : ' cd-pend') + '" data-cd-bloco="fixa"><header class="cd-b-cab"><div><h2>Gravação fixa</h2><small>O sistema cria a gravação sozinho</small></div>' +
+        (aberto !== 'fixa' ? '<button type="button" class="b fina contorno' + (on ? '' : ' cd-completar') + '" data-cd-editar="fixa">' + (on ? 'Editar' : 'Completar') + '</button>' : '') + '</header>' +
+        (aberto === 'fixa' ? '<div class="cd-b-ed" data-cd-ed>' + g.html(g.atual) + BOTOES + '</div>'
+          : '<div class="cd-b-ver">' + (on ? '<p class="cd-pc-nome"><b>' + esc(g.resumo(g.atual)) + '</b></p>' : convite('Sem dia fixo. Se o cliente grava sempre no mesmo dia, o sistema pode criar a gravação sozinho.')) + '</div>') + '</section>'; };
+    function resumo() {
+      const feitos = BLOCOS.filter(([k]) => temAlgo(k, d)), pend = BLOCOS.filter(([k]) => !temAlgo(k, d));
+      return '<header class="cd-resumo"><div class="cd-resumo-tx"><b>' + (pend.length ? 'Cadastro com ' + feitos.length + ' de ' + BLOCOS.length + ' partes preenchidas' : 'Cadastro completo') + '</b>' +
+        '<small>' + (pend.length ? 'Falta ' + pend.map(b => b[1].toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' e $1') + '.' : 'Tudo o que a equipe precisa está aqui.') + '</small></div>' +
+        '<ol class="cd-prog" aria-label="Partes do cadastro">' + BLOCOS.map(([k, r]) => '<li class="' + (temAlgo(k, d) ? 'ok' : '') + '">' +
+          (pode && !temAlgo(k, d) ? '<button type="button" data-cd-editar="' + k + '" title="Completar ' + esc(r) + '">' + esc(r) + '</button>' : '<span>' + esc(r) + '</span>') + '</li>').join('') + '</ol></header>';
+    }
     function pintar() {
-      alvo.innerHTML = '<div class="cd-ficha">' + BLOCOS.map(([k, r, sub]) =>
-        '<section class="cd-b' + (aberto === k ? ' editando' : '') + '" data-cd-bloco="' + k + '">' + cab(k, r, sub, temAlgo(k, d)) +
-          (aberto === k ? '<div class="cd-b-ed" data-cd-ed>' + campos(k, d, cx) + '<div class="acoes"><button class="b" data-cd-cancelar>Cancelar</button><button class="b pri" data-cd-salvar>Salvar</button></div></div>'
-            : '<dl class="cd-vs">' + ver(k, d) + '</dl>') + '</section>').join('') +
-        (op.gravacaoFixa ? '<section class="cd-b" data-cd-bloco="fixa"><header class="cd-b-cab"><div><h2>Gravação fixa</h2><small>o sistema cria a gravação sozinho, alguns dias antes</small></div>' +
-          (aberto !== 'fixa' ? '<button type="button" class="b fina contorno" data-cd-editar="fixa">' + (op.gravacaoFixa.atual && op.gravacaoFixa.atual.ativa ? 'Editar' : 'Completar') + '</button>' : '') + '</header>' +
-          (aberto === 'fixa' ? '<div class="cd-b-ed" data-cd-ed>' + op.gravacaoFixa.html(op.gravacaoFixa.atual) + '<div class="acoes"><button class="b" data-cd-cancelar>Cancelar</button><button class="b pri" data-cd-salvar>Salvar</button></div></div>'
-            : '<dl class="cd-vs">' + linhaV('Dia fixo de gravar', esc(op.gravacaoFixa.resumo(op.gravacaoFixa.atual))) + '</dl>') + '</section>' : '') + '</div>';
-      alvo.querySelectorAll('[data-cd-editar]').forEach(b => b.onclick = () => { aberto = b.dataset.cdEditar; pintar(); const ed = alvo.querySelector('[data-cd-ed]'); const f = ed && ed.querySelector('input, select, textarea'); if (f) f.focus(); });
+      /* editando: o bloco ocupa a largura toda, no topo; os outros continuam nas duas colunas */
+      const emEdicao = aberto ? (aberto === 'fixa' ? fixa() : bloco(aberto)) : '';
+      const col = ks => ks.filter(k => k !== aberto).map(k => (k === 'fixa' ? fixa() : bloco(k))).join('');
+      alvo.innerHTML = '<div class="cd-ficha">' + resumo() + emEdicao +
+        '<div class="cd-cols"><div class="cd-col">' + col(['cliente', 'obs']) + '</div><div class="cd-col">' + col(['pacote', 'equipe', 'marca', 'fixa']) + '</div></div></div>';
+      alvo.querySelectorAll('[data-cd-editar]').forEach(b => b.onclick = () => { aberto = b.dataset.cdEditar; pintar(); const ed = alvo.querySelector('[data-cd-ed]'); const f = ed && ed.querySelector('input, select, textarea'); if (f) f.focus();
+        const sec = alvo.querySelector('.cd-b.editando'); if (sec && sec.scrollIntoView) sec.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
       alvo.querySelectorAll('[data-cd-copiar]').forEach(b => b.onclick = async () => {
         try { await navigator.clipboard.writeText(b.dataset.cdCopiar); B7.UI.toast(b.dataset.cdCopiar + ' copiado'); } catch (e) { B7.UI.toast('Não deu para copiar', { tipo: 'erro' }); } });
       const pad = alvo.querySelector('[data-cd-padrao]');
