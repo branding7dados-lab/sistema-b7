@@ -31,13 +31,14 @@ Decisões do Yury:
    - opcionalmente, ajustar as quantidades de cada tipo só para aquele cliente;
    - guardar desde quando o pacote vale.
 3. **Contratado × entregue** compara com o pacote **efetivo** do cliente, que é o padrão com o ajuste.
-4. **Janela "Novo cliente" em 4 etapas:**
+4. **Janela "Novo cliente" em 5 etapas:**
    - **1. Cliente:** quem é;
-   - **2. Pacote:** o que contratou;
-   - **3. Equipe:** quem cuida na B7;
-   - **4. Observações:** o que foi combinado.
+   - **2. Marca:** logo, cores e fontes (opcional);
+   - **3. Pacote:** o que contratou;
+   - **4. Equipe:** quem cuida na B7;
+   - **5. Observações:** o que foi combinado.
 5. **Aba "Cadastro" na página do cliente:**
-   - as mesmas 4 partes, em blocos;
+   - as mesmas 5 partes, em blocos;
    - cada bloco tem o seu "Editar";
    - substitui a janela "Editar cliente" atual: o botão "Editar cliente" passa a abrir esta aba.
 
@@ -48,6 +49,10 @@ Decisões do Yury:
 - A equipe responsável **não** distribui trabalho sozinha. É informação: aparece na ficha e na lista e serve de
   filtro. A atribuição de peças continua como é hoje.
 - Integração com o Núcleo 7 (puxar o cadastro de lá).
+- **Grupo do WhatsApp do cliente:** sai do cadastro (pedido do Yury). Ele é ligado depois, pelo WhatsApp integrado
+  ao sistema. O dado que já existe em `clientes_interno.whatsapp_grupo` não é apagado; só deixa de aparecer no
+  cadastro.
+- A marca do cliente **não** muda sozinha o visual de nada (portal, peças, relatórios). É referência para a equipe.
 
 ## Antimetas (falhou mesmo funcionando, se...)
 - O portal do cliente passar a mostrar dados internos: CNPJ, contatos do responsável, observações, equipe.
@@ -66,7 +71,7 @@ Decisões do Yury:
 
   | Campo | Onde já está |
   |---|---|
-  | observações, grupo do WhatsApp | `clientes_interno` |
+  | observações | `clientes_interno` |
   | nicho, site, Instagram | `cliente_inteligencia` |
   | mensal/avulso | `clientes.contrato` |
   | modo | `clientes.modo` |
@@ -86,28 +91,36 @@ Decisões do Yury:
 ## O cadastro: campos
 **1. Cliente**
 - **Nome:** obrigatório.
-- **Logo.**
 - **Área de atuação:** em `cliente_inteligencia.nicho`.
 - **CNPJ:** novo, interno.
 - **Cidade/estado:** novo, texto livre.
 - **Instagram e site:** em `cliente_inteligencia`.
-- **Grupo do WhatsApp:** em `clientes_interno.whatsapp_grupo`.
 - **Responsável do cliente:** nome, cargo, WhatsApp e e-mail. Novo, interno.
 - **Mensal ou avulso:** em `contrato`.
 - **Modo:** linha editorial ou completo, o campo atual.
 - **Início do serviço:** novo, uma data.
 
-**2. Pacote**
+**2. Marca** (tudo opcional — pedido do Yury: "sistema de branding, tipo cores, logo")
+- **Logo:** o campo de logo de hoje (`logo_path` / `logo_url`) passa para esta etapa.
+- **Cores da marca:** até 8 cores. Cada uma tem o código (`#RRGGBB`, com seletor de cor) e um nome opcional
+  (ex.: "principal", "apoio").
+- **Fontes:** texto livre para título e para texto (ex.: "Montserrat" / "Inter").
+- **Link do material da marca:** um endereço (manual da marca, pasta do Drive).
+- **Estilo:** texto livre (ex.: "nunca usar preto puro", "fotos claras").
+- Na ficha, as cores aparecem como quadradinhos. Tocar num copia o código.
+- Quem vê: toda a equipe interna que vê o cliente (é para o design usar). Não aparece no portal.
+
+**3. Pacote**
 - Escolher o pacote padrão; a lista mostra o resumo, ex.: "12 cards + 4 Reels · 16 no mês".
 - "Ajustar só para este cliente" abre as quantidades por tipo, já preenchidas com as do padrão.
 - **Vale desde:** uma data. Por padrão, o 1º dia do mês corrente.
 - "Sem pacote" é permitido: o cliente aparece em "sem pacote definido" na Gestão, como hoje.
 
-**3. Equipe responsável na B7**
+**4. Equipe responsável na B7**
 - Coordenação, design e vídeo, uma pessoa em cada; todos opcionais.
 - A lista mostra só a equipe interna ativa da função certa: função principal ou função extra.
 
-**4. Observações**
+**5. Observações**
 - Observações (o campo atual).
 - O que foi combinado com o cliente: novo, texto livre, interno.
 
@@ -124,7 +137,7 @@ Decisões do Yury:
   cliente tem ajuste e a linha usa o mesmo pacote dele, os conteúdos nascem com as quantidades ajustadas.
 
 ## A ficha "Cadastro"
-- É uma aba nova na página do cliente (`js/dashboard.js`, visão do cliente), com os 4 blocos.
+- É uma aba nova na página do cliente (`js/dashboard.js`, visão do cliente), com os 5 blocos.
 - Cada bloco mostra os valores. Campo vazio aparece como "—" com o convite "Completar".
 - O "Editar" de cada bloco abre os campos ali mesmo e tem Salvar e Cancelar.
 - Quem só pode ver o cliente (designer, videomaker) vê a ficha sem os botões de editar. Os campos internos (CNPJ,
@@ -146,8 +159,8 @@ Decisões do Yury:
   - na escolha do cadastro, aparece como "<nome> (arquivado)" só para quem já está nele;
   - não é sugerido na "Nova linha editorial", porque lá pacote arquivado já é recusado.
 - **Gravação fixa:** a janela "Editar cliente" de hoje também tem a gravação fixa, que só administração e
-  coordenação veem. Ela vira um **5º bloco da ficha, "Gravação fixa"**, visível para as mesmas pessoas de hoje. A
-  janela de criar continua com 4 etapas.
+  coordenação veem. Ela vira um **6º bloco da ficha, "Gravação fixa"**, visível para as mesmas pessoas de hoje. A
+  janela de criar continua com 5 etapas.
 
 ## Já decidido pelo Claude (pode mudar)
 - O nome da aba na Gestão é **Pacotes**. O editor é o mesmo de `js/pacotes.js`, sem mudar os tipos de conteúdo
@@ -157,7 +170,10 @@ Decisões do Yury:
 - CNPJ, cidade/estado, responsável do cliente, combinado e início do serviço ficam em `clientes_interno` (colunas
   novas). O pacote ajustado e o "vale desde" ficam em `clientes` (`pacote_ajuste jsonb`, `pacote_desde date`), ao
   lado de `pacote_id`.
+- A marca fica numa tabela nova, `cliente_marca` (cliente, cores em jsonb, fontes, link, estilo), com leitura para a
+  equipe interna e escrita para quem edita cliente.
 - Validação leve:
+  - cor no formato `#RRGGBB`; link da marca começando com `https://`;
   - CNPJ com 14 dígitos, se preenchido;
   - e-mail com @;
   - WhatsApp só com números, de 10 a 13 dígitos;
@@ -176,7 +192,8 @@ Decisões do Yury:
   - rodar a migração 2 vezes.
 - **Navegador** (Chromium com banco simulado):
   - criar cliente só com nome;
-  - criar com as 4 etapas;
+  - criar com as 5 etapas;
+  - marca: adicionar e remover cor, cor inválida recusada;
   - editar um bloco da ficha;
   - ajustar o pacote e voltar ao padrão;
   - aba Pacotes na Gestão.
