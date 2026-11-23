@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.87.0', versao: '4.87.0', em: '2026-11-24T10:00:00-03:00', rota: 'gestao',
+    titulo: 'Gestão: três abas novas',
+    itens: ['Clientes em risco: quem precisa de atenção e por quê (saúde baixa ou caindo, nota baixa, atraso que se repete, abaixo do contratado), com a saúde semana a semana.',
+      'Contratado × entregue: o pacote de cada cliente contra o que foi planejado e publicado no mês — e quem está atrás do ritmo.',
+      'Prazos e retrabalho: por pessoa e por cliente, mês a mês — entregas, % no prazo, tempo para entregar, versões e ajustes.'] },
   { id: 'v-4.86.0', versao: '4.86.0', em: '2026-11-23T22:00:00-03:00',
     titulo: 'Usuário Financeiro',
     itens: ['Novo tipo de acesso: Financeiro — administrador que acompanha a gestão (começa na Gestão) e mexe em tudo do sistema, menos o WhatsApp e Pessoas e acessos.',

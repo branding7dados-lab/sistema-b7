@@ -2217,3 +2217,49 @@ button.pa-cel:disabled{opacity:.5;cursor:wait;}
   .rt-cab-acoes .b.contorno[data-ir*="banco-geral"] span{display:none;}
   .rt-cab-acoes .b.contorno[data-ir*="banco-geral"]{width:44px;height:44px;padding:0;justify-content:center;border-radius:14px;}
 }
+
+/* 4.87.0: Gestão — Contratado × entregue, Clientes em risco, Prazos e retrabalho (js/gestao-extra.js) */
+.ge-cab{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:4px 0 14px;}
+.ge-mes{display:flex;align-items:center;gap:10px;}
+.ge-mes b{min-width:150px;text-align:center;font-size:15px;}
+.ge-chk{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2);cursor:pointer;}
+.ge-lista{display:flex;flex-direction:column;padding:6px;}
+.ge-lin{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;width:100%;padding:12px 12px;border:0;border-radius:12px;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;}
+.ge-lin + .ge-lin{border-top:1px solid var(--borda);border-radius:0;}
+.ge-lin:hover{background:var(--suave);}
+.ge-logo{position:relative;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:12px;overflow:hidden;background:var(--suave);font-weight:800;font-size:12px;color:var(--ink-2);}
+.ge-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:var(--card);}
+.ge-lin-tx{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.ge-lin-tx b{font-size:14.5px;}
+.ge-lin-tx small{color:var(--ink-3);font-size:12.5px;}
+.ge-tipos{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;}
+.ge-tipos span{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:8px;background:var(--suave);color:var(--ink-2);}
+.ge-tipos span.falta{background:color-mix(in srgb,#EF4444 14%,var(--card));color:#B91C1C;}
+.ge-lin-n{display:flex;align-items:center;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
+.ge-lin-n > b{font-size:15px;font-variant-numeric:tabular-nums;}
+.ge-lin-n small{color:var(--ink-3);font-size:12px;}
+.ge-barra{position:relative;display:block;width:120px;height:8px;border-radius:99px;background:var(--suave);overflow:visible;}
+.ge-barra i{position:absolute;inset:0 auto 0 0;width:var(--w);border-radius:99px;background:#1B8F6A;}
+.ge-barra.atencao i{background:#F0A443;}
+.ge-barra.ruim i{background:#EF4444;}
+.ge-barra em{position:absolute;top:-3px;bottom:-3px;left:var(--x);width:2px;border-radius:2px;background:var(--ink-2);}
+.ge-selo{font-style:normal;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;}
+.ge-selo.ruim{background:color-mix(in srgb,#EF4444 14%,var(--card));color:#B91C1C;}
+.ge-selo.atencao{background:color-mix(in srgb,#F0A443 18%,var(--card));color:#92400E;}
+.ge-chips{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 16px;}
+.ge-chip{border:1px solid var(--borda);background:var(--card);border-radius:99px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink);}
+.ge-motivos{margin:2px 0 0;padding:0 0 0 18px;font-size:13px;color:var(--ink-2);line-height:1.5;}
+.ge-pt{display:inline-grid;place-items:center;min-width:42px;height:32px;padding:0 8px;border-radius:10px;color:#fff;}
+.ge-pt.verde{background:#1B8F6A;} .ge-pt.amarelo{background:#D97706;} .ge-pt.vermelho{background:#DC2626;}
+.ge-spark polyline{stroke:#1B8F6A;} .ge-spark.caiu polyline{stroke:#DC2626;}
+.ge-spark.vazio{font-size:11.5px;color:var(--ink-3);}
+.ge-tab-cx{overflow-x:auto;padding:0;}
+.ge-tab{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums;}
+.ge-tab th,.ge-tab td{padding:10px 12px;text-align:center;border-bottom:1px solid var(--borda);white-space:nowrap;}
+.ge-tab thead th{font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);font-weight:700;}
+.ge-tab tbody th{text-align:left;font-weight:600;}
+.ge-tab tbody th small{display:block;font-weight:400;color:var(--ink-3);font-size:11.5px;}
+.ge-tab td.ruim{color:#B91C1C;font-weight:700;}
+.ge-tend{font-style:normal;font-size:10px;margin-left:4px;}
+.ge-tend.bom{color:#1B8F6A;} .ge-tend.ruim{color:#DC2626;}
+@media (max-width:640px){.ge-lin{grid-template-columns:auto minmax(0,1fr);}.ge-lin-n{grid-column:1 / -1;justify-content:flex-start;}}
