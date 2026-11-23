@@ -68,6 +68,20 @@ B7.ConfigWA = (function () {
     conexao: 'Os números de WhatsApp da Branding7 ligados ao B7. Cada um tem a sua equipe; o administrador vê todos.',
     arquivos: 'Onde ficam fotos, vídeos e áudios, e o que fazer com conversas paradas.'
   };
+  /* 4.85.3: com vários números o mesmo grupo vem uma vez por número da B7 que está nele — aqui é um só
+     (o cliente do grupo vale para todas as cópias; arquivado só se todas estiverem) */
+  function umPorGrupo(lista) {
+    const m = new Map();
+    for (const g of lista) {
+      const j = m.get(g.jid);
+      if (!j) { m.set(g.jid, Object.assign({}, g)); continue; }
+      j.cliente_id = j.cliente_id || g.cliente_id;
+      j.arquivada = j.arquivada && g.arquivada;
+      j.foto_url = j.foto_url || g.foto_url;
+      if (String(g.ultima_em || '') > String(j.ultima_em || '')) { j.ultima_em = g.ultima_em; j.nome = g.nome || j.nome; }
+    }
+    return [...m.values()];
+  }
   /* ------------------------------------------------------------ abrir */
   async function abrir(params) {
     const painel = document.getElementById('painel-dashboard'); if (!painel) return;
@@ -80,7 +94,7 @@ B7.ConfigWA = (function () {
       sb().from('wa_config').select('*').eq('id', 1).maybeSingle(),
       adm ? sb().from('wa_assistente').select('id,nome,ativo,push_espera_min,push_para,vigia_min,esperando_cliente_h,alertas_ligados,horario,avisos_regras,modo_clientes,resumo_dia_ligado,resumo_dia_hora,grupos').eq('id', 1).maybeSingle() : Promise.resolve({ data: null }),
       adm ? sb().from('perfis').select('id,nome,papel').eq('estado', 'ativa').neq('papel', 'cliente').order('nome') : Promise.resolve({ data: [] }),
-      adm ? sb().from('wa_conversas').select('jid,nome,cliente_id,arquivada,ultima_em,foto_url').eq('tipo', 'grupo').order('ultima_em', { ascending: false, nullsFirst: false }).limit(500) : Promise.resolve({ data: [] }),
+      adm ? sb().from('wa_conversas').select('numero_id,jid,nome,cliente_id,arquivada,ultima_em,foto_url').eq('tipo', 'grupo').order('ultima_em', { ascending: false, nullsFirst: false }).limit(500) : Promise.resolve({ data: [] }),
       adm ? sb().from('clientes_resumo').select('id,nome,logo_url').is('deleted_at', null).order('nome').limit(600) : Promise.resolve({ data: [] }),
       adm ? sb().rpc('wa_quem_ve_whatsapp') : Promise.resolve({ data: [] })
     ];
@@ -102,7 +116,7 @@ B7.ConfigWA = (function () {
       p: { assinatura: pref.assinatura !== false, nome: pref.nome || '', enter: pref.enter !== false, vel, modelos }
     };
     S = { ...est, orig: JSON.stringify(est), adm, aba: (params && params.get && params.get('aba')) || (S && S.aba) || 'geral', pessoas: (pf.data || []).filter(p => !/teste/i.test(p.nome || '')),
-      quemVe, grupos: gr.data || [], clientes: cl.data || [], busca: '', filtroG: 'todos', ottoNome: primeiro(ass.nome) || 'Otto', ottoAtivo: !!ass.ativo,
+      quemVe, grupos: umPorGrupo(gr.data || []), clientes: cl.data || [], busca: '', filtroG: 'todos', ottoNome: primeiro(ass.nome) || 'Otto', ottoAtivo: !!ass.ativo,
       estado: null, drive: null, uso: null, gMud: {} };
     if (!S.adm && !['meu', 'respostas', 'modelos'].includes(S.aba)) S.aba = 'meu';
     desenhar();

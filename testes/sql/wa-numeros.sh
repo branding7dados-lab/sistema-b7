@@ -21,5 +21,7 @@ P -f supabase/sql/zzz383_wa_varios_numeros.sql >/dev/null
 P -f supabase/sql/zzz383_wa_varios_numeros.sql >/dev/null   # idempotente
 P -f supabase/sql/zzz385_wa_grupo_membros.sql >/dev/null
 P -f supabase/sql/zzz385_wa_grupo_membros.sql >/dev/null   # idempotente
+P -f supabase/sql/zzz386_wa_cliente_todos_numeros.sql >/dev/null
+P -f supabase/sql/zzz386_wa_cliente_todos_numeros.sql >/dev/null   # idempotente
 P -f testes/sql/wa-numeros.test.sql
 echo "OK: zzz383 passou (aplicada 2×)"
