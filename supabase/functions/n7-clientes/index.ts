@@ -85,11 +85,11 @@ Deno.serve(comCors(async (req) => {
       if (error) return json({ erro: error.message }, 500);
       const ativos = (cli || []).filter((c: any) => (c.servico || 'ativo') === 'ativo' && !c.teste);
       const lista = await lerN7();
-      const achados: unknown[] = [], escolher: unknown[] = [], nenhum: unknown[] = [];
+      const achados: unknown[] = [], escolher: unknown[] = [], nenhum: unknown[] = [], erros: unknown[] = [];
       let completos = 0;
       for (const c of ativos) {
         const { data: cad } = await eu.rpc('cliente_cadastro', { p_cliente: c.id });
-        if (!cad) continue;
+        if (!cad) { erros.push({ id: c.id, nome: c.nome }); continue; }
         const r = casar({ nome: c.nome, n7_id: cad.interno?.n7_cliente_id }, lista);
         if (r.tipo === 'nenhum') { nenhum.push({ id: c.id, nome: c.nome }); continue; }
         if (r.tipo === 'escolher') { escolher.push({ id: c.id, nome: c.nome, candidatos: r.candidatos.length }); continue; }
@@ -98,7 +98,7 @@ Deno.serve(comCors(async (req) => {
         if (!vazios.length && cad.interno?.n7_cliente_id) { completos++; continue; }
         achados.push({ id: c.id, nome: c.nome, n7: resumo(r.cliente), campos: vazios.map(x => x.rotulo), dados: corpoSalvar(vazios, r.cliente.id) });
       }
-      return json({ achados, escolher, nenhum, completos, total: ativos.length });
+      return json({ achados, escolher, nenhum, erros, completos, total: ativos.length });
     }
 
     return json({ erro: 'Ação desconhecida.' }, 400);

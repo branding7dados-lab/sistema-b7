@@ -37,7 +37,7 @@ export function limpar(l: Record<string, unknown>): ClienteN7 {
     id: txt(l.id, 80), nome: txt(l.name, 200), situacao: txt(l.status, 40).toLowerCase(),
     cnpj: txt(l.cnpj, 40),
     nicho: txt(l.area_atuacao, 160) || txt(l.segmento, 160),
-    cidade: cidadeB || txt(l.audience_location, 160),
+    cidade: (cidadeB || txt(l.audience_location, 160)).slice(0, 160),   // o B7 aceita até 160
     instagram: txt(l.instagram, 120), site: txt(l.website, 300), logo: txt(l.logo_url, 600),
     meses: Number.isFinite(meses) && meses > 0 ? Math.round(meses) : null,
     inicio: txt(l.contract_start_date, 40), combinado: txt(l.observations, 4000),
@@ -123,6 +123,8 @@ function valorN7(campo: string, c: ClienteN7, avulso: boolean): string {
     case 'cnpj': { const n = soNum(c.cnpj); return n.length === 14 ? n : ''; }
     case 'instagram': return c.instagram.replace(/^@+/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/.*$/, '').slice(0, 60);
     case 'logo': return /^https:\/\/\S+$/i.test(c.logo) ? c.logo : '';
+    /* o B7 guarda o site sempre com https:// na frente (cliente_cadastro_salvar faz isso) */
+    case 'site': { const s = c.site.trim(); return !s ? '' : /^https?:\/\//i.test(s) ? s : 'https://' + s; }
     case 'inicio': return /^\d{4}-\d{2}-\d{2}/.test(c.inicio) ? c.inicio.slice(0, 10) : '';
     case 'meses': { if (avulso) return ''; const d = duracaoDe(c.meses); return d ? String(d) : ''; }
     case 'resp_whatsapp': { const n = soNum(c.resp_whatsapp); return n.length >= 10 && n.length <= 13 ? n : ''; }
@@ -139,8 +141,10 @@ function valorB7(campo: string, chave: string, bloco: string, b: CadastroB7): st
   if (campo === 'inicio') return String(v).slice(0, 10);
   return String(v).trim();
 }
+const semEsquema = (u: string) => u.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
 const igual = (campo: string, a: string, b: string) =>
   campo === 'cnpj' || campo === 'resp_whatsapp' ? soNum(a) === soNum(b)
+    : campo === 'site' ? semEsquema(a) === semEsquema(b)
     : normalizar(a) === normalizar(b) && (campo !== 'combinado' || a.trim() === b.trim());
 
 /** O que dá para trazer do Núcleo 7: só campos preenchidos lá e diferentes do B7.

@@ -70,7 +70,9 @@ ok(!p.some(x => x.campo === 'nicho'), 'igual ignorando maiúsculas não aparece'
 ok(!p.some(x => x.campo === 'logo'), 'B7 com logo: a logo do Núcleo 7 não entra');
 const cid = p.find(x => x.campo === 'cidade');
 ok(cid && !cid.vazio && cid.b7 === 'Salvador - BA' && cid.n7 === 'Vitória da Conquista - BA', 'diferente nos dois: aparece, com os dois valores, e não é "vazio"');
-ok(p.find(x => x.campo === 'site').vazio, 'vazio no B7 continua "vazio"');
+ok(p.find(x => x.campo === 'site').vazio && p.find(x => x.campo === 'site').n7 === 'https://mercato.com.br', 'vazio no B7 continua "vazio"; o site vem com https:// como o B7 guarda');
+ok(!proposta({ cliente: {}, interno: {}, perfil: { site: 'https://www.mercato.com.br/' } }, c).some(x => x.campo === 'site'), 'site igual com e sem https/www não aparece como diferente');
+ok(limpar({ branding: { address: { city: 'x'.repeat(120), state: 'y'.repeat(40) } } }).cidade.length === 160, 'cidade comprida é cortada em 160 (o limite do B7)');
 /* regras que recusam */
 const RUIM = limpar({ id: 'r', name: 'R', cnpj: '123', logo_url: 'http://inseguro/logo.png', contract_months: 0, branding: { responsavel: { whatsapp: '12345', email: 'semarroba' } } });
 p = proposta(VAZIO, RUIM);

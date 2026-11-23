@@ -100,14 +100,16 @@ B7.N7Puxar = (function () {
         (r.n7.cnpj ? ' · CNPJ ' + esc(fmtCnpj(r.n7.cnpj)) : '') + '</span><button type="button" class="cb-link" data-np-trocar>Trocar</button></div>';
       if (!campos.length) {
         cx.innerHTML = lig + '<p class="np-nota">O cadastro do B7 já tem tudo o que está no Núcleo 7.</p>';
-        ok.hidden = r.ligado === r.n7.id; ok.textContent = 'Guardar a ligação';
+        ok.hidden = r.ligado === r.n7.id; ok.disabled = false; ok.textContent = 'Guardar a ligação';
       } else {
         cx.innerHTML = lig + '<p class="np-nota">Marque o que trazer. Campos vazios no B7 já vêm marcados; quando os dois têm valores diferentes, você decide.</p>' +
           '<div class="np-tab" role="table"><div class="np-l np-cab" role="row"><span></span><span role="columnheader">Campo</span><span role="columnheader">No B7</span><span role="columnheader">No Núcleo 7</span></div>' +
           campos.map((c, i) => '<label class="np-l' + (c.vazio ? '' : ' dif') + '" role="row"><span><input type="checkbox" data-np-i="' + i + '"' + (c.vazio ? ' checked' : '') + ' aria-label="Trazer ' + esc(c.rotulo) + '"></span>' +
             '<span class="np-campo" role="cell">' + esc(c.rotulo) + (c.vazio ? '' : '<small>diferente</small>') + '</span>' +
             '<span class="np-b7" role="cell">' + mostrar(c.campo, c.b7) + '</span><span class="np-n7" role="cell">' + mostrar(c.campo, c.n7) + '</span></label>').join('') + '</div>';
-        const conta = () => { const n = cx.querySelectorAll('[data-np-i]:checked').length; ok.disabled = !n; ok.textContent = n ? 'Trazer ' + n + (n === 1 ? ' campo' : ' campos') : 'Marque o que trazer'; };
+        /* nada marcado: ainda dá para só guardar a ligação (quando ela é nova) */
+        const conta = () => { const n = cx.querySelectorAll('[data-np-i]:checked').length, jaLigado = r.ligado === r.n7.id;
+          ok.disabled = !n && jaLigado; ok.textContent = n ? 'Trazer ' + n + (n === 1 ? ' campo' : ' campos') : jaLigado ? 'Marque o que trazer' : 'Só guardar a ligação'; };
         cx.querySelectorAll('[data-np-i]').forEach(x => x.onchange = conta); conta(); ok.hidden = false;
       }
       cx.querySelector('[data-np-trocar]').onclick = () => pintarBusca('Procure o cliente certo no Núcleo 7:');
@@ -145,10 +147,11 @@ B7.N7Puxar = (function () {
       const ver = c => '<li><span>' + esc(c.nome) + '</span><button type="button" class="cb-link" data-np-ir="' + esc(c.id) + '">Abrir o cadastro</button></li>';
       cx.innerHTML =
         '<div class="np-kpis"><span><b>' + comCampos.length + '</b>com campos a preencher</span><span><b>' + nCampos + '</b>campos no total</span>' +
-          '<span><b>' + ((r.escolher || []).length + (r.nenhum || []).length) + '</b>precisam de você</span><span><b>' + (r.completos + soLigar) + '</b>já completos</span></div>' +
+          '<span><b>' + ((r.escolher || []).length + (r.nenhum || []).length + (r.erros || []).length) + '</b>precisam de você</span><span><b>' + (r.completos + soLigar) + '</b>já completos</span></div>' +
         grupo('Achados, com campos a preencher', comCampos, a => '<li><span><b>' + esc(a.nome) + '</b><small>' + esc(a.campos.join(', ')) + '</small></span></li>') +
         grupo('Mais de um com o mesmo nome no Núcleo 7', r.escolher || [], ver) +
         grupo('Não achados no Núcleo 7', r.nenhum || [], ver) +
+        grupo('Não deu para ler o cadastro no B7', r.erros || [], ver) +
         (r.total ? '' : '<p class="np-nota">Nenhum cliente ativo no B7.</p>');
       cx.querySelectorAll('[data-np-ir]').forEach(b => b.onclick = () => ir(b.dataset.npIr));
       if (ach.length) {

@@ -112,6 +112,8 @@ ok((await pg.$$('.np-cand')).length === 2 && /em pausa/.test(await texto('.np-ca
 await print(pg, 'n7-escolher');
 await pg.click('[data-np-n7="n3"]'); await pg.waitForSelector('.np-tab', { timeout: 5000 }).catch(() => null);
 ok(pedidos.filter(p => p[0] === 'n7-clientes').pop()[1].n7_id === 'n3' && /Alfa Matriz/.test(await texto('.np-lig')), 'escolher um carrega os campos dele');
+await pg.$$eval('[data-np-i]', l => l.forEach(x => { if (x.checked) x.click(); })); await pg.waitForTimeout(100);
+ok(/Só guardar a ligação/.test(await texto('[data-np-ok]')) && !(await pg.$eval('[data-np-ok]', b => b.disabled)), 'nada marcado com ligação nova: dá para só guardar a ligação');
 await fecharJanelas();
 
 /* nenhum: procurar pelo nome */
@@ -125,7 +127,7 @@ await fecharJanelas();
 /* nada para trazer */
 MODO = 'completo';
 await pg.click('[data-cd-n7]'); await pg.waitForSelector('.np-lig', { timeout: 5000 }).catch(() => null);
-ok(/já tem tudo/.test(await texto('.np-corpo')) && /Guardar a ligação/.test(await texto('[data-np-ok]')), 'tudo igual: diz que já tem tudo e oferece só guardar a ligação');
+ok(/já tem tudo/.test(await texto('.np-corpo')) && /Guardar a ligação/.test(await texto('[data-np-ok]')) && !(await pg.$eval('[data-np-ok]', b => b.disabled)), 'tudo igual: diz que já tem tudo e o botão de guardar a ligação funciona');
 await fecharJanelas();
 
 /* sem os segredos no servidor */
