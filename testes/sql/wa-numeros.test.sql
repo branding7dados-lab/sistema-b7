@@ -103,3 +103,27 @@ begin
   assert (select jid from wa_mensagens where id = 'L1') = '551188887777@s.whatsapp.net', 'mensagem acompanhou (on update cascade)';
 end $$;
 \echo 'juntar @lid OK'
+
+-- 4.85.0: membros guardados e grupos em comum (só dos números que quem chama vê)
+insert into wa_conversas (numero_id, jid, tipo, nome) values ('00000000-0000-0000-0000-0000000000d1', '2@g.us', 'grupo', 'Grupo Design');
+insert into wa_grupo_membros (numero_id, grupo_jid, membro_jid, telefone, admin) values
+  (wa_numero_padrao(), '1@g.us', '556299990000@s.whatsapp.net', '556299990000', null),
+  ('00000000-0000-0000-0000-0000000000d1', '2@g.us', '888@lid', '556299990000', 'admin');
+insert into wa_contatos (jid, numero, nome) values ('888@lid', '556299990000', 'Carla') on conflict (jid) do update set numero = excluded.numero;
+set role authenticated;
+do $$ begin perform set_config('teste.uid', '00000000-0000-0000-0000-00000000000c', false); end $$;
+do $$ begin
+  assert (select count(*) from wa_grupos_em_comum('556299990000@s.whatsapp.net')) = 1, 'designer: só o grupo do número dele';
+  assert (select grupo_jid from wa_grupos_em_comum('556299990000@s.whatsapp.net')) = '2@g.us', 'designer: é o grupo do Design';
+  assert (select count(*) from wa_grupo_membros) = 1, 'designer só lê membros do número dele';
+end $$;
+do $$ begin perform set_config('teste.uid', '00000000-0000-0000-0000-00000000000a', false); end $$;
+do $$ begin
+  assert (select count(*) from wa_grupos_em_comum('556299990000@s.whatsapp.net')) = 2, 'admin: os dois grupos';
+  assert (select count(*) from wa_grupos_em_comum('888@lid')) = 2, '@lid casa pelo telefone guardado em wa_contatos';
+  assert (select count(*) from wa_grupos_em_comum('x@lid', '556299990000')) = 2, 'telefone passado direto';
+  assert (select count(*) from wa_grupos_em_comum('999@s.whatsapp.net')) = 0, 'quem não está em grupo nenhum';
+end $$;
+reset role;
+do $$ begin assert (select count(*) from information_schema.columns where table_name = 'wa_conversas' and column_name in ('descricao','criado_wa','dono_jid','so_admins_enviam','so_admins_editam','membros_qtd','membros_em')) = 7, 'colunas do grupo'; end $$;
+\echo 'membros e grupos em comum OK'
