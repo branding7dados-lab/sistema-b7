@@ -579,7 +579,8 @@ B7.CentralWA = (function () {
 
   /* 4.85.0: o que o painel de dados do grupo / perfil (js/wa-info.js) usa da Central */
   const ctxInfo = () => ({ raiz: () => raiz, conv: (jid, n) => conv(jid, n === undefined ? S.abertaNum : n), abrirConversa, chamar, clientes: () => S.clientes,
-    souAdmin, numero: id => (B7.WaNumeros && id ? B7.WaNumeros.porId(id) : null), varios });
+    souAdmin, numero: id => (B7.WaNumeros && id ? B7.WaNumeros.porId(id) : null), varios,
+    recarregar: async () => { await carregarConversas(); pintarLista(); pintarFiltros(); } });
   function cliqueGeral(e) {
     if (e.target.closest('.wz-info')) return;   /* cliques dentro do painel são dele */
     const pf = e.target.closest('[data-perfil]');

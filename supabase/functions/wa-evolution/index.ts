@@ -562,6 +562,24 @@ Deno.serve(comCors(async (req: Request) => {
         if (!jid || /@g\.us$/.test(jid)) return json({ erro: 'Contato inválido.' });
         return json(await perfilDoContato(p, n, jid));
       }
+      /* 4.85.1: "Mensagem" no perfil — abre (ou cria) a conversa no privado com a pessoa, no número pedido */
+      case 'conversa_abrir': {
+        const jid = String(c.jid || '');
+        if (!/^\d{6,}@(s\.whatsapp\.net|lid)$/.test(jid)) return json({ erro: 'Contato inválido.' });
+        let alvo = jid;
+        let tel = telefoneDe(jid);
+        if (!tel) { const { data: ct } = await admin().from('wa_contatos').select('numero, nome').eq('jid', jid).maybeSingle(); if (ct?.numero) tel = String(ct.numero).replace(/\D/g, ''); }
+        if (tel) {
+          /* confere se o número tem WhatsApp (e pega o jid certo, ex.: com ou sem o 9) */
+          const w = await evo('/chat/whatsappNumbers/' + I(n), 'POST', { numbers: [tel] }, 15000).catch(() => null);
+          const x = Array.isArray(w?.dados) ? w.dados[0] : null;
+          if (x && x.exists === false) return json({ erro: 'Este número não tem WhatsApp.' });
+          alvo = (x && x.jid && /@s\.whatsapp\.net$/.test(x.jid)) ? String(x.jid) : tel + '@s.whatsapp.net';
+        }
+        const { data: ct2 } = await admin().from('wa_contatos').select('nome').in('jid', [jid, alvo]).not('nome', 'is', null).limit(1).maybeSingle();
+        await garantirConversa(admin(), alvo, ct2?.nome || null, undefined, undefined, n);
+        return json({ jid: alvo });
+      }
       case 'grupo_membros': {
         /* {operacao}: o campo acao já é o nome da ação da função */
         const jid = String(c.jid || ''), ac = String(c.operacao || '');

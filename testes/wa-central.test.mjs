@@ -57,6 +57,9 @@ async function abrirCentral(viewport, rota = '#/whatsapp', papel = 'admin') {
           { jid: '777@lid', telefone: '556222220000', admin: null, nome: 'Pedro Equipe', b7: false, equipe: true },
           { jid: '556233330000@s.whatsapp.net', telefone: '556233330000', admin: 'admin', nome: null, b7: true, equipe: false }], b7_admin: true }; }
       if (corpo.acao === 'contato_perfil') r = { perfil: { nome: 'Ana Souza', recado: 'Disponível', telefone: '556211110000', comercial: true, descricao: 'Padaria', email: 'ana@exemplo.com' }, grupos: [{ numero_id: 'n-des', grupo_jid: '120@g.us', nome: 'Cliente Alfa · Design' }] };
+      if (corpo.acao === 'conversa_abrir') { const j = String(corpo.jid).replace(/@.*$/, '') + '@s.whatsapp.net';
+        if (!CONVS.some(c => c.jid === j && c.numero_id === corpo.numero)) CONVS.push(conv(corpo.numero, j, 'Ana Souza', 0));
+        r = { jid: j }; }
       if (corpo.acao === 'grupo_convite') { await new Promise(r => setTimeout(r, DEMORA)); r = { link: 'https://chat.whatsapp.com/AAA' }; }
       if (corpo.acao === 'grupo_membros') r = corpo.operacao ? { feito: corpo.participantes, falhou: [] } : { erro: 'Ação inválida.' };
       if (corpo.acao === 'numero_salvar') { const n = { id: 'n-coo', instancia: 'b7-coordenacao', padrao: false, ativo: true, ordem: 2, ...corpo }; delete n.acao; NUMS = NUMS.concat(n); r = { numero: n }; }
@@ -182,6 +185,16 @@ const itens = pg => pg.$$eval('.wz-it', l => l.map(e => ({ nome: e.querySelector
   await pg.click('.wz-info-m[data-m="556211110000@s.whatsapp.net"] [data-info="perfil"]'); await pg.waitForTimeout(500);
   const pf = await pg.$eval('.wz-info', e => e.innerText).catch(() => '');
   ok(/Perfil do contato/.test(pf) && /Disponível/.test(pf) && /Padaria/.test(pf) && /Cliente Alfa · Design/.test(pf), 'perfil com recado, empresa e grupos em comum');
+  /* sem conversa no privado: o botão Mensagem cria e abre, como no WhatsApp */
+  ok(!!(await pg.$('.wz-info [data-info="mensagem"]')), 'perfil sem conversa ainda mostra "Mensagem"');
+  await pg.click('.wz-info [data-info="mensagem"]'); await pg.waitForTimeout(900);
+  const ab = enviados.find(e => e.acao === 'conversa_abrir');
+  ok(ab && ab.numero === 'n-des' && ab.jid === '556211110000@s.whatsapp.net', 'Mensagem pede a conversa nova pelo número do grupo');
+  const cab = await pg.$eval('.wz-cab-nome', e => e.textContent).catch(() => '');
+  ok(cab === 'Ana Souza' && !(await pg.$('.wz-info')), 'abre a conversa nova, pronta para escrever (' + cab + ')');
+  await pg.click('.wz-it[data-num="n-des"][data-jid="120@g.us"]'); await pg.waitForTimeout(600);
+  await pg.click('.wz-cab-nome'); await pg.waitForSelector('.wz-info-m', { timeout: 5000 }).catch(() => null);
+  await pg.click('.wz-info-m[data-m="556211110000@s.whatsapp.net"] [data-info="perfil"]'); await pg.waitForTimeout(500);
   if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/perfil.png', import.meta.url)) });
   await pg.click('.wz-info [data-info="fechar"]');
   /* revisão: ação de admin que demora não pinta o resultado no painel que estiver aberto depois */

@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.85.1', versao: '4.85.1', em: '2026-11-23T20:00:00-03:00', rota: 'whatsapp',
+    titulo: 'Mandar mensagem pelo perfil',
+    itens: ['No perfil de qualquer contato (ou no ⋯ de um membro do grupo) agora tem o botão Mensagem, como no WhatsApp: abre a conversa no privado — e, se ainda não existir, o B7 cria na hora.'] },
   { id: 'v-4.85.0', versao: '4.85.0', em: '2026-11-23T19:00:00-03:00', rota: 'whatsapp',
     titulo: 'Dados do grupo e perfil do contato',
     itens: ['Na conversa, toque na foto ou no nome lá em cima: abre os dados do grupo (descrição e membros, com quem é admin e quem é da equipe) ou o perfil do contato (recado, empresa e grupos em comum).',
