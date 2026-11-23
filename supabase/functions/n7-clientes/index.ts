@@ -18,6 +18,7 @@
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { comCors } from '../_shared/cors.ts';
+import { sistemasDe } from '../_shared/sistemas-n7.ts';
 import { COLUNAS_N7, limpar, casar, buscar, proposta, corpoSalvar, resumo, type ClienteN7, type CadastroB7 } from '../_shared/n7-clientes.ts';
 
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
@@ -74,6 +75,23 @@ Deno.serve(comCors(async (req) => {
 
     /* 4.90.0: a equipe do Núcleo 7 (nome e e-mail), para ligar as contas do B7 pelo nome.
        Só o administrador pleno (Pessoas e acessos é dele). Nada além de nome, e-mail e se está ativo. */
+    /* 4.91.0: quais sistemas da casa a pessoa logada tem (para mostrar a Central dentro do B7).
+       Acha a conta do Núcleo 7 pelo e-mail que a própria pessoa tem no B7 (perfis_email: cada um lê o seu).
+       Devolve só os nomes dos sistemas; nada mais da conta de lá. Sem e-mail ou sem conta lá: lista vazia. */
+    if (acao === 'meus_sistemas') {
+      const central = (Deno.env.get('N7_CENTRAL_URL') || 'https://adm.nucleosete.com.br/central').trim();
+      const { data: u } = await eu.auth.getUser();
+      const { data: meu } = u?.user ? await eu.from('perfis_email').select('email').eq('perfil_id', u.user.id).maybeSingle() : { data: null };
+      if (!meu?.email) return json({ sistemas: [], central });
+      const base = (Deno.env.get('N7_URL') || '').replace(/\/$/, ''), chave = Deno.env.get('N7_SERVICE_KEY') || '';
+      if (!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(base) || !chave) return json({ sistemas: [], central });
+      const r = await fetch(base + '/rest/v1/app_users?select=is_active,is_super_admin,screen_permissions&email=eq.' + encodeURIComponent(meu.email) + '&limit=1',
+        { headers: { apikey: chave, Authorization: 'Bearer ' + chave } });
+      if (!r.ok) { console.error('n7-clientes: meus_sistemas respondeu', r.status); return json({ sistemas: [], central }); }
+      const linhas = await r.json();
+      return json({ sistemas: sistemasDe(Array.isArray(linhas) ? linhas[0] || null : null), central });
+    }
+
     if (acao === 'equipe') {
       const { data: pleno } = await eu.rpc('sou_admin_pleno');
       if (pleno !== true) return json({ erro: 'Ligar as contas é do administrador.' }, 403);

@@ -24,7 +24,7 @@ B7.Auth = (function () {
        3.0.0 → 3.0.1  correção ou ajuste
      A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
      programa do Windows. O aviso de atualização só compara se mudou. */
-  const VERSAO = '4.90.0';
+  const VERSAO = '4.91.0';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -353,6 +353,7 @@ B7.Auth = (function () {
      (Configurações → Conta) encerra a conta em todos. */
   async function sair(opcoes) {
     const todos = !!(opcoes && opcoes.todos === true);
+    if (B7.CentralN7) B7.CentralN7.sair();
     anotar('sair', todos ? 'chamado (todos)' : 'chamado');
     /* dentro da conta de outra pessoa, "sair" é voltar para a própria:
        o encerramento comum, abaixo, desconectaria a pessoa de verdade */
