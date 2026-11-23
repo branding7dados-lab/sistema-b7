@@ -139,7 +139,7 @@ B7.WaInfo = (function () {
       '<button class="wz-ic p" data-info="menu" data-jid="' + esc(m.jid) + '" aria-label="Opções de ' + esc(nome) + '" aria-expanded="' + aberto + '">' + IC.mais + '</button>' +
       (aberto ? '<div class="wz-info-menu" role="menu">' +
         '<button data-info="perfil" data-jid="' + esc(m.jid) + '">Ver perfil</button>' +
-        (conv ? '<button data-info="conversar" data-jid="' + esc(m.jid) + '">Conversar no privado</button>' : '') +
+        '<button data-info="mensagem" data-jid="' + esc(m.jid) + '">' + (conv ? 'Conversar no privado' : 'Mandar mensagem no privado') + '</button>' +
         (podeMexer && !m.b7 ? (m.admin ? '<button data-info="demote" data-jid="' + esc(m.jid) + '">Tirar de admin</button>' : '<button data-info="promote" data-jid="' + esc(m.jid) + '">Tornar admin</button>') +
           '<button class="perigo" data-info="remove" data-jid="' + esc(m.jid) + '">Remover do grupo</button>' : '') +
       '</div>' : '') + '</div>';
@@ -265,7 +265,7 @@ B7.WaInfo = (function () {
       (estado.voltar ? '<button class="link wz-info-volta" data-info="voltar-grupo">‹ Voltar ao grupo</button>' : '') +
       '<div class="wz-info-topo">' + foto(p.foto, nome, 'g') + '<div class="wz-info-nome"><b>' + esc(nome) + '</b></div>' +
         (p.telefone && p.nome ? '<small>' + esc(fmtTel(p.telefone)) + '</small>' : '') +
-        (conv ? '<button class="b pri p" data-info="conversar" data-jid="' + esc(conv.jid) + '">' + IC.conversa + ' Conversar</button>' : '') + '</div>' +
+        '<button class="b pri p" data-info="mensagem" data-jid="' + esc(estado.jid) + '">' + IC.conversa + ' Mensagem</button>' + '</div>' +
       (estado.erro ? '<div class="wz-info-aviso erro">' + esc(estado.erro) + '</div>' : '') +
       '<section class="wz-info-bl"><h4>Recado</h4><p>' + (p.recado ? esc(p.recado) : '<span class="wz-mudo">' + (gs == null && !estado.erro ? 'Buscando…' : 'Sem recado.') + '</span>') + '</p></section>' +
       (p.comercial ? '<section class="wz-info-bl"><h4>Conta comercial</h4>' + (p.descricao ? '<p>' + esc(p.descricao) + '</p>' : '') +
@@ -289,10 +289,20 @@ B7.WaInfo = (function () {
     if (a === 'perfil') return abrirContato(jid, estado.num);
     if (a === 'voltar-grupo') return abrirGrupo(estado.voltar.c);
     if (a === 'abrir-grupo') { const c = ctx.conv(jid, b.dataset.num || null); fechar(); if (c) ctx.abrirConversa(jid, b.dataset.num || null); return; }
-    if (a === 'conversar') {
-      const m = estado.tipo === 'grupo' ? (estado.membros || []).find(x => x.jid === jid) : { jid, telefone: (estado.perfil || {}).telefone };
-      const c = m ? conversaDe(m) : null; const num = estado.num;
-      fechar(); if (c) ctx.abrirConversa(c.jid, num); return;
+    /* Mensagem (como no WhatsApp): abre a conversa no privado no mesmo número; se ainda não existe, o B7 cria e abre */
+    if (a === 'mensagem' || a === 'conversar') {
+      const m = estado.tipo === 'grupo' ? (estado.membros || []).find(x => x.jid === jid) : { jid: estado.jid, telefone: (estado.perfil || {}).telefone };
+      if (!m) return;
+      const num = estado.num, c = conversaDe(m);
+      if (c) { fechar(); return ctx.abrirConversa(c.jid, num); }
+      const alvo = m.telefone ? m.telefone + '@s.whatsapp.net' : m.jid;
+      b.disabled = true; status('abrindo a conversa…');
+      let r;
+      try { r = await ctx.chamar('conversa_abrir', { jid: alvo, numero: num || undefined }); } catch (e) { r = { erro: e.message }; }
+      if (r.erro || !r.jid) { b.disabled = false; status(''); return B7.UI.toast(r.erro || 'Não consegui abrir a conversa.', { tipo: 'erro' }); }
+      fechar();
+      if (ctx.recarregar) await ctx.recarregar();
+      return ctx.abrirConversa(r.jid, num);
     }
     if (!souAdmin()) return;
     if (a === 'add') return adicionar();
