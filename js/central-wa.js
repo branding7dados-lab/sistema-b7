@@ -227,7 +227,7 @@ B7.CentralWA = (function () {
     const vis = S.conversas.filter(filtrar);
     if (!vis.length) {
       cx.innerHTML = '<div class="wz-lista-vazia">' + (S.conversas.length ? 'Nada por aqui com esse filtro.' :
-        'Nenhuma conversa ainda.' + (souAdmin() ? '<br><a class="b contorno" href="#/whatsapp/config?s=numeros">Conectar o número</a> <button class="b contorno" data-wz="importar">Puxar conversas recentes</button>' : '')) + '</div>';
+        'Nenhuma conversa ainda.' + (souAdmin() ? '<br><a class="b contorno" href="#/whatsapp/config?aba=conexao">Conectar o número</a> <button class="b contorno" data-wz="importar">Puxar conversas recentes</button>' : '')) + '</div>';
       return;
     }
     cx.innerHTML = vis.map(c => {

@@ -30,13 +30,19 @@ const enviados = [];
 const falhas = []; const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if (!c) falhas.push(m); };
 
 const nav = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
-async function abrirCentral(viewport) {
+async function abrirCentral(viewport, rota = '#/whatsapp') {
   const ctx = await nav.newContext({ viewport, deviceScaleFactor: process.env.PRINT ? 2 : 1 });
   await ctx.route(/supabase\.co\//, async rota => {
     const url = new URL(rota.request().url()), req = rota.request();
     if (url.pathname.startsWith('/functions/v1/wa-evolution')) {
       const corpo = JSON.parse(req.postData() || '{}'); enviados.push(corpo);
-      return rota.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(corpo.acao === 'enviar_texto' ? { ok: true, id: 'x' + enviados.length } : { ok: true, lista: [] }) });
+      let r = { ok: true, lista: [] };
+      if (corpo.acao === 'enviar_texto') r = { ok: true, id: 'x' + enviados.length };
+      if (corpo.acao === 'numeros') r = { lista: NUMS.map(n => ({ ...n, estado: n.id === 'n-vid' ? 'open' : 'sem_conexao' })) };
+      if (corpo.acao === 'estado') r = { configurado: true, existe: true, estado: corpo.numero === 'n-vid' || !corpo.numero ? 'open' : 'sem_conexao' };
+      if (corpo.acao === 'conectar') r = { qr: 'data:image/png;base64,iVBORw0KGgo=', codigo: null };
+      if (corpo.acao === 'numero_salvar') { const n = { id: 'n-coo', instancia: 'b7-coordenacao', padrao: false, ativo: true, ordem: 2, ...corpo }; delete n.acao; NUMS = NUMS.concat(n); r = { numero: n }; }
+      return rota.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(r) });
     }
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
       const f = url.pathname.split('/rpc/')[1];
@@ -44,7 +50,7 @@ async function abrirCentral(viewport) {
     }
     if (url.pathname.startsWith('/rest/v1/')) {
       const t = url.pathname.split('/rest/v1/')[1].split('?')[0];
-      const dados = t === 'wa_numeros' ? NUMS : t === 'wa_conversas' ? CONVS.filter(c => NUMS.some(n => n.id === c.numero_id)) : [];
+      const dados = t === 'wa_numeros' ? NUMS : t === 'wa_config' ? [{ id: 1, respostas: [], auto_arquivar_dias: 0, fotos_auto: true }] : t === 'wa_conversas' ? CONVS.filter(c => NUMS.some(n => n.id === c.numero_id)) : [];
       const um = (req.headers()['accept'] || '').includes('vnd.pgrst.object');
       return rota.fulfill({ status: 200, contentType: 'application/json', headers: { 'content-range': '0-0/' + dados.length }, body: JSON.stringify(um ? (dados[0] || null) : dados) });
     }
@@ -53,15 +59,15 @@ async function abrirCentral(viewport) {
   const pg = await ctx.newPage();
   pg.on('pageerror', e => falhas.push('erro de JavaScript: ' + e.message));
   await pg.goto(BASE + '/index.html'); await pg.waitForTimeout(1200);
-  await pg.evaluate(() => {
+  await pg.evaluate((r) => {
     const U = { id: 'u-teste', papel: 'admin', nome: 'Yury Teste', username: 'teste', estado: 'ativa', preferencias: {}, empresas: [] };
     Object.assign(B7.Auth, { usuario: () => U, papel: () => 'admin', ehAdmin: () => true, ehAdminReal: () => true, ehEquipe: () => true, ehCliente: () => false, funcoesExtra: () => [], naContaDeOutro: () => false, emSimulacao: () => false });
     document.querySelectorAll('.b7-abertura').forEach(e => e.remove());
     if (B7.montarShellInterno) B7.montarShellInterno();
     try { B7.pref.gravar('wa_num', 'todos'); } catch (e) {}
-    location.hash = '#/whatsapp';
-  });
-  await pg.waitForSelector('.wz-it', { timeout: 8000 }).catch(() => null);
+    location.hash = r;
+  }, rota);
+  await pg.waitForSelector(rota === '#/whatsapp' ? '.wz-it' : '.cwa-num-l', { timeout: 8000 }).catch(() => null);
   await pg.waitForTimeout(500);
   return { ctx, pg };
 }
@@ -95,6 +101,23 @@ const itens = pg => pg.$$eval('.wz-it', l => l.map(e => ({ nome: e.querySelector
   ok(!(await pg.$('.wz-nums')), 'um número só: sem barra');
   const l = await itens(pg);
   ok(l.length === 1 && !l[0].pt, 'um número só: lista como antes, sem pontos');
+  await ctx.close(); }
+
+{ NUMS = [VID, DES];
+  const { ctx, pg } = await abrirCentral({ width: 1360, height: 860 }, '#/whatsapp/config?aba=conexao');
+  const linhas = await pg.$$eval('.cwa-num-l', l => l.map(e => e.innerText.replace(/\s+/g, ' ')));
+  ok(linhas.length === 2 && /Videomakers/.test(linhas[0]) && /Conectado/.test(linhas[0]) && /Designers/.test(linhas[1]) && /Desconectado/.test(linhas[1]), 'Configurações → Números lista os dois com o estado');
+  ok(!(await pg.$('[data-num-l="n-vid"] [data-acao="n-desativar"]')) && !!(await pg.$('[data-num-l="n-des"] [data-acao="n-desativar"]')), 'o padrão não tem "Desativar"');
+  if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/config-numeros.png', import.meta.url)) });
+  await pg.click('[data-acao="n-novo"]'); await pg.waitForSelector('#cwa-nf-nome');
+  await pg.fill('#cwa-nf-nome', 'Coordenação'); await pg.click('.cwa-nf-eqs input[value="coordenador"]');
+  if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/config-novo.png', import.meta.url)) });
+  await pg.click('#cwa-nf-ok'); await pg.waitForTimeout(1200);
+  const sal = enviados.find(e => e.acao === 'numero_salvar');
+  ok(sal && sal.nome === 'Coordenação' && JSON.stringify(sal.equipes) === '["coordenador"]' && /^#[0-9A-F]{6}$/i.test(sal.cor), 'salvar manda nome, cor e equipes');
+  const tit = await pg.$eval('.wac h3', e => e.textContent).catch(() => '');
+  ok(tit === 'WhatsApp · Coordenação', 'abre a conexão do número novo (' + tit + ')');
+  ok(enviados.some(e => e.acao === 'estado' && e.numero === 'n-coo'), 'a conexão confere o estado DO número novo');
   await ctx.close(); }
 
 await nav.close(); servidor.close();
