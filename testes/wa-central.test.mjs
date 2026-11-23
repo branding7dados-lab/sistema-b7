@@ -116,6 +116,18 @@ const itens = pg => pg.$$eval('.wz-it', l => l.map(e => ({ nome: e.querySelector
   const lida = enviados.find(e => e.acao === 'lida');
   ok(lida && lida.numero === 'n-des', 'marcar como lida vai para o número certo');
   if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/central-conversa.png', import.meta.url)) });
+  /* 4.88.0: responder — a citação aparece inteira, em cima do campo de digitar (ficava escondida atrás da caixa flutuante) */
+  if (await pg.$('.wz-b [data-acao-msg="citar"]')) {
+    await pg.$eval('.wz-b [data-acao-msg="citar"]', b => b.click()); await pg.waitForTimeout(300);
+    const cita = await pg.evaluate(() => { const c = document.querySelector('#wz-cita'), t = document.querySelector('#wz-texto'), f = document.querySelector('#wz-comp');
+      const r = c.getBoundingClientRect(), rt = t.getBoundingClientRect(), rf = f.getBoundingClientRect();
+      const topo = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { visivel: !c.hidden && r.height > 20, dentro: r.top >= rf.top - 1 && r.bottom <= rf.bottom + 1, acima: r.bottom <= rt.top + 1, naFrente: !!(topo && c.contains(topo)) }; });
+    ok(cita.visivel && cita.dentro && cita.acima && cita.naFrente, 'responder: a mensagem citada fica visível, dentro da caixa e acima do campo (' + JSON.stringify(cita) + ')');
+    if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/central-responder.png', import.meta.url)) });
+    await pg.click('[data-tira-cita]'); await pg.waitForTimeout(150);
+    ok(await pg.$eval('#wz-cita', c => c.hidden), 'cancelar a resposta tira a citação');
+  } else ok(false, 'responder: não achei mensagem para citar no teste');
   await ctx.close(); }
 
 { NUMS = [VID];

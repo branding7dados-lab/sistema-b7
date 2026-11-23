@@ -333,8 +333,9 @@ B7.CentralWA = (function () {
           '</div></div></div></header>' +
       '<div class="wz-msgs" id="wz-msgs"></div>' +
       '<div class="wz-solta" id="wz-solta" hidden><b>Solte para enviar</b></div>' +
-      '<div class="wz-cita" id="wz-cita" hidden></div>' +
+      /* 4.88.0: a mensagem citada fica DENTRO da caixa de digitar (que flutua); fora dela ficava escondida atrás */
       '<footer class="wz-comp" id="wz-comp">' +
+        '<div class="wz-cita" id="wz-cita" hidden></div>' +
         '<div class="menu wz-anexo"><button class="wz-ic" data-menu aria-label="Anexar">' + I.clip + '</button><div class="lista">' +
           '<button data-wz="anexo-midia">🖼️ Fotos e vídeos</button><button data-wz="anexo-doc">📄 Documento</button><button data-wz="anexo-cam" class="wz-so-cel">📷 Câmera</button><hr><button data-wz="nota">🔒 Nota interna (só a equipe vê)</button></div></div>' +
         '<div class="menu wz-emo"><button class="wz-ic" data-menu aria-label="Emoji">' + I.emoji + '</button><div class="lista wz-emojis">' +
@@ -742,6 +743,7 @@ B7.CentralWA = (function () {
 
   function pintarCitacao() {
     const cx = raiz.querySelector('#wz-cita'); if (!cx) return;
+    const fio = raiz.querySelector('.wz-msgs'); if (fio) fio.classList.toggle('com-cita', !!S.citar);
     if (!S.citar) { cx.hidden = true; cx.innerHTML = ''; return; }
     const q = S.citar;
     cx.hidden = false;
