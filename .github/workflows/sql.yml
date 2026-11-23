@@ -1,14 +1,22 @@
-# Aplica UM arquivo de migração (supabase/sql/zzzNNN_*.sql) no banco do
-# Sistema B7, pela API de gestão do Supabase. Só roda quando alguém pede
-# (Actions → sql → Run workflow) — nunca sozinho. Usa o mesmo segredo
-# SUPABASE_ACCESS_TOKEN das funções; nada de chave no código.
+# Aplica migrações (supabase/sql/zzzNNN_*.sql) no banco do Sistema B7, pela API de gestão do Supabase.
+#  • 23/11/2026: SOZINHO a cada merge na main que traga arquivo zzz novo — só os novos, em ordem, uma vez cada
+#    (registro em public.b7_migracoes). O site e as funções esperam este workflow (esperar-banco.sh) e não
+#    publicam se ele falhar.
+#  • À mão (Actions → sql → Run workflow): aplica o arquivo pedido, se ainda não estiver registrado.
+# Usa o segredo SUPABASE_ACCESS_TOKEN das funções; nada de chave no código.
 name: sql
 on:
+  push:
+    branches: [main]
+    paths: ['supabase/sql/zzz*.sql']
   workflow_dispatch:
     inputs:
       arquivo:
         description: 'Caminho do arquivo (ex.: supabase/sql/zzz333_modulos_operacoes_site.sql)'
         required: true
+concurrency:
+  group: sql
+  cancel-in-progress: false
 jobs:
   aplicar:
     runs-on: ubuntu-latest
@@ -18,15 +26,18 @@ jobs:
       ARQUIVO: ${{ inputs.arquivo }}
     steps:
       - uses: actions/checkout@v4
-      - name: Aplicar migração
+        with:
+          fetch-depth: 0
+      - name: Aplicar migrações
+        env:
+          ANTES: ${{ github.event.before }}
+          EVENTO: ${{ github.event_name }}
         run: |
           if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "::error::SUPABASE_ACCESS_TOKEN não configurado"; exit 1; fi
-          # só migrações numeradas desta pasta
-          if ! printf '%s' "$ARQUIVO" | grep -Eq '^supabase/sql/zzz[0-9]{3,4}_[a-z0-9_]+\.sql$'; then echo "::error::arquivo fora do padrão: $ARQUIVO"; exit 1; fi
-          if [ ! -f "$ARQUIVO" ]; then echo "::error::arquivo não existe: $ARQUIVO"; exit 1; fi
-          python3 -c "import json,sys; print(json.dumps({'query': open(sys.argv[1]).read()}))" "$ARQUIVO" > corpo.json
-          codigo=$(curl -sS -o resposta.json -w '%{http_code}' -X POST \
-            "https://api.supabase.com/v1/projects/$PROJETO/database/query" \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @corpo.json)
-          echo "HTTP $codigo"; head -c 4000 resposta.json; echo
-          case "$codigo" in 2*) ;; *) exit 1;; esac
+          if [ "$EVENTO" = "workflow_dispatch" ]; then
+            bash .github/publicar/aplicar-sql.sh "$ARQUIVO"
+          else
+            if [ -z "$ANTES" ] || [ "$ANTES" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$ANTES^{commit}" 2>/dev/null; then ANTES="$GITHUB_SHA~1"; fi
+            mapfile -t novas < <(git diff --diff-filter=A --name-only "$ANTES" "$GITHUB_SHA" -- 'supabase/sql/zzz*.sql')
+            bash .github/publicar/aplicar-sql.sh "${novas[@]}"
+          fi

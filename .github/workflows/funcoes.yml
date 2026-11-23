@@ -8,6 +8,9 @@ on:
     branches: [main]
     paths: ['supabase/functions/**', '.github/workflows/funcoes.yml']
   workflow_dispatch:
+permissions:
+  contents: read
+  actions: read   # 23/11/2026: para esperar o workflow sql do mesmo merge
 jobs:
   publicar:
     runs-on: ubuntu-latest
@@ -16,6 +19,14 @@ jobs:
       PROJETO: rartcafydsaocdzshqcx
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # 23/11/2026: merge com migração nova — espera o banco (workflow sql); se ela falhou, não publica
+      - name: Esperar o banco
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/publicar/esperar-banco.sh "${{ github.event.before }}" "$GITHUB_SHA"
       - uses: supabase/setup-cli@v1
         with:
           # versão fixa: "latest" consulta a API do GitHub e falha por limite de uso
