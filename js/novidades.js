@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.88.1', versao: '4.88.1', em: '2026-11-24T17:00:00-03:00', rota: 'clientes',
+    titulo: 'Cadastro do cliente mais fácil de usar',
+    itens: ['Novo cliente: as etapas ficam num trilho à esquerda. Depois de criar o cliente, dá para clicar em qualquer etapa (a atual é salva antes).',
+      'Aba Cadastro: um resumo no topo diz o que falta, e só aparece o que está preenchido — sem lista de traços.',
+      'O pacote aparece em números grandes (ex.: 10 Cards · 4 Reels · 14 no mês) e o WhatsApp do responsável abre a conversa.'] },
   { id: 'v-4.88.0', versao: '4.88.0', em: '2026-11-24T15:00:00-03:00', rota: 'clientes',
     titulo: 'Cadastro do cliente novo, com pacote e marca',
     itens: ['Novo cliente agora é em etapas: Cliente, Marca, Pacote, Equipe e Observações. Só o nome é obrigatório; o resto dá para completar depois.',
