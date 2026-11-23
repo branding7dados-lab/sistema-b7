@@ -2431,3 +2431,15 @@ button.pa-cel:disabled{opacity:.5;cursor:wait;}
 }
 .b.contorno.cd-completar{border-color:var(--acento);color:var(--acento);}
 .b.contorno.cd-completar:hover{background:var(--acento-suave);}
+
+/* 4.88.2: contrato — avulso ou a duração, numa fila de opções */
+.cd-opcoes{display:flex;flex-wrap:wrap;gap:8px;}
+.cd-opcao{position:relative;cursor:pointer;}
+.cd-opcao input{position:absolute;opacity:0;pointer-events:none;}
+.cd-opcao span{display:block;padding:9px 14px;border:1.5px solid var(--borda);border-radius:13px;background:var(--card);transition:var(--t);}
+.cd-opcao b{display:block;font-size:13.5px;font-weight:700;color:var(--ink-2);}
+.cd-opcao small{display:block;font-size:11.5px;color:var(--ink-4);margin-top:1px;}
+.cd-opcao:hover span{border-color:color-mix(in srgb,var(--acento) 50%,var(--borda));}
+.cd-opcao input:checked + span{border-color:var(--acento);background:var(--acento-suave);}
+.cd-opcao input:checked + span b{color:var(--acento);}
+.cd-opcao input:focus-visible + span{outline:2px solid var(--acento);outline-offset:2px;}

@@ -17,7 +17,7 @@ const PACOTES = [{ id: 'p1', nome: 'Pro', descricao: '', itens: [{ tipo: 'Card',
   { id: 'p2', nome: 'Básico', descricao: '', itens: [{ tipo: 'Card', qtd: 8 }], dias_semana: [1, 3, 5] }];
 const PESSOAS = { coordenador: [{ id: 'e1', nome: 'Cora' }], designer: [{ id: 'd1', nome: 'Dani' }], videomaker: [{ id: 'v1', nome: 'Vic' }] };
 const vazio = () => ({ cliente: { id: 'c1', nome: 'Alfa', contrato: 'mensal', modo: 'linha', logo_url: null, logo_path: null },
-  interno: { cnpj: '', cidade: '', resp_nome: '', resp_cargo: '', resp_whatsapp: '', resp_email: '', combinado: '', inicio_servico: null, observacoes: '' },
+  interno: { contrato_meses: null, cnpj: '', cidade: '', resp_nome: '', resp_cargo: '', resp_whatsapp: '', resp_email: '', combinado: '', inicio_servico: null, observacoes: '' },
   perfil: { nicho: '', site: '', instagram: '' }, marca: { cores: [], fonte_titulo: '', fonte_texto: '', link: '', estilo: '' },
   pacote: { pacote_id: null, nome: null, arquivado: false, ajustado: false, desde: null, itens: [], padrao: [] },
   equipe: { coordenador: null, designer: null, videomaker: null }, pode_editar: true });
@@ -72,7 +72,7 @@ const texto = (pg, s) => pg.$eval(s, e => e.innerText.replace(/\s+/g, ' ')).catc
   await pg.exposeFunction('aoCriarTeste', c => { criouCb = c; });
   await pg.evaluate(() => { B7.Dashboard.modalNovoCliente(c => window.aoCriarTeste(c)); });
   await pg.waitForSelector('.cd-janela #cd-nome');
-  ok((await pg.$$eval('.cd-passos li b', l => l.map(e => e.innerText.trim()).join('|'))) === 'Cliente|Marca|Pacote|Equipe|Observações' && (await pg.$$('.cd-passos button:disabled')).length === 4, 'janela abre com as 5 etapas; antes de criar o cliente só a primeira está liberada');
+  ok((await pg.$$eval('.cd-passos li b', l => l.map(e => e.innerText.trim()).join('|'))) === 'Cliente|Marca|Serviços contratados|Equipe|Observações' && (await pg.$$('.cd-passos button:disabled')).length === 4, 'janela abre com as 5 etapas; antes de criar o cliente só a primeira está liberada');
   ok(!(await pg.$('#ec-wa, [id*="grupo"]')) && !/grupo do whatsapp/i.test(await texto(pg, '.cd-janela')), 'o grupo do WhatsApp não está no cadastro');
   await pg.click('[data-cd-ok]'); await pg.waitForTimeout(200);
   ok(criados === 0 && await pg.$eval('#cd-nome', e => e.classList.contains('erro')), 'sem nome não cria');
@@ -136,7 +136,7 @@ const texto = (pg, s) => pg.$eval(s, e => e.innerText.replace(/\s+/g, ' ')).catc
   ok(/12\.345\.678\/0001-90/.test(t) && /\(77\) 99999-0000/.test(t) && /@alfa/.test(t) && /Dani/.test(t), 'a ficha mostra os valores, com CNPJ e telefone formatados');
   ok(/<img src=x/.test(t) && !(await pg.evaluate(() => window.XSS)) && !(await pg.$('.cd-ficha img[src="x"]')) && !(await pg.$('.cd-amostra small b')), 'texto com HTML aparece como texto (responsável e nome da cor)');
   ok(/ajustado para este cliente/.test(t) && /10 Cards/.test(t) && /4 Reels/.test(t) && /14 no mês/.test(t) && /12 cards \+ 4 reels/.test(t) && /01\/11\/2026/.test(t), 'pacote: ajustado, com a entrega dele, o padrão e desde quando');
-  ok((await pg.$$('[data-cd-bloco]')).length === 5 && /Completar/.test(await texto(pg, '[data-cd-bloco="obs"]')) && /Editar/.test(await texto(pg, '[data-cd-bloco="marca"]')) && !/—/.test(t) && /Falta: .*site|Falta: área de atuação/.test(t), '5 blocos; bloco vazio convida a "Completar"; sem lista de traços, e o que falta vem numa linha só');
+  ok((await pg.$$('[data-cd-bloco]')).length === 5 && /Completar/.test(await texto(pg, '[data-cd-bloco="obs"]')) && /Editar/.test(await texto(pg, '[data-cd-bloco="marca"]')) && !/—/.test(t) && /Falta: duração do contrato, área de atuação/.test(t), '5 blocos; bloco vazio convida a "Completar"; sem lista de traços, e o que falta vem numa linha só');
   ok(/4 de 5 partes/.test(await texto(pg, '.cd-resumo')) && /Falta observações/.test(await texto(pg, '.cd-resumo')) && (await pg.$$('.cd-prog li.ok')).length === 4, 'resumo no topo diz quantas partes estão preenchidas e o que falta (' + (await texto(pg, '.cd-resumo')).slice(0, 90) + ')');
   ok(/wa\.me\/5577999990000/.test(await pg.$eval('.cd-contato a', a => a.href).catch(() => '')), 'o WhatsApp do responsável abre a conversa');
   await print(pg, 'cadastro-ficha');
@@ -150,6 +150,22 @@ const texto = (pg, s) => pg.$eval(s, e => e.innerText.replace(/\s+/g, ' ')).catc
   const s1 = salvos().pop();
   ok(salvos().length === n0 + 1 && s1.interno.cidade === 'Salvador - BA' && s1.perfil && !s1.marca && !s1.pacote && !s1.equipe && !pedidos.some(p => p[0] === 'patch'), 'salvar o bloco Cliente manda só os dados dele, sem regravar o nome');
   ok(/Salvador - BA/.test(await texto(pg, '[data-cd-bloco="cliente"]')), 'a ficha mostra o valor novo');
+  /* 4.88.2: contrato = avulso ou a duração; modos só linha editorial e roteiros; observações sem "tom de voz" */
+  ok(/Contrato sem duração definida/.test(await texto(pg, '[data-cd-bloco="cliente"]')) && /duração do contrato/.test(await texto(pg, '[data-cd-bloco="cliente"] .cd-falta')), 'cliente antigo aparece como "contrato sem duração definida", e isso entra no que falta');
+  await pg.click('[data-cd-editar="cliente"]'); await pg.waitForSelector('input[name="cd-contrato"]');
+  const opc = await pg.$$eval('.cd-opcao b', l => l.map(e => e.innerText.trim()).join('|'));
+  const modos = await pg.$$eval('[data-campo-modo] .cli-modo b', l => l.map(e => e.innerText.trim()).join('|'));
+  ok(opc === 'Avulso|1 mês|3 meses|6 meses|12 meses ou mais' && !/mensal/i.test(opc), 'contrato: avulso, 1, 3, 6, 12 meses ou mais (sem "mensal")');
+  ok(modos === 'Linha editorial|Roteiros e trends', 'como trabalhamos: só linha editorial e roteiros e trends (' + modos + ')');
+  await pg.check('input[name="cd-contrato"][value="6"]', { force: true }); await pg.click('[data-cd-salvar]'); await pg.waitForTimeout(500);
+  ok(salvos().pop().interno.contrato_meses === 6 && !pedidos.some(p => p[0] === 'patch') && /Contrato de 6 meses/.test(await texto(pg, '[data-cd-bloco="cliente"]')), 'escolher 6 meses grava a duração e a ficha mostra "Contrato de 6 meses"');
+  await pg.click('[data-cd-editar="cliente"]'); await pg.waitForSelector('input[name="cd-contrato"]');
+  await pg.check('input[name="cd-contrato"][value="avulso"]', { force: true }); await pg.waitForTimeout(100);
+  ok(await pg.$eval('[data-campo-modo]', e => e.hidden), 'contrato avulso esconde os modos de trabalho');
+  await pg.click('[data-cd-cancelar]'); await pg.waitForTimeout(150);
+  await pg.click('[data-cd-editar="obs"]'); await pg.waitForSelector('#cd-obs');
+  ok(!/tom de voz/i.test(await pg.$eval('#cd-obs', e => e.placeholder)), 'observações: o campo não pede mais tom de voz');
+  await pg.click('[data-cd-cancelar]'); await pg.waitForTimeout(150);
   /* cor inválida segura */
   await pg.click('[data-cd-editar="marca"]'); await pg.waitForSelector('.cd-cor-hex');
   await pg.fill('.cd-cor-hex', '#12'); const n1 = salvos().length; await pg.click('[data-cd-salvar]'); await pg.waitForTimeout(200);

@@ -37,22 +37,22 @@ B7.GestaoExtra = (function () {
         '<button class="b contorno p" data-mes="1" aria-label="Próximo mês">›</button></div>' +
         '<label class="ge-chk"><input type="checkbox" data-so-abaixo' + (soAbaixo ? ' checked' : '') + '> Só quem está abaixo</label></div>' +
       '<div class="gt-kpis tres">' +
-        '<div class="gt-kpi"><b>' + l.length + '</b><span>clientes com pacote</span></div>' +
+        '<div class="gt-kpi"><b>' + l.length + '</b><span>clientes com serviços contratados</span></div>' +
         '<div class="gt-kpi' + (abaixo.length ? ' atencao' : '') + '"><b>' + abaixo.length + '</b><span>' + (d.fechado ? 'ficaram abaixo do contratado' : 'atrás do ritmo do mês') + '</span></div>' +
         '<div class="gt-kpi"><b>' + l.reduce((s, c) => s + c.publicados, 0) + '<small>/' + l.reduce((s, c) => s + c.contratado, 0) + '</small></b><span>publicados × contratados</span></div></div>' +
-      '<p class="gt-nota">' + (d.fechado ? 'Mês fechado: "abaixo" quando publicou menos do que o pacote.' : 'Mês em andamento: a marca na barra é onde o cliente deveria estar hoje (' + Math.round(100 * (d.ritmo || 0)) + '% do mês).') +
-        ' Contam os conteúdos da Linha editorial do mês, por tipo do pacote.</p>' +
+      '<p class="gt-nota">' + (d.fechado ? 'Mês fechado: "abaixo" quando publicou menos do que o contratado.' : 'Mês em andamento: a marca na barra é onde o cliente deveria estar hoje (' + Math.round(100 * (d.ritmo || 0)) + '% do mês).') +
+        ' Contam os conteúdos da Linha editorial do mês, por tipo de conteúdo contratado.</p>' +
       '<section class="gt-bloco ge-lista">' + (vis.length ? vis.map(c =>
         '<button type="button" class="ge-lin" data-ir="#/cliente/' + esc(c.id) + '">' + logo(c.logo, c.nome) +
-          '<span class="ge-lin-tx"><b>' + esc(c.nome) + '</b><small>' + esc(c.pacote || 'Pacote') + (c.ajustado ? ' (ajustado)' : '') + ' · ' + c.planejados + ' planejados</small>' +
+          '<span class="ge-lin-tx"><b>' + esc(c.nome) + '</b><small>' + esc(c.pacote || 'Serviços') + (c.ajustado ? ' (ajustado)' : '') + ' · ' + c.planejados + ' planejados</small>' +
             '<span class="ge-tipos">' + (c.itens || []).map(t => '<span class="' + (t.publicados < t.contratado && d.fechado ? 'falta' : '') + '">' + esc(t.tipo) + ' ' + t.publicados + '/' + t.contratado + '</span>').join('') + '</span></span>' +
           '<span class="ge-lin-n">' + barra(c) + '<b>' + c.publicados + '/' + c.contratado + '</b>' +
             (c.abaixo ? '<em class="ge-selo ruim">faltaram ' + c.faltam + '</em>' : c.atras_ritmo ? '<em class="ge-selo atencao">atrás do ritmo</em>' : '') + '</span></button>').join('')
-        : vazio(soAbaixo ? 'Ninguém abaixo do contratado neste mês.' : 'Nenhum cliente com pacote definido.')) + '</section>' +
-      (sem.length ? '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Sem pacote definido <small>' + sem.length + '</small></h2></div><p class="gt-nota">Defina o pacote no cadastro do cliente para entrar nesta conta.</p>' +
+        : vazio(soAbaixo ? 'Ninguém abaixo do contratado neste mês.' : 'Nenhum cliente com serviços contratados definidos.')) + '</section>' +
+      (sem.length ? '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Sem serviços contratados definidos <small>' + sem.length + '</small></h2></div><p class="gt-nota">Defina os serviços contratados no cadastro do cliente para entrar nesta conta.</p>' +
         '<div class="ge-chips">' + sem.map(c => '<button type="button" class="ge-chip" data-ir="#/cliente/' + esc(c.id) + '/cadastro">' + esc(c.nome) + '</button>').join('') + '</div></section>' : '') +
       /* 4.88.0: pacote com "vale desde" depois deste mês — ainda não entra na conta */
-      (comeca.length ? '<section class="gt-bloco" data-ge-comeca><div class="gt-bloco-cab"><h2>Pacote ainda não começou <small>' + comeca.length + '</small></h2></div>' +
+      (comeca.length ? '<section class="gt-bloco" data-ge-comeca><div class="gt-bloco-cab"><h2>Contrato ainda não começou <small>' + comeca.length + '</small></h2></div>' +
         '<div class="ge-chips">' + comeca.map(c => '<button type="button" class="ge-chip" data-ir="#/cliente/' + esc(c.id) + '/cadastro">' + esc(c.nome) + ' · começa em ' + esc(mesDe(c.desde)) + '</button>').join('') + '</div></section>' : '');
     cx.querySelectorAll('[data-mes]').forEach(b => b.onclick = () => { mesC += +b.dataset.mes; if (mesC < 1) { mesC = 12; anoC--; } if (mesC > 12) { mesC = 1; anoC++; } contratado(cx); });
     cx.querySelector('[data-so-abaixo]').onchange = e => { soAbaixo = e.target.checked; contratado(cx); };

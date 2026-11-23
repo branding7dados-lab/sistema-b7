@@ -52,19 +52,19 @@ B7.Pacotes = (function () {
     let lista, uso = {};
     if (op.gestao) { try { uso = (await B7.DB.rpc('pacotes_uso', {})) || {}; } catch (e) { uso = {}; } }
     try { lista = await listar(); }
-    catch (e) { alvo.innerHTML = '<p class="cfg-g-nota">Não foi possível carregar os pacotes. ' + esc((e && e.message) || '') + '</p>'; return; }
+    catch (e) { alvo.innerHTML = '<p class="cfg-g-nota">Não foi possível carregar os serviços contratados. ' + esc((e && e.message) || '') + '</p>'; return; }
     if (!alvo.isConnected) return;
     const ed = podeEditar();
-    alvo.innerHTML = '<section class="cfg-g"><h2 class="cfg-g-t">Pacotes</h2>' +
-      '<p class="cfg-g-nota">' + (op.gestao ? 'O que a B7 vende: cada pacote diz o que o cliente recebe por mês — é a entrega mínima dele. O pacote de cada cliente é escolhido no cadastro do cliente, e lá dá para ajustar as quantidades só para ele.'
-        : 'O que cada cliente contrata por mês. Ao criar uma linha editorial com um pacote, os conteúdos já nascem com o tipo e a data espalhada pelo mês. O pacote de cada cliente fica no cadastro dele.') + '</p>' +
+    alvo.innerHTML = '<section class="cfg-g"><h2 class="cfg-g-t">' + 'Serviços contratados</h2>' +
+      '<p class="cfg-g-nota">' + (op.gestao ? 'O que a B7 vende: cada serviço diz o que o cliente recebe por mês — é a entrega mínima dele. Os serviços de cada cliente são escolhidos no cadastro dele, e lá dá para ajustar as quantidades só para ele.'
+        : 'O que cada cliente contrata por mês. Ao criar uma linha editorial com os serviços contratados, os conteúdos já nascem com o tipo e a data espalhada pelo mês. Os serviços de cada cliente ficam no cadastro dele.') + '</p>' +
       '<div class="cfg-lista">' +
         (lista.length ? lista.map(p => '<div class="cfg-l"><span class="cfg-l-tx"><b>' + esc(p.nome) + '</b><small>' + esc(resumo(p)) +
             (p.descricao ? ' · ' + esc(p.descricao) : '') +
             (op.gestao ? ' · ' + (uso[p.id] ? uso[p.id] + (uso[p.id] === 1 ? ' cliente' : ' clientes') : 'nenhum cliente') : '') + '</small></span>' +
             (ed ? '<button type="button" class="b fina contorno" data-pc-editar="' + esc(p.id) + '">Editar</button>' : '') + '</div>').join('')
-          : '<div class="cfg-l"><span class="cfg-l-tx"><b>Nenhum pacote ainda</b><small>crie o primeiro abaixo</small></span></div>') +
-        (ed ? '<button type="button" class="cfg-l eq-novo" data-pc-novo><span class="cfg-l-tx"><b>Novo pacote</b><small>ex.: 8 cards + 4 carrosséis + 4 reels</small></span><span class="cfg-acao" aria-hidden="true">Criar</span></button>' : '') +
+          : '<div class="cfg-l"><span class="cfg-l-tx"><b>Nenhum serviço cadastrado ainda</b><small>crie o primeiro abaixo</small></span></div>') +
+        (ed ? '<button type="button" class="cfg-l eq-novo" data-pc-novo><span class="cfg-l-tx"><b>Novo serviço</b><small>ex.: 8 cards + 4 carrosséis + 4 reels</small></span><span class="cfg-acao" aria-hidden="true">Criar</span></button>' : '') +
       '</div></section>';
     const novo = alvo.querySelector('[data-pc-novo]'); if (novo) novo.onclick = () => editor(null, () => montar(alvo, op));
     alvo.querySelectorAll('[data-pc-editar]').forEach(b => b.onclick = () => editor(lista.find(p => p.id === b.dataset.pcEditar), () => montar(alvo, op)));
@@ -73,8 +73,8 @@ B7.Pacotes = (function () {
   function editor(p, depois) {
     p = p || { nome: '', descricao: '', itens: [{ tipo: 'Card', qtd: 4 }, { tipo: 'Carrossel', qtd: 4 }, { tipo: 'Reel', qtd: 4, producao: 'gravacao' }], dias_semana: [1, 2, 3, 4, 5] };
     const m = B7.UI.modal(
-      '<h3>' + (p.id ? 'Editar pacote' : 'Novo pacote') + '</h3>' +
-      '<div class="mb"><label class="rot" for="pc-nome">NOME</label><input class="campo" id="pc-nome" maxlength="80" value="' + esc(p.nome) + '" placeholder="Pacote mensal" data-foco></div>' +
+      '<h3>' + (p.id ? 'Editar serviço' : 'Novo serviço') + '</h3>' +
+      '<div class="mb"><label class="rot" for="pc-nome">NOME</label><input class="campo" id="pc-nome" maxlength="80" value="' + esc(p.nome) + '" placeholder="Ex.: Social media completo" data-foco></div>' +
       '<div class="mb"><label class="rot" for="pc-desc">DESCRIÇÃO <span class="mg-obr leve">opcional</span></label><input class="campo" id="pc-desc" maxlength="120" value="' + esc(p.descricao || '') + '" placeholder="12 posts + 4 vídeos"></div>' +
       '<div class="mb"><span class="rot">POR MÊS</span>' + qtdsHTML(p.itens) + '</div>' +
       '<div class="mb"><span class="rot">DIAS DE POSTAGEM</span><div class="pc-dias">' + DIAS.map(([n, r]) =>
@@ -92,23 +92,23 @@ B7.Pacotes = (function () {
     pintar();
     m.querySelector('[data-pc-salvar]').onclick = async () => {
       const v = ler();
-      if (!v.nome) return B7.UI.toast('Dê um nome ao pacote', { tipo: 'erro' });
+      if (!v.nome) return B7.UI.toast('Dê um nome ao serviço', { tipo: 'erro' });
       if (!v.itens.length) return B7.UI.toast('Coloque pelo menos um conteúdo', { tipo: 'erro' });
       if (!v.dias_semana.length) return B7.UI.toast('Escolha pelo menos um dia', { tipo: 'erro' });
-      try { await B7.Save.acao(() => B7.DB.salvarPacote(p.id || null, v), 'Pacote salvo'); m.fechar(); depois && depois(); } catch (e) {}
+      try { await B7.Save.acao(() => B7.DB.salvarPacote(p.id || null, v), 'Serviço salvo'); m.fechar(); depois && depois(); } catch (e) {}
     };
     const arq = m.querySelector('[data-pc-arquivar]');
     if (arq) arq.onclick = async () => {
       if (!(await B7.UI.confirmar({ titulo: 'Arquivar "' + p.nome + '"?', texto: 'Ele some da lista e da nova linha editorial. As linhas já criadas não mudam.', rotulo: 'Arquivar' }))) return;
-      try { await B7.Save.acao(() => B7.DB.salvarPacote(p.id, { arquivado_em: new Date().toISOString() }), 'Pacote arquivado'); m.fechar(); depois && depois(); } catch (e) {}
+      try { await B7.Save.acao(() => B7.DB.salvarPacote(p.id, { arquivado_em: new Date().toISOString() }), 'Serviço arquivado'); m.fechar(); depois && depois(); } catch (e) {}
     };
   }
 
   /* ---------------------------------------------- Nova linha editorial */
   function blocoNovaLinha(icone) {
-    return '<section class="ng-bloco" data-pc-bloco hidden><h4>' + (icone || '') + 'Pacote <span class="mg-obr leve">opcional</span></h4>' +
-      '<div class="mb ng-ult"><select class="campo" id="nl-pacote" aria-label="Pacote de produção"><option value="">Começar vazia</option></select>' +
-      '<div class="gv-ajuda" data-pc-ajuda>Escolha um pacote e os conteúdos do mês já nascem prontos para planejar.</div></div></section>';
+    return '<section class="ng-bloco" data-pc-bloco hidden><h4>' + (icone || '') + 'Serviços contratados <span class="mg-obr leve">opcional</span></h4>' +
+      '<div class="mb ng-ult"><select class="campo" id="nl-pacote" aria-label="Serviços contratados"><option value="">Começar vazia</option></select>' +
+      '<div class="gv-ajuda" data-pc-ajuda>Escolha os serviços contratados e os conteúdos do mês já nascem prontos para planejar.</div></div></section>';
   }
   async function ligarNovaLinha(m, clienteDe) {
     const bloco = m.querySelector('[data-pc-bloco]'); if (!bloco || !podeEditar()) return;
@@ -120,7 +120,7 @@ B7.Pacotes = (function () {
     bloco.hidden = false;
     let ajuste = null;
     const dica = () => { const p0 = lista.find(x => x.id === sel.value); const p = p0 && ajuste && ajuste.pacote_id === p0.id ? Object.assign({}, p0, { itens: ajuste.itens }) : p0;
-      ajuda.textContent = p ? (p !== p0 ? 'Ajustado para este cliente: ' : '') + resumo(p) + '. Datas em ' + DIAS.filter(d => (p.dias_semana || []).includes(d[0])).map(d => d[1]).join(', ') + '.' : 'Escolha um pacote e os conteúdos do mês já nascem prontos para planejar.'; };
+      ajuda.textContent = p ? (p !== p0 ? 'Ajustado para este cliente: ' : '') + resumo(p) + '. Datas em ' + DIAS.filter(d => (p.dias_semana || []).includes(d[0])).map(d => d[1]).join(', ') + '.' : 'Escolha os serviços contratados e os conteúdos do mês já nascem prontos para planejar.'; };
     const doCliente = async () => {
       const cli = clienteDe(); if (!cli) return;
       ajuste = null;
@@ -137,7 +137,7 @@ B7.Pacotes = (function () {
   }
   async function aplicar(linhaId, pacoteId) {
     const n = await B7.DB.rpc('linha_aplicar_pacote', { p_linha: linhaId, p_pacote: pacoteId });
-    B7.UI.toast(n + (n === 1 ? ' conteúdo criado' : ' conteúdos criados') + ' pelo pacote');
+    B7.UI.toast(n + (n === 1 ? ' conteúdo criado' : ' conteúdos criados') + ' pelos serviços contratados');
     return n;
   }
 

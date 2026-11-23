@@ -74,7 +74,7 @@ DEMORA = 0;
 /* 4.88.0: aba Pacotes */
 await pg.click('[data-aba="pacotes"]'); await pg.waitForSelector('[data-pc-novo]', { timeout: 5000 }).catch(() => null);
 const pc = await pg.$eval('#gt-corpo', e => e.innerText.replace(/\s+/g, ' ')).catch(() => '');
-ok(/Pro/.test(pc) && /12 cards \+ 4 reels/.test(pc) && /3 clientes/.test(pc) && /Novo pacote/.test(pc), 'Pacotes na Gestão: lista com o que vem em cada um e quantos clientes usam (' + pc.slice(0, 160) + ')');
+ok(/Pro/.test(pc) && /12 cards \+ 4 reels/.test(pc) && /3 clientes/.test(pc) && /Novo serviço/.test(pc) && /Serviços contratados/i.test(pc), 'Pacotes na Gestão: lista com o que vem em cada um e quantos clientes usam (' + pc.slice(0, 160) + ')');
 await pg.click('[data-pc-editar="p1"]'); await pg.waitForSelector('[data-pc-salvar]', { timeout: 3000 }).catch(() => null);
 ok((await pg.$eval('[data-pc-tipo="Card"]', e => e.value).catch(() => '')) === '12' && (await pg.$eval('[data-pc-tipo="Reel"]', e => e.value).catch(() => '')) === '4', 'editor do pacote abre com as quantidades');
 if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/gestao-pacotes.png', import.meta.url)) });

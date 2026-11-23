@@ -2,7 +2,7 @@
    CADASTRO DO CLIENTE (4.88.0)
 
    O mesmo cadastro em dois lugares:
-     • "Novo cliente": uma janela em etapas (Cliente · Marca · Pacote ·
+     • "Novo cliente": uma janela em etapas (Cliente · Marca · Serviços contratados ·
        Equipe · Observações). Só o nome é obrigatório; o cliente nasce
        na etapa 1 e as outras completam.
      • Página do cliente → aba "Cadastro": as mesmas partes em blocos,
@@ -34,14 +34,14 @@ B7.Cadastro = (function () {
   const BLOCOS = [
     ['cliente', 'Cliente', 'quem é', 'Quem é o cliente e com quem a gente fala.'],
     ['marca', 'Marca', 'logo e cores', 'Logo, cores e fontes, para a equipe usar. Pode ficar para depois.'],
-    ['pacote', 'Pacote', 'entrega do mês', 'O que ele contratou por mês. É a entrega mínima.'],
+    ['pacote', 'Serviços contratados', 'entrega do mês', 'O que ele contratou por mês. É a entrega mínima.'],
     ['equipe', 'Equipe', 'quem cuida', 'Quem cuida da conta aqui na B7.'],
     ['obs', 'Observações', 'o combinado', 'O que foi combinado e o que é bom lembrar.']
   ];
   const FUNCOES = [['coordenador', 'Coordenação'], ['designer', 'Design'], ['videomaker', 'Vídeo']];
   const VAZIO = () => ({
     cliente: { nome: '', contrato: 'mensal', modo: 'linha', logo_url: null, logo_path: null },
-    interno: { cnpj: '', cidade: '', resp_nome: '', resp_cargo: '', resp_whatsapp: '', resp_email: '', combinado: '', inicio_servico: null, observacoes: '' },
+    interno: { contrato_meses: null, cnpj: '', cidade: '', resp_nome: '', resp_cargo: '', resp_whatsapp: '', resp_email: '', combinado: '', inicio_servico: null, observacoes: '' },
     perfil: { nicho: '', site: '', instagram: '' },
     marca: { cores: [], fonte_titulo: '', fonte_texto: '', link: '', estilo: '' },
     pacote: { pacote_id: null, nome: null, arquivado: false, ajustado: false, desde: null, itens: [], padrao: [] },
@@ -53,6 +53,27 @@ B7.Cadastro = (function () {
       (op.area ? '<textarea class="campo" id="' + id + '" rows="' + (op.linhas || 3) + '" maxlength="' + (op.max || 4000) + '" placeholder="' + esc(op.ph || '') + '">' + esc(valor) + '</textarea>'
         : '<input class="campo" id="' + id + '" type="' + (op.tipo || 'text') + '" maxlength="' + (op.max || 160) + '"' + (op.modo ? ' inputmode="' + op.modo + '"' : '') +
           (op.foco ? ' data-foco' : '') + ' placeholder="' + esc(op.ph || '') + '" value="' + esc(valor) + '">') + '</div>'; };
+
+  /* 4.88.2: contrato = avulso ou a duração (1, 3, 6, 12 meses ou mais). Por dentro continua mensal/avulso
+     (é o que o Panorama e a Gestão usam); a duração fica guardada à parte. */
+  const DURACOES = [['avulso', 'Avulso', 'um projeto pontual'], ['1', '1 mês', ''], ['3', '3 meses', ''], ['6', '6 meses', ''], ['12', '12 meses ou mais', '']];
+  const rotuloContrato = (contrato, meses) => contrato === 'avulso' ? 'Contrato avulso'
+    : meses ? 'Contrato de ' + (DURACOES.find(x => x[0] === String(meses)) || [, meses + ' meses'])[1] : 'Contrato sem duração definida';
+  function campoContrato(contrato, meses) {
+    const atual = contrato === 'avulso' ? 'avulso' : String(meses || '');
+    return '<div class="mb"><span class="rot">CONTRATO</span><div class="cd-opcoes" role="radiogroup" aria-label="Contrato">' + DURACOES.map(([v, r, sub]) =>
+      '<label class="cd-opcao"><input type="radio" name="cd-contrato" value="' + v + '"' + (atual === v ? ' checked' : '') + '><span><b>' + r + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + '</span></label>').join('') + '</div></div>';
+  }
+  /* como a B7 trabalha com o cliente: linha editorial e roteiros/trends. "Pauta semanal" saiu das opções;
+     só continua aparecendo para o cliente que já usa, para dar para desmarcar. */
+  const MODOS = [['linha', 'Linha editorial', 'planejamento do mês, conteúdos e calendário'], ['roteiros', 'Roteiros e trends', 'a B7 faz roteiros, gravações e trends'],
+    ['semana', 'Pauta semanal', 'conteúdo montado semana a semana']];
+  function campoModo(modo) {
+    const tem = String(modo || 'linha').split(',');
+    return '<div class="mb" data-campo-modo><span class="rot">COMO TRABALHAMOS COM ESTE CLIENTE <span class="leve">marque tudo o que vale</span></span><div class="cli-modos">' +
+      MODOS.filter(x => x[0] !== 'semana' || tem.includes('semana')).map(x => '<label class="cli-modo"><input type="checkbox" name="cli-modo" value="' + x[0] + '"' + (tem.includes(x[0]) ? ' checked' : '') + '>' +
+        '<span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></label>').join('') + '</div></div>';
+  }
 
   /* ---------------------------------------------------------------- campos de cada bloco */
   function campos(bloco, d, cx) {
@@ -75,7 +96,7 @@ B7.Cadastro = (function () {
           campo('E-MAIL', 'cd-remail', i.resp_email, { meio: true, ph: 'email@empresa.com', tipo: 'email' }) +
         '</div></fieldset>' +
         '<fieldset class="cd-grupo"><legend>Como a B7 trabalha com ele</legend>' +
-          (h.campoContrato ? h.campoContrato(c.contrato) : '') + (h.campoModo ? h.campoModo(c.modo) : '') + '</fieldset>';
+          campoContrato(c.contrato, i.contrato_meses) + campoModo(c.modo) + '</fieldset>';
     }
     if (bloco === 'marca') {
       const m = d.marca, h = D();
@@ -92,12 +113,12 @@ B7.Cadastro = (function () {
     }
     if (bloco === 'pacote') {
       const p = d.pacote, lista = (cx.pacotes || []).slice();
-      if (p.pacote_id && !lista.some(x => x.id === p.pacote_id)) lista.unshift({ id: p.pacote_id, nome: (p.nome || 'Pacote') + (p.arquivado ? ' (arquivado)' : ''), itens: p.padrao || [] });
-      return '<div class="mb"><label class="rot" for="cd-pacote">PACOTE</label>' +
-          '<select class="campo" id="cd-pacote"><option value="">Sem pacote por enquanto</option>' +
+      if (p.pacote_id && !lista.some(x => x.id === p.pacote_id)) lista.unshift({ id: p.pacote_id, nome: (p.nome || 'Serviços') + (p.arquivado ? ' (arquivado)' : ''), itens: p.padrao || [] });
+      return '<div class="mb"><label class="rot" for="cd-pacote">SERVIÇOS CONTRATADOS</label>' +
+          '<select class="campo" id="cd-pacote"><option value="">Nada definido por enquanto</option>' +
             lista.map(x => '<option value="' + esc(x.id) + '"' + (x.id === p.pacote_id ? ' selected' : '') + '>' + esc(x.nome) + ' — ' + B7.Pacotes.total(x) + ' no mês</option>').join('') + '</select>' +
           '<div class="gv-ajuda" data-cd-pc-resumo></div>' +
-          (lista.length ? '' : '<div class="gv-ajuda">Ainda não há pacotes. Eles são criados em Gestão → Pacotes.</div>') + '</div>' +
+          (lista.length ? '' : '<div class="gv-ajuda">Ainda não há serviços cadastrados. Eles são criados em Gestão → Serviços contratados.</div>') + '</div>' +
         '<div data-cd-pc-resto hidden>' +
           '<label class="pc-edicao cd-ajustar"><input type="checkbox" id="cd-ajustar"' + (p.ajustado ? ' checked' : '') + '> Ajustar as quantidades só para este cliente</label>' +
           '<div class="mb cd-ajuste" data-cd-ajuste hidden><span class="rot">POR MÊS, PARA ESTE CLIENTE</span><div data-cd-qtds></div><p class="ajuda" data-cd-total></p></div>' +
@@ -114,7 +135,7 @@ B7.Cadastro = (function () {
           return '<div class="mb cd-meio"><label class="rot" for="cd-eq-' + f + '">' + r.toUpperCase() + '</label><select class="campo" id="cd-eq-' + f + '"><option value="">Ninguém definido</option>' +
             l.map(x => '<option value="' + esc(x.id) + '"' + (at && at.id === x.id ? ' selected' : '') + '>' + esc(x.nome) + '</option>').join('') + '</select></div>'; }).join('') + '</div>';
     }
-    return campo('OBSERVAÇÕES', 'cd-obs', d.interno.observacoes, { area: true, linhas: 3, ph: 'Tom de voz, particularidades, o que é bom lembrar…' }) +
+    return campo('OBSERVAÇÕES', 'cd-obs', d.interno.observacoes, { area: true, linhas: 3, ph: 'Particularidades do cliente, o que é bom lembrar…' }) +
       campo('O QUE FOI COMBINADO COM O CLIENTE', 'cd-comb', d.interno.combinado, { area: true, linhas: 3, ph: 'Promessas, objetivos, o que ficou alinhado…' });
   }
 
@@ -124,14 +145,18 @@ B7.Cadastro = (function () {
     const q = s => raiz.querySelector(s), v = id => (q('#' + id) ? q('#' + id).value : '').trim();
     const falha = (msg, id) => ({ erro: msg, foco: q('#' + id) });
     if (bloco === 'cliente') {
-      const h = D(); if (h.ligarContrato) h.ligarContrato(raiz);
+      const h = D(), contrato = () => { const r = raiz.querySelector('input[name="cd-contrato"]:checked'); return r ? r.value : ''; };
+      /* avulso não tem linha editorial do mês: os modos de trabalho somem */
+      const pintaModo = () => { const m = q('[data-campo-modo]'); if (m) m.hidden = contrato() === 'avulso'; };
+      raiz.querySelectorAll('input[name="cd-contrato"]').forEach(r => { r.onchange = pintaModo; }); pintaModo();
       return () => {
         if (!v('cd-nome')) return falha('Dê um nome ao cliente', 'cd-nome');
         if (!validar.cnpj(v('cd-cnpj'))) return falha('O CNPJ precisa ter 14 números', 'cd-cnpj');
         if (!validar.whatsapp(v('cd-rwa'))) return falha('O WhatsApp precisa ter de 10 a 13 números, com DDD', 'cd-rwa');
         if (!validar.email(v('cd-remail'))) return falha('O e-mail não parece certo', 'cd-remail');
-        return { cliente: { nome: v('cd-nome'), contrato: h.lerContrato ? h.lerContrato(raiz) : d.cliente.contrato, modo: h.lerModo ? h.lerModo(raiz) : d.cliente.modo },
-          dados: { interno: { cnpj: v('cd-cnpj'), cidade: v('cd-cidade'), inicio_servico: v('cd-inicio') || null, resp_nome: v('cd-rnome'), resp_cargo: v('cd-rcargo'),
+        const ct = contrato();
+        return { cliente: { nome: v('cd-nome'), contrato: ct === 'avulso' ? 'avulso' : 'mensal', modo: h.lerModo ? h.lerModo(raiz) : d.cliente.modo },
+          dados: { interno: { contrato_meses: ct && ct !== 'avulso' ? +ct : null, cnpj: v('cd-cnpj'), cidade: v('cd-cidade'), inicio_servico: v('cd-inicio') || null, resp_nome: v('cd-rnome'), resp_cargo: v('cd-rcargo'),
                      resp_whatsapp: v('cd-rwa'), resp_email: v('cd-remail') },
                    perfil: { nicho: v('cd-nicho'), instagram: v('cd-insta'), site: v('cd-site') } } };
       };
@@ -169,7 +194,7 @@ B7.Cadastro = (function () {
       const total = () => { const it = B7.Pacotes.lerQtds(qtds); q('[data-cd-total]').textContent = B7.Pacotes.total({ itens: it }) + ' conteúdos por mês para este cliente.'; };
       const pintar = () => { const id = sel.value;
         resto.hidden = !id; cxAj.hidden = !id || !aj.checked;
-        q('[data-cd-pc-resumo]').textContent = id ? 'No pacote: ' + B7.Pacotes.resumo({ itens: padrao(id) }) + '.' : 'Sem pacote, o cliente fica fora do Contratado × entregue.'; };
+        q('[data-cd-pc-resumo]').textContent = id ? 'Inclui: ' + B7.Pacotes.resumo({ itens: padrao(id) }) + '.' : 'Sem serviços contratados definidos, o cliente fica fora do Contratado × entregue.'; };
       sel.onchange = () => { aj.checked = false; montarQtds(padrao(sel.value)); pintar(); };   /* outro pacote: o ajuste antigo não vale */
       aj.onchange = () => { if (aj.checked) montarQtds(sel.value === p0.pacote_id && p0.ajustado ? p0.itens : padrao(sel.value)); pintar(); };
       montarQtds(p0.ajustado ? p0.itens : padrao(sel.value)); pintar();
@@ -189,7 +214,7 @@ B7.Cadastro = (function () {
 
   /* trocar de pacote descarta o ajuste do cliente: pergunta antes */
   const confirmaTroca = lido => !lido.perdeAjuste ? Promise.resolve(true)
-    : B7.UI.confirmar({ titulo: 'Trocar o pacote?', texto: 'O ajuste deste cliente vai ser descartado.', rotulo: 'Trocar' });
+    : B7.UI.confirmar({ titulo: 'Trocar os serviços contratados?', texto: 'O ajuste deste cliente vai ser descartado.', rotulo: 'Trocar' });
   /* grava o que um bloco leu e devolve o cadastro novo */
   async function gravar(id, lido, d) {
     const patch = {};
@@ -284,7 +309,7 @@ B7.Cadastro = (function () {
   function faltando(bloco, d) {
     const i = d.interno, p = d.perfil, m = d.marca, f = [];
     const se = (v, n) => { if (!v) f.push(n); };
-    if (bloco === 'cliente') { se(p.nicho, 'área de atuação'); se(i.cnpj, 'CNPJ'); se(i.cidade, 'cidade'); se(i.inicio_servico, 'início do serviço'); se(p.instagram, 'Instagram'); se(p.site, 'site');
+    if (bloco === 'cliente') { se(d.cliente.contrato === 'avulso' || i.contrato_meses, 'duração do contrato'); se(p.nicho, 'área de atuação'); se(i.cnpj, 'CNPJ'); se(i.cidade, 'cidade'); se(i.inicio_servico, 'início do serviço'); se(p.instagram, 'Instagram'); se(p.site, 'site');
       se(i.resp_nome, 'responsável'); se(i.resp_whatsapp, 'WhatsApp do responsável'); se(i.resp_email, 'e-mail do responsável'); }
     if (bloco === 'marca') { se(d.cliente.logo_url, 'logo'); se((m.cores || []).length, 'cores'); se(m.fonte_titulo || m.fonte_texto, 'fontes'); se(m.link, 'material da marca'); }
     if (bloco === 'equipe') FUNCOES.forEach(([k, r]) => se(d.equipe[k], r.toLowerCase()));
@@ -301,7 +326,7 @@ B7.Cadastro = (function () {
         '<span class="cd-contato-bt">' +
           (wa ? '<a class="b fina contorno" href="https://wa.me/' + esc(wa.length <= 11 ? '55' + wa : wa) + '" target="_blank" rel="noopener noreferrer">' + esc(fmtFone(wa)) + '</a>' : '') +
           (i.resp_email ? '<a class="b fina contorno" href="mailto:' + esc(i.resp_email) + '">' + esc(i.resp_email) + '</a>' : '') + '</span></div>' : '';
-      return '<p class="cd-chips"><span class="cd-chip">' + (c.contrato === 'avulso' ? 'Contrato avulso' : 'Contrato mensal') + '</span>' +
+      return '<p class="cd-chips"><span class="cd-chip">' + rotuloContrato(c.contrato, i.contrato_meses) + '</span>' +
           String(modos || '').split(' · ').filter(Boolean).map(x => '<span class="cd-chip">' + esc(x) + '</span>').join('') + '</p>' +
         lista(linhaV('Área de atuação', txt(p.nicho)) + linhaV('CNPJ', txt(fmtCnpj(i.cnpj))) + linhaV('Cidade / estado', txt(i.cidade)) +
           linhaV('Início do serviço', txt(fmtData(i.inicio_servico))) +
@@ -319,21 +344,21 @@ B7.Cadastro = (function () {
     }
     if (bloco === 'pacote') {
       const p2 = d.pacote;
-      if (!p2.pacote_id) return convite('Sem pacote, o cliente fica fora do Contratado × entregue. Escolha o pacote para a Gestão acompanhar a entrega dele.');
+      if (!p2.pacote_id) return convite('Sem serviços contratados definidos, o cliente fica fora do Contratado × entregue. Escolha o que ele contratou para a Gestão acompanhar a entrega.');
       const total = (p2.itens || []).reduce((n, x) => n + (Number(x.qtd) || 0), 0);
-      return '<p class="cd-pc-nome"><b>' + esc(p2.nome || 'Pacote') + '</b>' + (p2.arquivado ? ' <span class="cd-tag">arquivado</span>' : '') + (p2.ajustado ? ' <span class="cd-tag on">ajustado para este cliente</span>' : '') + '</p>' +
+      return '<p class="cd-pc-nome"><b>' + esc(p2.nome || 'Serviços') + '</b>' + (p2.arquivado ? ' <span class="cd-tag">arquivado</span>' : '') + (p2.ajustado ? ' <span class="cd-tag on">ajustado para este cliente</span>' : '') + '</p>' +
         '<div class="cd-qtds" role="list" aria-label="Entrega do mês">' + (p2.itens || []).map(x => '<span class="cd-qt" role="listitem"><b>' + (Number(x.qtd) || 0) + '</b><small>' + esc(tiposPl(x.tipo)) + (x.tipo === 'Reel' && x.producao === 'edicao' ? ' · só edição' : '') + '</small></span>').join('') +
           '<span class="cd-qt total" role="listitem"><b>' + total + '</b><small>no mês</small></span></div>' +
-        (p2.ajustado ? '<p class="cd-pc-padrao">No pacote padrão: ' + esc(B7.Pacotes.resumo({ itens: p2.padrao })) + '.' + (d.pode_editar ? ' <button type="button" class="cb-link" data-cd-padrao>Voltar ao padrão</button>' : '') + '</p>' : '') +
+        (p2.ajustado ? '<p class="cd-pc-padrao">No padrão: ' + esc(B7.Pacotes.resumo({ itens: p2.padrao })) + '.' + (d.pode_editar ? ' <button type="button" class="cb-link" data-cd-padrao>Voltar ao padrão</button>' : '') + '</p>' : '') +
         '<p class="cd-pc-desde">' + (p2.desde ? 'Vale desde ' + esc(fmtData(p2.desde)) + '.' : 'Conta desde sempre.') + '</p>';
     }
     if (bloco === 'equipe' && !temAlgo('equipe', d)) return convite('Diga quem cuida deste cliente na B7: coordenação, design e vídeo.');
     if (bloco === 'equipe') return '<ul class="cd-eq">' + FUNCOES.map(([f, r]) => { const e = d.equipe[f];
       return '<li' + (e ? '' : ' class="sem"') + '><span class="cd-av" aria-hidden="true">' + (e ? esc(iniciais(e.nome)) : '') + '</span><span><b>' + (e ? esc(e.nome) : 'Ninguém definido') + '</b><small>' + r + '</small></span></li>'; }).join('') + '</ul>';
-    if (!temAlgo('obs', d)) return convite('Anote o tom de voz, as particularidades e o que ficou combinado com o cliente.');
+    if (!temAlgo('obs', d)) return convite('Anote as particularidades e o que ficou combinado com o cliente. O tom de voz fica na linha editorial.');
     return lista(linhaV('Observações', multi(i.observacoes)) + linhaV('O que foi combinado', multi(i.combinado))) + falta(faltando('obs', d));
   }
-  const temAlgo = (bloco, d) => bloco === 'cliente' ? faltando('cliente', d).length < 9
+  const temAlgo = (bloco, d) => bloco === 'cliente' ? faltando('cliente', d).filter(x => x !== 'duração do contrato').length < 9
     : bloco === 'marca' ? !!(d.cliente.logo_url || d.marca.cores.length || d.marca.fonte_titulo || d.marca.fonte_texto || d.marca.link || d.marca.estilo)
     : bloco === 'pacote' ? !!d.pacote.pacote_id : bloco === 'equipe' ? FUNCOES.some(([f]) => d.equipe[f]) : !!(d.interno.observacoes || d.interno.combinado);
 
@@ -383,8 +408,8 @@ B7.Cadastro = (function () {
         try { await navigator.clipboard.writeText(b.dataset.cdCopiar); B7.UI.toast(b.dataset.cdCopiar + ' copiado'); } catch (e) { B7.UI.toast('Não deu para copiar', { tipo: 'erro' }); } });
       const pad = alvo.querySelector('[data-cd-padrao]');
       if (pad) pad.onclick = async () => {
-        if (!(await B7.UI.confirmar({ titulo: 'Voltar ao pacote padrão?', texto: 'As quantidades ajustadas deste cliente serão descartadas.', rotulo: 'Voltar ao padrão' }))) return;
-        try { d = await B7.Save.acao(() => B7.DB.salvarCadastro(id, { pacote: { ajuste: null } }), 'Pacote de volta ao padrão'); pintar(); } catch (e) { avisoErro(e); }
+        if (!(await B7.UI.confirmar({ titulo: 'Voltar ao padrão?', texto: 'As quantidades ajustadas deste cliente serão descartadas.', rotulo: 'Voltar ao padrão' }))) return;
+        try { d = await B7.Save.acao(() => B7.DB.salvarCadastro(id, { pacote: { ajuste: null } }), 'Serviços de volta ao padrão'); pintar(); } catch (e) { avisoErro(e); }
       };
       const ed = alvo.querySelector('[data-cd-ed]');
       if (!ed) return;
