@@ -164,16 +164,16 @@ B7.Usuarios = (function () {
       '</div>' +
       '<div class="nu-papel-desc" id="' + px + '-tipo-desc"></div></section>';
   }
+  const FIN = '__financeiro';   /* botão especial na lista de funções: administrador + financeiro */
   function acessoInternoHTML(px) {
     return '<section class="ng-bloco ac-interno" id="' + px + '-interno"><h4>' + IC_ACESSO + 'Função e acesso</h4>' +
       '<label class="op-mini nu-chave-linha ac-admin" id="' + px + '-admin"><span>Administrador' +
         '<small>abre tudo e gerencia contas e configurações</small></span><input type="checkbox" role="switch"></label>' +
-      /* 4.86.0: Financeiro — administrador sem WhatsApp e sem Pessoas e acessos */
-      '<label class="op-mini nu-chave-linha ac-admin ac-fin" id="' + px + '-fin" hidden><span>Financeiro' +
-        '<small>administrador sem WhatsApp e sem Pessoas e acessos — acompanha a gestão (começa na Gestão)</small></span><input type="checkbox" role="switch"></label>' +
       '<label class="rot ac-rot">FUNÇÃO PRINCIPAL</label>' +
       '<div class="nu-papeis ac-funcoes' + (todasFuncoes().length > 3 ? ' ac-varias' : '') + '" id="' + px + '-funcao">' +
         todasFuncoes().map(f => '<button type="button" class="nu-papel' + (f.base ? ' ac-fn-pers' : '') + '" data-funcao="' + esc(f.id) + '"><i aria-hidden="true"></i><b>' + esc(f.rotulo) + '</b></button>').join('') +
+        /* 4.86.0: Financeiro — administrador da gestão, sem WhatsApp e sem Pessoas e acessos */
+        '<button type="button" class="nu-papel ac-fn-fin" data-funcao="' + FIN + '"><i aria-hidden="true"></i><b>Financeiro</b></button>' +
         '<button type="button" class="nu-papel" data-funcao=""><i aria-hidden="true"></i><b>Nenhuma</b></button>' +
       '</div>' +
       '<p class="gv-ajuda ac-ajuda" id="' + px + '-fdesc"></p>' +
@@ -295,16 +295,17 @@ B7.Usuarios = (function () {
       q('tipo-desc').textContent = E.tipo === 'cliente' ? 'Acompanha e aprova o que foi liberado, só no Portal.'
         : 'Pessoa da equipe: tem uma função e abre os módulos liberados.';
       q('interno').style.display = E.tipo === 'interno' ? '' : 'none';
-      const adm = q('admin'); adm.querySelector('input').checked = E.ehAdmin; adm.classList.toggle('on', E.ehAdmin);
-      const fin = q('fin'); if (fin) { fin.hidden = !E.ehAdmin; fin.querySelector('input').checked = E.ehAdmin && E.financeiro; fin.classList.toggle('on', E.ehAdmin && E.financeiro); }
+      const fin = E.ehAdmin && E.financeiro;
+      const adm = q('admin'); adm.querySelector('input').checked = E.ehAdmin && !fin; adm.classList.toggle('on', E.ehAdmin && !fin);
       q('funcao').classList.toggle('ac-tres', !E.ehAdmin);
       q('funcao').querySelectorAll('[data-funcao]').forEach(b => {
-        b.classList.toggle('on', b.dataset.funcao === E.funcao);
+        b.classList.toggle('on', b.dataset.funcao === FIN ? fin : (!fin && b.dataset.funcao === E.funcao));
         /* "Nenhuma" só existe para administrador */
-        if (b.dataset.funcao === '') b.hidden = !E.ehAdmin;
+        if (b.dataset.funcao === '') b.hidden = !E.ehAdmin || fin;
       });
       const fn = FUNCOES.find(x => x[0] === E.funcao), fp = personalizada(E.funcao);
-      q('fdesc').textContent = fp ? fp.rotulo + (fp.descricao ? ': ' + fp.descricao : '') + '. Função personalizada, com base em ' + rotuloFuncao(fp.base) +
+      q('fdesc').textContent = fin ? 'Financeiro: acompanha a gestão da agência — vê e mexe em tudo do sistema, menos o WhatsApp e Pessoas e acessos. Começa na Gestão.'
+        : fp ? fp.rotulo + (fp.descricao ? ': ' + fp.descricao : '') + '. Função personalizada, com base em ' + rotuloFuncao(fp.base) +
           ' (a base define o Painel e o trabalho que a pessoa pode receber).'
         : fn ? fn[1] + ': ' + fn[2] + '. Define o Painel e o trabalho que a pessoa pode receber.'
         : E.ehAdmin ? 'Sem função: só administra, sem Painel de produção.' : 'Escolha a função da pessoa.';
@@ -320,7 +321,7 @@ B7.Usuarios = (function () {
       const nSec = Object.keys(E.secundarias).length + E.cargos.length;
       const resumo = q('resumo');
       resumo.classList.toggle('pers', !E.ehAdmin && n > 0);
-      resumo.textContent = E.ehAdmin ? 'Administrador abre todos os módulos.'
+      resumo.textContent = fin ? 'Financeiro abre todos os módulos, menos o WhatsApp.' : E.ehAdmin ? 'Administrador abre todos os módulos.'
         : !E.funcao ? 'Os módulos aparecem depois de escolher a função.'
         : abertos + ' de ' + total + ' · padrão de ' + rotuloFuncao(E.funcao) +
           (nSec ? ' + ' + nSec + (nSec === 1 ? ' outra função' : ' outras funções') : '') +
@@ -343,15 +344,16 @@ B7.Usuarios = (function () {
     q('tipo').querySelectorAll('[data-tipo]').forEach(b => b.addEventListener('click', () => {
       E.tipo = b.dataset.tipo; pintar(); if (aoTipo) aoTipo(E.tipo);
     }));
-    if (q('fin')) q('fin').querySelector('input').addEventListener('change', ev => { E.financeiro = ev.target.checked; pintar(); });
     q('admin').querySelector('input').addEventListener('change', ev => {
       E.ehAdmin = ev.target.checked;
-      if (!E.ehAdmin) E.financeiro = false;
+      E.financeiro = false;
       if (!E.ehAdmin && !E.funcao) E.funcao = funcaoInicial || '';
       pintar();
     });
     q('funcao').querySelectorAll('[data-funcao]').forEach(b => b.addEventListener('click', () => {
       if (b.disabled) return;
+      if (b.dataset.funcao === FIN) { E.ehAdmin = true; E.financeiro = true; E.funcao = ''; return pintar(); }
+      if (E.financeiro) { E.financeiro = false; E.ehAdmin = false; }
       E.funcao = b.dataset.funcao; pintar();
     }));
     q('restaurar').addEventListener('click', () => { E.excecoes = {}; pintar(); });
@@ -1054,6 +1056,7 @@ B7.Usuarios = (function () {
       : (u.parceiro ? '<span class="lu4-tag lu6-parceiro" title="Freelancer ou parceiro de fora">Parceiro B7</span>' : '') +
         (idt.ehAdmin ? (u.superadmin === 'supremo' ? '<span class="lu4-tag lu3-p-super supremo" title="Acima de todos os administradores">Programador</span>'
           : u.superadmin === 'super' ? '<span class="lu4-tag lu3-p-super" title="Acima dos administradores">Super admin</span>'
+          : u.financeiro ? '<span class="lu4-tag lu3-p-admin" title="Administrador sem WhatsApp e sem Pessoas e acessos">Financeiro</span>'
           : '<span class="lu4-tag lu3-p-admin">Administrador</span>') : '') +
         (idt.funcao ? '<span class="lu4-tag lu3-p-' + esc(idt.funcao) + '">' + esc(rotuloFuncao(idt.funcao)) + '</span>' : '') +
         extras.map(f => '<span class="lu4-tag leve" title="Função extra">+ ' + esc(rotuloFuncaoExtra(f)) + '</span>').join('');
