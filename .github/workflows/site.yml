@@ -9,6 +9,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read   # 23/11/2026: para esperar o workflow sql do mesmo merge
   pages: write
   id-token: write
 concurrency:
@@ -20,6 +21,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # 23/11/2026: merge com migração nova — espera o banco (workflow sql); se ela falhou, não publica
+      - name: Esperar o banco
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/publicar/esperar-banco.sh "${{ github.event.before }}" "$GITHUB_SHA"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
