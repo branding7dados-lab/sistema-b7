@@ -23,10 +23,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { comCors, iguais } from '../_shared/cors.ts';
 import * as DF from './dois_fatores.ts';
 import * as EM from './email_modelo.ts';
+import * as PONTE from '../_shared/ponte.ts';
 
 /* Aparece na resposta do ping: dá para conferir qual versão está no ar
    sem precisar abrir o código publicado. */
-const VERSAO = '2026-10-28-entrar-como-cliente';
+const VERSAO = '2026-11-24-ponte-nucleo7';
 
 const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -495,10 +496,64 @@ Deno.serve(comCors(async (req) => {
     }
 
     // =================================================================
+    // 4.90.0: ENTRAR PELO NÚCLEO 7 (bilhete de entrada)
+    // O Núcleo 7 (função b7-bilhete) assina { e-mail, validade de 60 s, número
+    // único } com B7_PONTE_SEGREDO. Aqui: confere, marca como usado, acha a
+    // conta pelo e-mail e abre a sessão como o "entrar como". A verificação em
+    // 2 etapas do B7 continua valendo (o Núcleo 7 não pede código no login).
+    // =================================================================
+    if (acao === 'ponte') {
+      const c = await PONTE.conferir(String(corpo.bilhete || ''), Deno.env.get('B7_PONTE_SEGREDO') || '');
+      if (!c.ok) return json({ erro: PONTE.MOTIVO[c.motivo], motivo: c.motivo }, c.motivo === 'segredo' ? 503 : 401);
+      const { data: em } = await sb.from('perfis_email').select('perfil_id').eq('email', c.bilhete.e).maybeSingle();
+      const { data: p } = em ? await sb.from('perfis').select('id, username, nome, papel, estado').eq('id', em.perfil_id).maybeSingle() : { data: null };
+      if (!p) return json({ erro: PONTE.MOTIVO.sem_conta, motivo: 'sem_conta' }, 404);
+      if (p.papel === 'cliente') return json({ erro: PONTE.MOTIVO.cliente, motivo: 'cliente' }, 403);
+      if (p.estado !== 'ativa') return json({ erro: PONTE.MOTIVO.inativa, motivo: 'inativa' }, 403);
+      /* uma vez só: quem chegar depois com o mesmo bilhete é recusado */
+      const { data: novo, error: erroUso } = await sb.rpc('ponte_usar', { p_jti: c.bilhete.j, p_perfil: p.id });
+      if (erroUso) { console.error('b7-auth ponte: ponte_usar', erroUso.message); return json({ erro: 'Não foi possível entrar agora. Tente de novo.' }, 503); }
+      if (novo !== true) return json({ erro: PONTE.MOTIVO.usado, motivo: 'usado' }, 401);
+
+      const { data: link, error: erroLink } = await sb.auth.admin.generateLink({ type: 'magiclink', email: identidadeTecnica(p.id) });
+      const hash = link?.properties?.hashed_token;
+      if (erroLink || !hash) return json({ erro: 'Não foi possível abrir a sua conta.' }, 500);
+      const publico = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } });
+      const { data: aberta, error: erroSessao } = await publico.auth.verifyOtp({ token_hash: hash, type: 'magiclink' });
+      if (erroSessao || !aberta?.session) return json({ erro: 'Não foi possível abrir a sua conta.' }, 500);
+
+      const agora = new Date().toISOString();
+      await sb.from('perfis').update({ last_login_at: agora, last_seen_at: agora, ultimo_acesso: agora }).eq('id', p.id).then(() => {}, () => {});
+      try { await alertaAparelho(admin(), p.id, req); } catch (_e) { /* o aviso nunca impede de entrar */ }
+      /* aparelho de confiança: o navegador manda os que tem, por usuário; vale o desta conta */
+      const aps = corpo.aparelhos && typeof corpo.aparelhos === 'object' ? corpo.aparelhos as Record<string, unknown> : {};
+      const aparelho = aps[String(p.username || '').toLowerCase()];
+      let passo;
+      try { passo = await DF.depoisDaSenha(admin(), p.id, aberta.session, aparelho); }
+      catch (e) { return json({ erro: (e as Error).message || 'Não foi possível iniciar a verificação.' }, 503); }
+      /* com 2 etapas, a sessão só sai depois do código (login_2fa), como no login normal */
+      if (passo.pedir) return json({ ...passo.pedir, username: p.username });
+      await auditar(sb, { id: p.id, username: p.username }, 'entrar_pelo_nucleo7', { tipo: 'perfil', id: p.id, descricao: p.username }, {});
+      return json({
+        access_token: aberta.session.access_token,
+        refresh_token: aberta.session.refresh_token,
+        expires_at: aberta.session.expires_at,
+        username: p.username,
+        ...passo.extra
+      });
+    }
+
+    // =================================================================
     // LOGIN
     // =================================================================
     if (acao === 'login') {
-      const username = String(corpo.username || '').trim();
+      let username = String(corpo.username || '').trim();
+      /* 4.90.0: entrar com o e-mail também (o mesmo do Núcleo 7); o resto do login não muda */
+      if (username.includes('@')) {
+        const { data: porEmail } = await sb.from('perfis_email').select('perfil_id').eq('email', PONTE.normEmail(username)).maybeSingle();
+        const { data: dono } = porEmail ? await sb.from('perfis').select('username').eq('id', porEmail.perfil_id).maybeSingle() : { data: null };
+        if (dono && dono.username) username = dono.username;
+      }
       const senha = String(corpo.senha || '');
       const chave = username.toLowerCase();
 

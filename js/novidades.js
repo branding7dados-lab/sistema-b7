@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.90.0', versao: '4.90.0', em: '2026-11-25T10:00:00-03:00',
+    titulo: 'Entrar pelo Núcleo 7',
+    itens: ['Quem é da equipe pode entrar no B7 pela Central do Núcleo 7, sem digitar a senha de novo. A verificação em 2 etapas do B7 continua valendo.',
+      'O login do B7 aceita o e-mail, além do nome de usuário.',
+      'Pessoas e acessos: cada conta da equipe tem o campo E-mail (o mesmo do Núcleo 7), e "Ligar com o Núcleo 7" sugere o e-mail de cada pessoa pelo nome.'] },
   { id: 'v-4.89.0', versao: '4.89.0', em: '2026-11-24T21:00:00-03:00', rota: 'clientes',
     titulo: 'Puxar o cadastro do Núcleo 7',
     itens: ['Na aba Cadastro do cliente, "Puxar do Núcleo 7" traz o que já está preenchido lá: CNPJ, cidade, Instagram, site, logo, duração do contrato, o responsável e o que foi combinado. Você vê os dois lados e escolhe o que trazer.',

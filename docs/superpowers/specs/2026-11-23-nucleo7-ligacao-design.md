@@ -283,6 +283,8 @@ O **nome** do cliente não é trazido (é por ele que se casa). Campo do Núcleo
 - A **verificação em duas etapas do B7 continua valendo** para quem entra pelo Núcleo 7 (o Núcleo 7 não pede código
   no login).
 - O e-mail casa sem diferenciar maiúsculas e sem espaços.
+- O e-mail do bilhete vem **só do login conferido do Núcleo 7** (o JWT), nunca de uma tabela que a pessoa possa editar.
+- Mudar o e-mail de uma conta segue a hierarquia do "entrar como": administrador comum não muda o de super admin; o do admin supremo, só ele. Toda mudança fica na auditoria.
 - **Clientes do portal não entram pelo bilhete** nesta entrega: conta de cliente recebe "Entre pela tela do B7".
 - "Voltar à Central" dentro do B7 (Entrega 3) é só um link para a Central do Núcleo 7: quem veio de lá continua
   logado no Núcleo 7 naquele navegador.

@@ -2536,6 +2536,10 @@ B7.AJUDA_DADOS = [
       []
      ],
      [
+      "Entrar pelo Núcleo 7: quem é da equipe entra no B7 pela Central do Núcleo 7, sem digitar a senha de novo. Para isso, a conta precisa do mesmo e-mail do Núcleo 7: edite a pessoa e preencha \"E-MAIL\", ou clique em \"Ligar com o Núcleo 7\" para ver a sugestão de cada pessoa (achada pelo nome) e salvar todas de uma vez. Com o e-mail, a pessoa também pode entrar na tela do B7 digitando o e-mail no lugar do usuário.",
+      []
+     ],
+     [
       "Em \"Tipo de conta\", escolha \"Equipe B7\" ou \"Cliente\".",
       []
      ],

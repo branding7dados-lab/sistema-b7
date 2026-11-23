@@ -24,7 +24,7 @@ B7.Auth = (function () {
        3.0.0 → 3.0.1  correção ou ajuste
      A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
      programa do Windows. O aviso de atualização só compara se mudou. */
-  const VERSAO = '4.89.0';
+  const VERSAO = '4.90.0';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -211,6 +211,21 @@ B7.Auth = (function () {
     return concluirLogin(r);
   }
 
+  /* 4.90.0: ENTRAR PELO NÚCLEO 7. A Central de lá manda para #/ponte?b=<bilhete>
+     (o que vem depois do # não vai para servidor nenhum). O bilhete sai do
+     endereço na hora e vai para a b7-auth, que confere e abre a sessão. */
+  function lerBilhete() {
+    const m = /^#\/ponte\?(.*)$/.exec(location.hash || '');
+    if (!m) return null;
+    try { return new URLSearchParams(m[1]).get('b') || null; } catch (e) { return null; }
+  }
+  /* aparelhos de confiança guardados neste navegador, por usuário (pula o código das 2 etapas) */
+  function aparelhosLocais() {
+    const out = {};
+    try { Object.keys(localStorage).filter(k => k.startsWith('b7_aparelho_')).slice(0, 10).forEach(k => { out[k.slice(12)] = localStorage.getItem(k); }); } catch (e) {}
+    return out;
+  }
+
   /* zzz218: pedir para configurar a verificação depois de entrar (a administração exige) */
   let pedirConfigurar2fa = false;
   async function concluirLogin(r) {
@@ -365,7 +380,8 @@ B7.Auth = (function () {
      Só logo, título, usuário, senha e Entrar. Sem escolha de perfil,
      sem cadastro, sem e-mail, sem login social.
      ================================================================= */
-  function telaLogin(mensagem) {
+  function telaLogin(mensagem, op) {
+    op = op || {};
     const tela = document.createElement('div');
     tela.className = 'tela-login';
     tela.innerHTML =
@@ -394,11 +410,11 @@ B7.Auth = (function () {
         /* fundo escuro pede a versão branca da marca: a colorida some */
         '<img class="login-marca" src="assets/brand/logo-white.png" alt="Branding7">' +
         '<h1>Acessar a plataforma</h1>' +
-        '<p class="login-sub">Use o usuário e a senha que a Branding7 forneceu.</p>' +
+        '<p class="login-sub">Use o seu usuário (ou e-mail) e a senha do B7. Quem é da equipe também entra pela Central do Núcleo 7.</p>' +
 
         (mensagem ? '<div class="login-aviso">' + esc(mensagem) + '</div>' : '') +
 
-        '<label class="rot" for="lg-user">USUÁRIO</label>' +
+        '<label class="rot" for="lg-user">USUÁRIO OU E-MAIL</label>' +
         '<input class="campo" id="lg-user" name="b7-user" autocomplete="username" ' +
           'autocapitalize="none" spellcheck="false" required>' +
 
@@ -445,6 +461,20 @@ B7.Auth = (function () {
         voltar: u => { tela.remove(); const t = telaLogin(); const c = t.querySelector('#lg-user'); if (u && c) { c.value = u; setTimeout(() => t.querySelector('#lg-senha').focus(), 80); } } });
     };
 
+    const fim = () => {
+      tela.remove();
+      document.body.classList.remove('sem-sessao');
+      if (B7.aoEntrar) B7.aoEntrar();
+      if (pedirConfigurar2fa && B7.Seguranca) setTimeout(() => B7.Seguranca.configurar({ obrigatorio: true }), 1400);
+    };
+    /* 4.90.0: veio do Núcleo 7 e a conta tem 2 etapas: já abre no código */
+    if (op.etapa2 && B7.Seguranca) {
+      B7.Seguranca.passoLogin(form, op.etapa2, { username: op.etapa2.username || '',
+        concluir: async r2 => { await concluirLogin(r2); fim(); },
+        voltar: () => { tela.remove(); telaLogin(); } });
+      return tela;
+    }
+
     form.onsubmit = async e => {
       e.preventDefault();
       const u = campoUser.value.trim();
@@ -454,12 +484,7 @@ B7.Auth = (function () {
       erro.textContent = '';
       botao.disabled = true;
       botao.textContent = 'Entrando…';
-      const fim = () => {
-        tela.remove();
-        document.body.classList.remove('sem-sessao');
-        if (B7.aoEntrar) B7.aoEntrar();
-        if (pedirConfigurar2fa && B7.Seguranca) setTimeout(() => B7.Seguranca.configurar({ obrigatorio: true }), 1400);
-      };
+
       try {
         const res = await entrar(u, s);
         /* a senha não fica em memória depois de enviada */
@@ -513,7 +538,26 @@ B7.Auth = (function () {
       } catch (e) { avisoGoogle = 'Não foi possível entrar com o Google.'; }
     }
 
+    /* 4.90.0: veio da Central do Núcleo 7 com o bilhete */
+    let avisoPonte = '', etapa2Ponte = null;
+    const bilhete = lerBilhete();
+    if (bilhete) {
+      try { history.replaceState(null, '', location.pathname + location.search + '#/'); } catch (e) {}
+      anotar('ponte', 'bilhete recebido');
+      try {
+        const r = await B7.DB.chamarAuth({ acao: 'ponte', bilhete, aparelhos: aparelhosLocais() });
+        /* o bilhete é de outra pessoa (ou desta): a sessão que estava aqui não vale mais */
+        esquecerVolta();
+        if (r && r.precisa_2fa) { await B7.DB.encerrarSessao().catch(() => {}); etapa2Ponte = r; }
+        else await concluirLogin(r);
+      } catch (e) { avisoPonte = (e && e.message) || 'Não foi possível entrar pelo Núcleo 7. Entre com o seu usuário e senha.'; anotar('ponte', 'recusado'); }
+    }
+
     await carregar();
+    if (etapa2Ponte) {
+      sessao = null;
+      if (disponivel) { telaLogin('', { etapa2: etapa2Ponte }); return { sessao: null, exigido: true }; }
+    }
 
     /* Havia uma entrada na conta de outra pessoa guardada neste navegador.
        Se a sessão atual não é a dela (expirou, foi encerrada, ou já é a
@@ -527,7 +571,7 @@ B7.Auth = (function () {
       esquecerVolta();
     }
 
-    if (sessao) { anotar('iniciar', 'sessão válida — segue'); return { sessao, exigido: false }; }
+    if (sessao) { anotar('iniciar', 'sessão válida — segue'); if (avisoPonte && B7.UI) setTimeout(() => B7.UI.toast(avisoPonte, { tipo: 'erro' }), 1200); return { sessao, exigido: false }; }
 
     /* Sem o serviço de acesso publicado não existe login possível. Em vez
        de mostrar uma porta que não abre, deixamos o sistema como estava e
@@ -560,7 +604,7 @@ B7.Auth = (function () {
     }
 
     anotar('telaLogin', 'volta ' + voltas);
-    telaLogin(avisoGoogle || aviso);
+    telaLogin(avisoPonte || avisoGoogle || aviso);
     return { sessao: null, exigido: true, voltas };
   }
 
