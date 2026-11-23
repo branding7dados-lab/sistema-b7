@@ -7,7 +7,8 @@
 // por tempo real. Autenticação: cabeçalho x-b7-token (HMAC da chave do
 // Evolution, configurado pela wa-evolution ao ligar o webhook).
 // =====================================================================
-import { admin, gravar, garantirConversa, tokenWebhook, STATUS_ORDEM, evo, INST } from '../_shared/wa.ts';
+import { admin, gravar, garantirConversa, tokenWebhook, STATUS_ORDEM, evo, INST, numeros, instanciaDe } from '../_shared/wa.ts';
+import { instanciaDoEvento } from '../_shared/wa-numeros.ts';
 import { iguais } from '../_shared/cors.ts';
 import { aoReceber, relogio } from '../_shared/assistente.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
@@ -15,7 +16,7 @@ declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 const ok = (d: unknown = { ok: true }) => new Response(JSON.stringify(d), { headers: { 'Content-Type': 'application/json' } });
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'GET') return ok({ ok: true, versao: 'wa-entrada 2 (4.54.0)' });
+  if (req.method === 'GET') return ok({ ok: true, versao: 'wa-entrada 3 (4.84.0)' });
   if (req.method !== 'POST') return new Response('Use POST', { status: 405 });
   /* 4.79.2: relógio do Otto (pg_cron a cada 5 min) — segredo guardado só no banco (wa_relogio) */
   const rl = req.headers.get('x-b7-relogio');
@@ -37,13 +38,14 @@ Deno.serve(async (req: Request) => {
       tentarAgora = !ult || Date.now() - Date.parse(ult.em) > 15 * 60_000;
     }
     if (tentarAgora) {
-      const rr = await evo('/instance/restart/' + INST(), 'POST', undefined, 30000).catch(e => ({ ok: false, status: 0, dados: String(e) }));
-      const rr2 = rr.ok ? rr : await evo('/instance/restart/' + INST(), 'PUT', undefined, 30000).catch(e => ({ ok: false, status: 0, dados: String(e) }));
+      const instP = instanciaDe(await numeros.padrao());
+      const rr = await evo('/instance/restart/' + instP, 'POST', undefined, 30000).catch(e => ({ ok: false, status: 0, dados: String(e) }));
+      const rr2 = rr.ok ? rr : await evo('/instance/restart/' + instP, 'PUT', undefined, 30000).catch(e => ({ ok: false, status: 0, dados: String(e) }));
       await sbR.from('wa_assistente_registro').insert({ tipo: 'erro', autor: 'B7', pergunta: 'reiniciou a conexão do WhatsApp', resposta: JSON.stringify({ status: rr2.status, ok: rr2.ok, dados: rr2.dados }).slice(0, 500) }).then(() => null, () => null);
       if (corpoR?.reiniciar) return ok({ ok: rr2.ok, reinicio: rr2 });
     }
     let conexao = 'desconhecido';
-    try { const st = await evo('/instance/connectionState/' + INST(), 'GET', undefined, 10000); conexao = String(st.dados?.instance?.state || st.dados?.state || (st.ok ? '?' : 'erro ' + st.status)); } catch (e) { conexao = 'erro ' + String((e as Error)?.message || e).slice(0, 60); }
+    try { const st = await evo('/instance/connectionState/' + instanciaDe(await numeros.padrao()), 'GET', undefined, 10000); conexao = String(st.dados?.instance?.state || st.dados?.state || (st.ok ? '?' : 'erro ' + st.status)); } catch (e) { conexao = 'erro ' + String((e as Error)?.message || e).slice(0, 60); }
     try { await sbR.from('wa_assistente').update({ conexao_estado: conexao, conexao_conferida_em: new Date().toISOString() }).eq('id', 1); } catch (_e) { /* coluna nova pode faltar */ }
     if (conexao !== 'open') return ok({ ok: false, conexao, tarefas: ['parado: WhatsApp não está conectado'] });
     /* "open" mas o último envio deu "Connection Closed": não roda nada (nem marca bom dia/avisos como feitos) até
@@ -57,8 +59,16 @@ Deno.serve(async (req: Request) => {
 
   let corpo: any = null;
   try { corpo = await req.json(); } catch (_e) { return ok({ ok: false }); }
-  /* 4.83.3: chegou evento do WhatsApp = sessão viva de novo — o relógio volta a rodar */
-  if (/messages\.upsert|send\.message|messages_upsert|send_message/i.test(String(corpo?.event || ''))) admin().from('wa_assistente').update({ reiniciar_pedido: false }).eq('id', 1).eq('reiniciar_pedido', true).then(() => null, () => null);
+  /* 4.84.0: de qual número da B7 veio. Instância que não está cadastrada (ou desativada) não grava nada —
+     nunca cai no número padrão por engano. */
+  /* banco ainda sem a zzz383 (lista vazia): segue como antes, tudo no número de sempre */
+  const cadastrados = await numeros.todos();
+  const num = cadastrados.length ? await numeros.porInstancia(instanciaDoEvento(corpo)) : null;
+  if (cadastrados.length && (!num || !num.ativo)) return ok({ ok: true, ignorado: 'instância desconhecida' });
+  const ehPadrao = !num || num.padrao;
+  const doNum = (q: any) => num ? q.eq('numero_id', num.id) : q;
+  /* 4.83.3: chegou evento do WhatsApp = sessão viva de novo — o relógio volta a rodar (só o número do Otto) */
+  if (ehPadrao && /messages\.upsert|send\.message|messages_upsert|send_message/i.test(String(corpo?.event || ''))) admin().from('wa_assistente').update({ reiniciar_pedido: false }).eq('id', 1).eq('reiniciar_pedido', true).then(() => null, () => null);
   const evento = String(corpo?.event || '').toLowerCase().replace(/_/g, '.');
   const dados = corpo?.data;
   const sb = admin();
@@ -66,36 +76,36 @@ Deno.serve(async (req: Request) => {
   try {
     if (evento === 'messages.upsert' || evento === 'send.message') {
       const lista = Array.isArray(dados) ? dados : [dados];
-      for (const m of lista) await gravar(sb, m);
+      for (const m of lista) await gravar(sb, m, {}, {}, num);
       /* 4.54.0: o Assistente B7 avalia a mensagem em segundo plano (o webhook responde já) */
-      if (evento === 'messages.upsert') {
+      if (evento === 'messages.upsert' && ehPadrao) {
         const job = (async () => { for (const m of lista) { try { await aoReceber(sb, m); } catch (e) { console.error('assistente', (e as Error)?.message); } } })();
         try { EdgeRuntime?.waitUntil(job); } catch (_e) { /* segue */ }
       }
     } else if (evento === 'messages.set') {
       /* histórico em lote: guarda só as mais recentes de cada conversa */
       const lista = (Array.isArray(dados) ? dados : dados?.messages || []).slice(-800);
-      for (const m of lista) await gravar(sb, m, {}, { historico: true });
+      for (const m of lista) await gravar(sb, m, {}, { historico: true }, num);
     } else if (evento === 'messages.update') {
       const lista = Array.isArray(dados) ? dados : [dados];
       for (const u of lista) {
         const id = u?.keyId || u?.key?.id || u?.messageId;
         const st = u?.status;
         if (!id || !st) continue;
-        const { data: m } = await sb.from('wa_mensagens').select('status').eq('id', id).maybeSingle();
-        if (m && STATUS_ORDEM.indexOf(st) > STATUS_ORDEM.indexOf(m.status || '')) await sb.from('wa_mensagens').update({ status: st }).eq('id', id);
+        const { data: m } = await doNum(sb.from('wa_mensagens').select('status')).eq('id', id).maybeSingle();
+        if (m && STATUS_ORDEM.indexOf(st) > STATUS_ORDEM.indexOf(m.status || '')) await doNum(sb.from('wa_mensagens').update({ status: st })).eq('id', id);
       }
     } else if (evento === 'messages.delete') {
       const lista = Array.isArray(dados) ? dados : [dados];
-      for (const k of lista) { const id = k?.id || k?.key?.id; if (id) await sb.from('wa_mensagens').update({ apagada: true, texto: null }).eq('id', id); }
+      for (const k of lista) { const id = k?.id || k?.key?.id; if (id) await doNum(sb.from('wa_mensagens').update({ apagada: true, texto: null })).eq('id', id); }
     } else if (evento === 'groups.upsert' || evento === 'group.update' || evento === 'groups.update') {
       const lista = Array.isArray(dados) ? dados : [dados];
-      for (const g of lista) if (g?.id && /@g\.us$/.test(g.id)) await garantirConversa(sb, g.id, null, g.subject || null, g.pictureUrl || null);
+      for (const g of lista) if (g?.id && /@g\.us$/.test(g.id)) await garantirConversa(sb, g.id, null, g.subject || null, g.pictureUrl || null, num);
     } else if (evento === 'chats.upsert') {
       const lista = Array.isArray(dados) ? dados : [dados];
       for (const c of lista) {
         const jid = c?.remoteJid || c?.id;
-        if (jid && !/@g\.us$/.test(jid) && /@s\.whatsapp\.net$/.test(jid) && c?.name) await garantirConversa(sb, jid, c.name);
+        if (jid && !/@g\.us$/.test(jid) && /@s\.whatsapp\.net$/.test(jid) && c?.name) await garantirConversa(sb, jid, c.name, undefined, undefined, num);
       }
     }
   } catch (e) {
