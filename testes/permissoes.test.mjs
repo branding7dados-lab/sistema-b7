@@ -20,7 +20,8 @@ globalThis.B7 = {
     modulos: () => (sessao && sessao.modulos) || null,
     niveis: () => (sessao && sessao.niveis) || null,
     acoes: () => (sessao && sessao.acoes) || null,
-    ehEquipe: () => !!sessao && ['admin', 'coordenador'].includes(sessao.papel)
+    ehEquipe: () => !!sessao && ['admin', 'coordenador'].includes(sessao.papel),
+    ehFinanceiro: () => !!(sessao && sessao.financeiro)
   }
 };
 (0, eval)(codigo);
@@ -115,5 +116,17 @@ const telas = await Promise.all(['topo.js', 'design.js', 'video.js', 'kanban.js'
 const usadas = new Set(telas.flatMap(t => [...t.matchAll(/pode(?:Acao)?\((?:'[a-z]+',\s*)?'([a-z]+\.[a-z_]+)'\)/g)].map(m => m[1])));
 ok(usadas.size >= 6, 'telas usam ações');
 for (const a of usadas) ok(catalogo.has(a), 'ação "' + a + '" existe no banco');
+
+/* 4.86.0: Financeiro — administrador sem WhatsApp e sem Pessoas e acessos */
+como({ id: 'f', papel: 'admin', funcao: null, financeiro: true });
+for (const r of ['gestao', 'clientes', 'projetos', 'operacoes', 'kanban', 'design', 'video', 'calendario', 'jogos', 'config', 'importar'])
+  ok(P.podeRota(r), 'financeiro abre #/' + r);
+ok(!P.podeRota('whatsapp') && !P.podeRota('whatsapp/config'), 'financeiro não abre o WhatsApp');
+ok(!P.podeRota('usuarios'), 'financeiro não abre Usuários e acessos');
+ok(!P.podeConfig('usuarios') && P.podeConfig('aparencia') && P.podeConfig('banco'), 'financeiro: Configurações sem Pessoas e acessos');
+ok(!P.modulosEfetivos().includes('whatsapp') && P.modulosEfetivos().includes('operacoes'), 'financeiro: sem o módulo WhatsApp');
+ok(P.inicio() === '#/gestao', 'financeiro começa na Gestão');
+como({ id: 'a', papel: 'admin', funcao: null });
+ok(P.podeRota('whatsapp') && P.podeConfig('usuarios') && P.inicio() === '#/', 'admin pleno continua com tudo');
 
 console.log('permissões: ' + n + ' conferências ok');

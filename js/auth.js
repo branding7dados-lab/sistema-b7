@@ -24,7 +24,7 @@ B7.Auth = (function () {
        3.0.0 → 3.0.1  correção ou ajuste
      A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
      programa do Windows. O aviso de atualização só compara se mudou. */
-  const VERSAO = '4.85.3';
+  const VERSAO = '4.86.0';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -76,6 +76,7 @@ B7.Auth = (function () {
      simulação (simularPapel confere ehAdminReal); sair sempre limpa. */
   let simulacao = null;   /* { papel, funcoes_extra, funcao, modulos } */
   const ehAdminReal = () => !!(sessao && sessao.papel === 'admin');
+  const ehFinanceiro = () => !!(sessao && sessao.papel === 'admin' && sessao.financeiro);
   /* zzz225: super admin ('super' | 'supremo' | null) — da sessão de verdade, nunca da prévia */
   const superadmin = () => (sessao && sessao.eh_admin && (sessao.superadmin === 'super' || sessao.superadmin === 'supremo') ? sessao.superadmin : null);
   /* zzz68: a prévia também carrega a função e os módulos efetivos da
@@ -169,6 +170,8 @@ B7.Auth = (function () {
     try {
       const linhas = await B7.DB.minhaSessao();
       sessao = linhas || null;
+      /* 4.86.0: Financeiro — administrador sem WhatsApp e sem Pessoas e acessos (perfis.financeiro) */
+      if (sessao && sessao.papel === 'admin') { try { const rf = await B7.sb.rpc('sou_financeiro'); sessao.financeiro = !rf.error && !!rf.data; } catch (e) { sessao.financeiro = false; } }
       anotar('perfil', sessao ? ('ok: ' + sessao.username + '/' + sessao.papel) : 'vazio');
       /* zzz71: configuração do sistema que vale para todos (IA ligada?) —
          em segundo plano, não segura a abertura */
@@ -735,6 +738,6 @@ B7.Auth = (function () {
 
   return { VERSAO, anotar, rastro, iniciar, abrirPerfil, entrar, concluirLogin, sair, carregar, telaLogin, sessaoPersiste,
            usuario, papel, empresas, ehEquipe, ehAdmin, ehCliente, funcoesExtra, souVideomakerElegivel, funcao, modulos, niveis, acoes, atualizarAcesso,
-           ehAdminReal, superadmin, simularPapel, simularAcoes, encerrarSimulacao, emSimulacao,
+           ehAdminReal, ehFinanceiro, superadmin, simularPapel, simularAcoes, encerrarSimulacao, emSimulacao,
            entrarComo, voltarParaMinhaConta, naContaDeOutro, contaDeOrigem };
 })();

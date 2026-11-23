@@ -27,7 +27,7 @@ const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { sta
 const I = (n?: Numero | null) => instanciaDe(n);
 const doNum = (q: any, n?: Numero | null) => n?.id ? q.eq('numero_id', n.id) : q;
 
-type Perfil = { id: string; nome: string; papel: string; estado: string; eh_admin?: boolean; funcoes_adicionais?: string[] | null };
+type Perfil = { id: string; nome: string; papel: string; estado: string; eh_admin?: boolean; financeiro?: boolean; funcoes_adicionais?: string[] | null };
 async function quemChamou(req: Request): Promise<Perfil | null> {
   const cab = req.headers.get('authorization') || '';
   const token = cab.startsWith('Bearer ') ? cab.slice(7) : null;
@@ -35,11 +35,12 @@ async function quemChamou(req: Request): Promise<Perfil | null> {
   const sb = admin();
   const { data, error } = await sb.auth.getUser(token);
   if (error || !data.user) return null;
-  const { data: p } = await sb.from('perfis').select('id, nome, username, papel, estado, eh_admin, funcoes_adicionais').eq('id', data.user.id).maybeSingle();
+  const { data: p } = await sb.from('perfis').select('id, nome, username, papel, estado, eh_admin, financeiro, funcoes_adicionais').eq('id', data.user.id).maybeSingle();
   if (!p || p.estado !== 'ativa') return null;
   return { ...p, nome: (p.nome || '').trim() || p.username } as Perfil;
 }
-const ehAdmin = (p: Perfil) => p.papel === 'admin' || p.eh_admin === true;
+/* 4.86.0: o Financeiro é administrador, mas sem WhatsApp */
+const ehAdmin = (p: Perfil) => (p.papel === 'admin' || p.eh_admin === true) && !p.financeiro;
 /* banco ainda sem números cadastrados: a regra antiga (admin + videomakers) */
 async function podeVerAntigo(p: Perfil) {
   if (ehAdmin(p)) return true;
@@ -464,6 +465,8 @@ Deno.serve(comCors(async (req: Request) => {
   if (req.method !== 'POST') return json({ erro: 'Use POST.' }, 405);
   const p = await quemChamou(req);
   if (!p) return json({ erro: 'Entre no sistema de novo.' }, 401);
+  /* 4.86.0: o Financeiro não tem WhatsApp (nem com função de videomaker) */
+  if (p.financeiro) return json({ erro: 'O WhatsApp não faz parte do acesso do Financeiro.' }, 403);
   let c: Record<string, any> = {};
   try { c = await req.json(); } catch (_e) { /* vazio */ }
   const acao = String(c.acao || 'estado');

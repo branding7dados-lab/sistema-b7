@@ -10,7 +10,7 @@ export type Numero = {
   id: string; nome: string; instancia: string; cor: string; equipes: string[];
   padrao: boolean; ativo: boolean; numero: string | null; estado: string | null;
 };
-export type PerfilWa = { eh_admin?: boolean; papel?: string; estado?: string; funcoes_adicionais?: string[] | null };
+export type PerfilWa = { eh_admin?: boolean; papel?: string; estado?: string; financeiro?: boolean; funcoes_adicionais?: string[] | null };
 
 export const EQUIPES = ['videomaker', 'designer', 'coordenador'];
 
@@ -24,6 +24,7 @@ export function instanciaDoEvento(corpo: any): string {
 
 export function podeVerNumero(p: PerfilWa, n: Numero): boolean {
   if (!p || p.estado === 'inativa' || (p.estado && p.estado !== 'ativa')) return false;
+  if (p.financeiro) return false;   /* 4.86.0: o Financeiro nunca vê WhatsApp, nem com função de videomaker */
   if (p.eh_admin) return true;
   if (!n.ativo || p.papel === 'cliente') return false;
   const minhas = [p.papel || '', ...(p.funcoes_adicionais || [])];

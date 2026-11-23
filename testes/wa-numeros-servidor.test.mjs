@@ -59,5 +59,11 @@ ok(semTabela({ code: '42P01' }) && semTabela({ code: 'PGRST205' }) && !semTabela
   ok(!podeAcao('numero_salvar', vm, pad, pad) && podeAcao('numero_salvar', adm, pad, pad), 'cadastro de números só admin');
   ok(!podeAcao('enviar_texto', adm, N({ ativo: false }), pad), 'nem admin envia por número desativado'); }
 
+/* revisão 4.86.0: o Financeiro nunca vê WhatsApp, nem com função de videomaker */
+{ const pad = N({ id: 'v', equipes: ['videomaker'], padrao: true, ativo: true });
+  ok(!podeVerNumero({ eh_admin: true, papel: 'admin', estado: 'ativa', financeiro: true }, pad), 'financeiro (admin) não vê o número');
+  ok(!podeVerNumero({ papel: 'admin', estado: 'ativa', financeiro: true, funcoes_adicionais: ['videomaker'] }, pad), 'financeiro + videomaker não vê o número');
+  ok(!podeAcao('enviar_texto', { papel: 'admin', estado: 'ativa', financeiro: true, funcoes_adicionais: ['videomaker'] }, pad, pad), 'financeiro + videomaker não envia'); }
+
 if (falhas) { console.error(falhas + ' falha(s)'); process.exit(1); }
 console.log('wa-numeros (servidor): ok');

@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.86.0', versao: '4.86.0', em: '2026-11-23T22:00:00-03:00',
+    titulo: 'Usuário Financeiro',
+    itens: ['Novo tipo de acesso: Financeiro — administrador que acompanha a gestão (começa na Gestão) e mexe em tudo do sistema, menos o WhatsApp e Pessoas e acessos.',
+      'Em Pessoas e acessos, marque Administrador e depois Financeiro.'] },
   { id: 'v-4.85.3', versao: '4.85.3', em: '2026-11-23T21:00:00-03:00', rota: 'whatsapp',
     titulo: 'Grupos sem repetição',
     itens: ['Em Configurações do WhatsApp → Grupos e clientes, o grupo que está em mais de um número da B7 aparece uma vez só.',
