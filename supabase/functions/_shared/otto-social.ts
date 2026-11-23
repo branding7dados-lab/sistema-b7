@@ -7,7 +7,7 @@
 //  • tudo com moderação: não reage a tudo, espera entre uma e outra.
 // =====================================================================
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { evo, INST, gravar } from './wa.ts';
+import { evo, INST, gravar, waPadrao } from './wa.ts';
 import { gerar, provedorAtual } from './ia/servico.ts';
 
 const I = () => encodeURIComponent(INST());
@@ -56,7 +56,7 @@ export async function conhecerFigurinha(sb: SupabaseClient, raw: any, msgId: str
   await descrever(sb, k, msgId);
 }
 async function descrever(sb: SupabaseClient, k: string, msgId: string): Promise<string> {
-  const { data: m } = await sb.from('wa_mensagens').select('id, midia_path, midia_raw').eq('id', msgId).maybeSingle();
+  const { data: m } = await waPadrao(sb).mensagens().select('id, midia_path, midia_raw').eq('id', msgId).maybeSingle();
   if (!m) return '';
   const b64 = await bytesDaFigurinha(sb, m as any);
   if (!b64 || b64.length > 1_400_000) return '';
@@ -72,7 +72,7 @@ export async function mandarFigurinha(sb: SupabaseClient, jid: string, momento: 
   let { data: figs } = await sb.from('wa_figurinhas').select('sha, msg_id, descricao, usos').not('descricao', 'is', null).limit(80);
   if ((figs || []).length < 8) {
     /* aprende as figurinhas que já estão nas conversas (até 6 por vez) */
-    const { data: novas } = await sb.from('wa_mensagens').select('id, midia_raw').eq('tipo', 'figurinha').eq('apagada', false).order('criada_em', { ascending: false }).limit(60);
+    const { data: novas } = await waPadrao(sb).mensagens().select('id, midia_raw').eq('tipo', 'figurinha').eq('apagada', false).order('criada_em', { ascending: false }).limit(60);
     let n = 0;
     for (const m of (novas || []) as any[]) {
       if (n >= 6) break;
@@ -93,13 +93,13 @@ export async function mandarFigurinha(sb: SupabaseClient, jid: string, momento: 
   /* 4.66.4: pediram e a IA não escolheu → uma das menos usadas, para não repetir sempre a mesma */
   const f = i > 0 && i <= lista.length ? lista[i - 1] : pedida ? [...lista].sort((a, b) => (a.usos || 0) - (b.usos || 0))[Math.floor(Math.random() * Math.min(3, lista.length))] : null;
   if (!f) return false;
-  const { data: m } = await sb.from('wa_mensagens').select('id, midia_path, midia_raw').eq('id', f.msg_id).maybeSingle();
+  const { data: m } = await waPadrao(sb).mensagens().select('id, midia_path, midia_raw').eq('id', f.msg_id).maybeSingle();
   const b64 = m ? await bytesDaFigurinha(sb, m as any) : '';
   if (!b64) return false;
   const r = await evo('/message/sendSticker/' + I(), 'POST', { number: jid, sticker: b64 }, 45000);
   if (!r.ok) { console.log('otto figurinha', r.status); return false; }
   try { await gravar(sb, r.dados, { do_assistente: true, enviada_por_nome: 'Otto' } as any); } catch (_e) { /* o eco grava */ }
-  if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true }).eq('id', r.dados.key.id);
+  if (r.dados?.key?.id) await waPadrao(sb).mensagens().update({ do_assistente: true }).eq('id', r.dados.key.id);
   await sb.from('wa_figurinhas').update({ usos: (f.usos || 0) + 1 }).eq('sha', f.sha);
   return true;
 }
@@ -111,7 +111,7 @@ async function reagir(sb: SupabaseClient, m: any, emoji: string): Promise<boolea
   const rs: Record<string, string[]> = m.reacoes || {};
   for (const k of Object.keys(rs)) { rs[k] = rs[k].filter(x => x !== 'otto'); if (!rs[k].length) delete rs[k]; }
   (rs[emoji] = rs[emoji] || []).push('otto');
-  await sb.from('wa_mensagens').update({ reacoes: rs }).eq('id', m.id);
+  await waPadrao(sb).mensagens().update({ reacoes: rs }).eq('id', m.id);
   return true;
 }
 const jaReagiu = (m: any) => Object.values(m?.reacoes || {}).some((l: any) => Array.isArray(l) && l.includes('otto'));
@@ -131,10 +131,10 @@ export async function talvezReagir(sb: SupabaseClient, raw: any, texto: string, 
     if (RISADA.test(texto) || TEM_RISADA.test(texto)) {
       if (agora - await ultimaVez(sb, 'reacao', jid) < 90_000) return;
       let alvo: any = null;
-      if (ctx.stanzaId) ({ data: alvo } = await sb.from('wa_mensagens').select('id, jid, de_mim, autor_jid, reacoes, texto, tipo, do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle());
+      if (ctx.stanzaId) ({ data: alvo } = await waPadrao(sb).mensagens().select('id, jid, de_mim, autor_jid, reacoes, texto, tipo, do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle());
       if (!alvo) {
         const desde = new Date(agora - 4 * 60_000).toISOString();
-        const { data: ant } = await sb.from('wa_mensagens').select('id, jid, de_mim, autor_jid, reacoes, texto, tipo, do_assistente, criada_em')
+        const { data: ant } = await waPadrao(sb).mensagens().select('id, jid, de_mim, autor_jid, reacoes, texto, tipo, do_assistente, criada_em')
           .eq('jid', jid).neq('id', msgId).gte('criada_em', desde).order('criada_em', { ascending: false }).limit(12);
         alvo = ((ant || []) as any[]).find(m => !(m.tipo === 'texto' && (RISADA.test(m.texto || '') || TEM_RISADA.test(m.texto || ''))) && m.tipo !== 'figurinha' && !m.do_assistente) || null;
       }
@@ -158,7 +158,7 @@ export async function talvezReagir(sb: SupabaseClient, raw: any, texto: string, 
       'MENSAGEM: ' + texto.slice(0, 500), 8)).trim();
     const emoji = ['👏', '❤️', '🔥', '😂', '🙏', '🥳'].find(x => e.startsWith(x));
     if (!emoji) return;
-    const { data: m } = await sb.from('wa_mensagens').select('id, jid, de_mim, autor_jid, reacoes').eq('id', msgId).maybeSingle();
+    const { data: m } = await waPadrao(sb).mensagens().select('id, jid, de_mim, autor_jid, reacoes').eq('id', msgId).maybeSingle();
     if (m && !jaReagiu(m) && await reagir(sb, m, emoji))
       await sb.from('wa_assistente_registro').insert({ tipo: 'reacao', jid, autor: 'Otto', pergunta: texto.slice(0, 300), resposta: emoji });
   } catch (e) { console.log('otto reagir', String(e).slice(0, 200)); }
@@ -204,7 +204,7 @@ export async function decidirJeito(texto: string, chamadoPeloNome: boolean, conv
 }
 /** reage na própria mensagem (pelo id) */
 export async function reagirNaMensagem(sb: SupabaseClient, msgId: string, emoji: string, jid: string, texto: string): Promise<boolean> {
-  const { data: m } = await sb.from('wa_mensagens').select('id, jid, de_mim, autor_jid, reacoes').eq('id', msgId).maybeSingle();
+  const { data: m } = await waPadrao(sb).mensagens().select('id, jid, de_mim, autor_jid, reacoes').eq('id', msgId).maybeSingle();
   if (!m || jaReagiu(m)) return false;
   const ok = await reagir(sb, m, emoji);
   if (ok) await sb.from('wa_assistente_registro').insert({ tipo: 'reacao', jid, autor: 'Otto', pergunta: texto.slice(0, 300), resposta: emoji });

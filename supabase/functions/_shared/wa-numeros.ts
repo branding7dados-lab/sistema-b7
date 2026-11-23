@@ -52,3 +52,44 @@ export function criarResolvedor(buscar: () => Promise<Numero[]>, ttlMs = 30000) 
     limpar() { cache = null; }
   };
 }
+
+/** Acesso a wa_conversas / wa_mensagens PRESO a um número (o padrão, para o Otto).
+    select/update/delete ganham .eq('numero_id', id) logo depois; insert/upsert levam numero_id em cada linha
+    e o onConflict passa a incluir numero_id. Funciona com await e com .then(ok, erro), como o supabase-js.
+    Sem número (banco ainda sem a zzz383): passa direto, sem filtro. */
+export function waPadraoCom(sb: any, idPadrao: () => Promise<string | null>) {
+  const tab = (t: string) => {
+    const montar = (primeiro: string, args: any[]) => {
+      const cadeia: [string, any[]][] = [];
+      const rodar = async () => {
+        const id = await idPadrao();
+        let q = sb.from(t);
+        if (primeiro === 'insert' || primeiro === 'upsert') {
+          const com = (r: any) => id ? { ...r, numero_id: id } : r;
+          const linhas = Array.isArray(args[0]) ? args[0].map(com) : com(args[0]);
+          let o = args[1];
+          if (primeiro === 'upsert' && id && o?.onConflict && !/numero_id/.test(o.onConflict)) o = { ...o, onConflict: 'numero_id,' + o.onConflict };
+          q = o === undefined ? q[primeiro](linhas) : q[primeiro](linhas, o);
+        } else {
+          q = q[primeiro](...args);
+          if (id) q = q.eq('numero_id', id);
+        }
+        for (const [k, a] of cadeia) q = q[k](...a);
+        return await q;
+      };
+      const p: any = new Proxy({}, { get(_, k: string) {
+        if (k === 'then') return (ok?: any, erro?: any) => rodar().then(ok, erro);
+        if (k === 'catch') return (erro?: any) => rodar().catch(erro);
+        if (k === 'finally') return (f?: any) => rodar().finally(f);
+        return (...a: any[]) => { cadeia.push([k, a]); return p; };
+      } });
+      return p;
+    };
+    return {
+      select: (...a: any[]) => montar('select', a), update: (...a: any[]) => montar('update', a),
+      delete: (...a: any[]) => montar('delete', a), insert: (...a: any[]) => montar('insert', a),
+      upsert: (...a: any[]) => montar('upsert', a)
+    };
+  };
+  return { conversas: () => tab('wa_conversas'), mensagens: () => tab('wa_mensagens') };
+}

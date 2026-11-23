@@ -21,7 +21,7 @@
 // =====================================================================
 import { levarAntigosProDrive } from './drive.ts';
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { evo, INST, gravar, jidCanonico } from './wa.ts';
+import { evo, INST, gravar, jidCanonico, waPadrao } from './wa.ts';
 import { gerar, provedorAtual } from './ia/servico.ts';
 import { carregarContexto } from './ia/whatsapp.ts';
 import { fichaRoteiros, type Logo } from './ficha.ts';
@@ -144,7 +144,7 @@ async function semCodigos(sb: SupabaseClient, texto: string, marcados: string[])
   const { data } = await sb.from('wa_contatos').select('jid, nome').in('jid', jids);
   /* 4.74.0: sem nome no contato → pela equipe (número) → pelo nome com que a pessoa aparece nas mensagens */
   const cfgE = await lerConfig(sb).catch(() => null);
-  const { data: au } = await sb.from('wa_mensagens').select('autor_jid, autor_nome').in('autor_jid', jids).not('autor_nome', 'is', null).limit(50);
+  const { data: au } = await waPadrao(sb).mensagens().select('autor_jid, autor_nome').in('autor_jid', jids).not('autor_nome', 'is', null).limit(50);
   const valido = (n: unknown) => n && !/^\+?[\d\s-]+$/.test(String(n));
   for (const d of achados) {
     const c = ((data || []) as any[]).find(x => dig(x.jid) === d && valido(x.nome))?.nome
@@ -391,7 +391,7 @@ async function enviarUma(sb: SupabaseClient, cfg: Config, jid: string, texto: st
     return null;
   }
   try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava depois */ }
-  if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
+  if (r.dados?.key?.id) await waPadrao(sb).mensagens().update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
   return r.dados;
 }
 /** 4.68.0: "digitando…" já enquanto ele pensa (sem esperar) — a pessoa vê na hora que ele recebeu */
@@ -427,7 +427,7 @@ const temAudio = (raw: any) => !!desembrulhar(raw?.message)?.audioMessage;
 /** 4.58.5: o Otto falou nesta conversa há pouco? (aí um áudio sem o nome também é com ele) */
 async function conversandoComOtto(sb: SupabaseClient, jid: string, min = 30): Promise<boolean> {
   const desde = new Date(Date.now() - min * 60000).toISOString();
-  const { count } = await sb.from('wa_mensagens').select('id', { count: 'exact', head: true }).eq('jid', jid).eq('do_assistente', true).gte('criada_em', desde);
+  const { count } = await waPadrao(sb).mensagens().select('id', { count: 'exact', head: true }).eq('jid', jid).eq('do_assistente', true).gte('criada_em', desde);
   return (count || 0) > 0;
 }
 /** 4.67.2: no privado, o Otto entra? 'sim' | 'nao' | 'repetir' (chamaram e o áudio não deu pra entender). Puro: testável. */
@@ -444,10 +444,10 @@ export function deveResponderPrivado(o: { chamouNome: boolean; citouOtto: boolea
 const audiosDuvidosos = new Set<string>();
 async function ouvirEGuardar(sb: SupabaseClient, raw: any, id: string): Promise<string> {
   try {
-    const { data: ja } = await sb.from('wa_mensagens').select('texto').eq('id', id).maybeSingle();
+    const { data: ja } = await waPadrao(sb).mensagens().select('texto').eq('id', id).maybeSingle();
     if (ja?.texto && String(ja.texto).startsWith('🎤 ')) return String(ja.texto).slice(3);
     const { texto: t, duvidoso } = await transcrever(raw);
-    if (t) await sb.from('wa_mensagens').update({ texto: '🎤 ' + t.slice(0, 4000) }).eq('id', id);
+    if (t) await waPadrao(sb).mensagens().update({ texto: '🎤 ' + t.slice(0, 4000) }).eq('id', id);
     if (duvidoso) audiosDuvidosos.add(id);
     return t;
   } catch (e) { console.log('ouvir', String(e).slice(0, 200)); return ''; }
@@ -511,7 +511,7 @@ export async function pensar(sb: SupabaseClient, cfg: Config, conv: { jid: strin
   modo: 'marcado' | 'sem_marcacao' | 'ordem' | 'fora_horario'): Promise<{ saida: Saida; resposta: string; perguntaEquipe: string; mencionar: string[] }> {
   const jid = conv.jid;
   const g = (cfg.grupos || {})[jid] || {};
-  const { data: msgs } = await sb.from('wa_mensagens').select('de_mim, autor_nome, enviada_por_nome, texto, tipo, criada_em, do_assistente')
+  const { data: msgs } = await waPadrao(sb).mensagens().select('de_mim, autor_nome, enviada_por_nome, texto, tipo, criada_em, do_assistente')
     .eq('jid', jid).eq('nota', false).order('criada_em', { ascending: false }).limit(25);
   const historico = (msgs || []).reverse().filter(m => (m.texto || '').trim() || m.tipo !== 'texto').map(m => {
     const quem = m.de_mim ? '[EQUIPE] ' + (m.do_assistente ? cfg.nome : (m.enviada_por_nome || 'Branding7')) : (m.autor_nome || 'Cliente');
@@ -596,7 +596,7 @@ function emSegundoPlano(nome: string, p: Promise<unknown>) {
    ===================================================================== */
 export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Promise<number> {
   const agora = Date.now();
-  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, ultima_em, vez_avaliada_em, esperando_desde, aguardando_cliente_desde')
+  const { data: convs } = await waPadrao(sb).conversas().select('jid, nome, cliente_id, ultima_em, vez_avaliada_em, esperando_desde, aguardando_cliente_desde')
     .not('cliente_id', 'is', null).eq('arquivada', false).not('ultima_em', 'is', null)
     .lt('ultima_em', new Date(agora - 2 * 60_000).toISOString()).gt('ultima_em', new Date(agora - 14 * 86400_000).toISOString())
     .order('ultima_em', { ascending: false }).limit(60);
@@ -607,11 +607,11 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
   for (const c of pendentes) {
     /* pega a vez desta conversa (dois relógios ao mesmo tempo não avaliam duas vezes) */
     const marca = new Date().toISOString();
-    let q = sb.from('wa_conversas').update({ vez_avaliada_em: marca }).eq('jid', c.jid);
+    let q = waPadrao(sb).conversas().update({ vez_avaliada_em: marca }).eq('jid', c.jid);
     q = c.vez_avaliada_em ? q.eq('vez_avaliada_em', c.vez_avaliada_em) : q.is('vez_avaliada_em', null);
     const { data: vez } = await q.select('jid');
     if (!vez?.length) continue;
-    const { data: ms } = await sb.from('wa_mensagens').select('de_mim, do_assistente, autor_jid, autor_nome, enviada_por_nome, tipo, texto, criada_em')
+    const { data: ms } = await waPadrao(sb).mensagens().select('de_mim, do_assistente, autor_jid, autor_nome, enviada_por_nome, tipo, texto, criada_em')
       .eq('jid', c.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(16);
     const lista = ((ms || []) as any[]).reverse();
     if (!lista.length) continue;
@@ -641,7 +641,7 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
     const outra = j.outra_equipe ? outraEquipeDe(cfg, j.outra_equipe) : null;
     const v2 = outra ? 'ninguem' : v;
     const motivo = (outra ? 'É com a ' + outra + ': ' : '') + String(j.motivo || '').slice(0, 110);
-    await sb.from('wa_conversas').update({ vez: v2, vez_motivo: motivo.trim() || null, vez_assunto: j.assunto ? String(j.assunto).slice(0, 20) : null,
+    await waPadrao(sb).conversas().update({ vez: v2, vez_motivo: motivo.trim() || null, vez_assunto: j.assunto ? String(j.assunto).slice(0, 20) : null,
       esperando_desde: outra ? null : desdeCli, aguardando_cliente_desde: outra ? null : desdeEq }).eq('jid', c.jid);
     feitas++;
   }
@@ -654,7 +654,7 @@ export async function arquivarParadas(sb: SupabaseClient): Promise<number> {
   const { data: w } = await sb.from('wa_config').select('auto_arquivar_dias').eq('id', 1).maybeSingle();
   const dias = Number(w?.auto_arquivar_dias) || 0;
   if (dias < 1) return 0;
-  const { data } = await sb.from('wa_conversas').update({ arquivada: true, arquivada_auto: true })
+  const { data } = await waPadrao(sb).conversas().update({ arquivada: true, arquivada_auto: true })
     .eq('arquivada', false).eq('fixada', false).eq('nao_lidas', 0).is('esperando_desde', null)
     .lt('ultima_em', new Date(Date.now() - dias * 86400_000).toISOString()).select('jid');
   return (data || []).length;
@@ -698,7 +698,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   if (key.fromMe) {
     const assin = '*' + String(cfg.nome || 'Otto').split(/\s+/)[0].toLowerCase() + ':*';
     if (texto.toLowerCase().startsWith(assin)) return;
-    const { data: minha } = await sb.from('wa_mensagens').select('do_assistente').eq('id', id).maybeSingle();
+    const { data: minha } = await waPadrao(sb).mensagens().select('do_assistente').eq('id', id).maybeSingle();
     if (minha?.do_assistente) return;
   }
   const numero = await meuNumero();
@@ -734,10 +734,10 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
        se citarem uma mensagem dele, ou se a mensagem anterior da conversa for dele (até 10 min): continuação. */
     const nome = chamouPeloNome(cfg, texto);
     let citouOtto = false;
-    if (!nome && ctx.stanzaId) { const { data: c } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle(); citouOtto = !!c?.do_assistente; }
+    if (!nome && ctx.stanzaId) { const { data: c } = await waPadrao(sb).mensagens().select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle(); citouOtto = !!c?.do_assistente; }
     let anterior: { doOtto: boolean; em: string } | null = null;
     if (!nome && !citouOtto) {
-      const { data: ant } = await sb.from('wa_mensagens').select('do_assistente, criada_em').eq('jid', jid).eq('nota', false).neq('id', id).order('criada_em', { ascending: false }).limit(1).maybeSingle();
+      const { data: ant } = await waPadrao(sb).mensagens().select('do_assistente, criada_em').eq('jid', jid).eq('nota', false).neq('id', id).order('criada_em', { ascending: false }).limit(1).maybeSingle();
       if (ant) anterior = { doOtto: !!ant.do_assistente, em: String(ant.criada_em) };
     }
     const decisao = deveResponderPrivado({ chamouNome: nome, citouOtto, anterior, porAudio, duvidoso: porAudio && audiosDuvidosos.has(id) });
@@ -747,7 +747,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
     if (key.fromMe && !comigo && !nome && !citouOtto) return;
     if (decisao === 'repetir') { await enviar(sb, cfg, jid, 'Não entendi bem o áudio 😅 Pode repetir ou mandar por escrito?', { quoted: { key, message: { conversation: '🎤 Áudio' } } }); return; }
     if (pessoa) { await consultaInterna(sb, cfg, raw, texto, jid); return; }        /* equipe (ou você no "conversar comigo"): pergunta interna */
-    const { data: convP } = await sb.from('wa_conversas').select('jid, nome, cliente_id').eq('jid', jid).maybeSingle();
+    const { data: convP } = await waPadrao(sb).conversas().select('jid, nome, cliente_id').eq('jid', jid).maybeSingle();
     const conv = convP || { jid, nome: String(raw.pushName || ''), cliente_id: null };
     const modoP = key.fromMe ? 'ordem' : dentroDoHorario(cfg.horario) ? 'marcado' : 'fora_horario';
     const autorP = key.fromMe ? 'Você' : String(raw.pushName || 'contato');
@@ -763,7 +763,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   /* ---- grupo ---- */
   /* 4.56.3: você, pelo celular conectado, chamando o Otto num grupo = uma ordem */
   if (key.fromMe && !chamouPeloNome(cfg, texto)) return;
-  const { data: conv } = await sb.from('wa_conversas').select('jid, nome, cliente_id').eq('jid', jid).maybeSingle();
+  const { data: conv } = await waPadrao(sb).conversas().select('jid, nome, cliente_id').eq('jid', jid).maybeSingle();
   const g = (cfg.grupos || {})[jid] || {};
   if (!conv?.cliente_id || g.desligado) return;
   const autorJid = String(key.participant || raw.participant || '');
@@ -779,7 +779,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
     || chamouPeloNome(cfg, texto);
   /* responder citando o Otto só vale como chamado para o CLIENTE (modo atender); a equipe precisa chamar pelo nome (4.67.5) */
   if (!fuiMarcado && ctx.stanzaId && !daCasa) {
-    const { data: citada } = await sb.from('wa_mensagens').select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle();
+    const { data: citada } = await waPadrao(sb).mensagens().select('do_assistente').eq('id', String(ctx.stanzaId)).maybeSingle();
     fuiMarcado = !!citada?.do_assistente;
   }
   if (!texto) return;
@@ -791,7 +791,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   } else if (!fuiMarcado) {
     if (!cfg.sem_marcacao || marcados.size) return;
     const desde = new Date(Date.now() - Math.max(1, cfg.pausa_min || 30) * 60000).toISOString();
-    const { count } = await sb.from('wa_mensagens').select('id', { count: 'exact', head: true }).eq('jid', jid).eq('de_mim', true).eq('do_assistente', false).gte('criada_em', desde);
+    const { count } = await waPadrao(sb).mensagens().select('id', { count: 'exact', head: true }).eq('jid', jid).eq('de_mim', true).eq('do_assistente', false).gte('criada_em', desde);
     if ((count || 0) > 0) return;
     modo = 'sem_marcacao';
   }
@@ -799,7 +799,7 @@ export async function aoReceber(sb: SupabaseClient, raw: any): Promise<void> {
   /* 4.78.4 (QA): fora do horário, o aviso "o time já encerrou" vai UMA vez — não a cada mensagem, e nunca para um "ok" */
   if (modo === 'fora_horario') {
     if (ehSoSocial(texto)) return;
-    const { count } = await sb.from('wa_mensagens').select('id', { count: 'exact', head: true }).eq('jid', jid).eq('do_assistente', true).gte('criada_em', new Date(Date.now() - 8 * 3600_000).toISOString());
+    const { count } = await waPadrao(sb).mensagens().select('id', { count: 'exact', head: true }).eq('jid', jid).eq('do_assistente', true).gte('criada_em', new Date(Date.now() - 8 * 3600_000).toISOString());
     if ((count || 0) > 0) return;
   }
 
@@ -878,7 +878,7 @@ export async function responderDuvida(sb: SupabaseClient, cfg: Config | null, re
 export async function testar(sb: SupabaseClient, jid: string, texto: string, autor: string, comoEquipe: boolean) {
   const cfg = await lerConfig(sb);
   if (!cfg) return { erro: 'Assistente não configurado.' };
-  const { data: conv } = await sb.from('wa_conversas').select('jid, nome, cliente_id').eq('jid', jid).maybeSingle();
+  const { data: conv } = await waPadrao(sb).conversas().select('jid, nome, cliente_id').eq('jid', jid).maybeSingle();
   if (!conv) return { erro: 'Grupo não encontrado.' };
   const modo = comoEquipe ? 'ordem' : dentroDoHorario(cfg.horario) ? 'marcado' : 'fora_horario';
   if (modo === 'fora_horario' && ehSoSocial(texto)) return { resposta: '(ficaria quieto: é só um "ok" fora do horário)', perguntaEquipe: null, modo, provedor: null, ms: 0 };
@@ -920,13 +920,13 @@ const PEDE_PENDENCIAS = /pend[eê]n|esperando|sem resposta|quem (ta|esta|tá|est
 /** 4.68.0: só os nomes dos clientes esperando (barato) */
 async function nomesEsperando(sb: SupabaseClient, cfg: Config): Promise<string[]> {
   const espera = Math.max(5, cfg.resumo_espera_min || 30);
-  const { data } = await sb.from('wa_conversas').select('nome, cliente_id, esperando_desde').eq('tipo', 'grupo').not('cliente_id', 'is', null).eq('arquivada', false)
+  const { data } = await waPadrao(sb).conversas().select('nome, cliente_id, esperando_desde').eq('tipo', 'grupo').not('cliente_id', 'is', null).eq('arquivada', false)
     .not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - espera * 60000).toISOString()).order('esperando_desde', { ascending: true }).limit(15);
   return ((data || []) as any[]).map(c => c.nome + ' (há ' + ha(c.esperando_desde) + ')');
 }
 async function coletarEsperando(sb: SupabaseClient, cfg: Config, clienteIds?: string[]) {
   const espera = Math.max(5, cfg.resumo_espera_min || 30);
-  let q: any = sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde').eq('tipo', 'grupo').not('cliente_id', 'is', null).eq('arquivada', false);
+  let q: any = waPadrao(sb).conversas().select('jid, nome, cliente_id, esperando_desde').eq('tipo', 'grupo').not('cliente_id', 'is', null).eq('arquivada', false);
   if (clienteIds?.length) q = q.in('cliente_id', clienteIds);
   else q = q.not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - espera * 60000).toISOString());
   const { data: convs } = await q.order('esperando_desde', { ascending: true }).limit(15);
@@ -936,8 +936,8 @@ async function coletarEsperando(sb: SupabaseClient, cfg: Config, clienteIds?: st
   const nomeCli = new Map(((cls || []) as any[]).map((x: any) => [x.id, x.nome]));
   /* 4.68.0: as consultas de cada grupo em paralelo (antes, uma depois da outra) */
   const msgsPorConv = await Promise.all(((convs || []) as any[]).map(async (c: any) => {
-    const { data: ult } = await sb.from('wa_mensagens').select('criada_em').eq('jid', c.jid).eq('de_mim', true).eq('nota', false).order('criada_em', { ascending: false }).limit(1);
-    let mq: any = sb.from('wa_mensagens').select('autor_nome, texto, tipo, criada_em').eq('jid', c.jid).eq('de_mim', false).order('criada_em', { ascending: false }).limit(clienteIds ? 15 : 10);
+    const { data: ult } = await waPadrao(sb).mensagens().select('criada_em').eq('jid', c.jid).eq('de_mim', true).eq('nota', false).order('criada_em', { ascending: false }).limit(1);
+    let mq: any = waPadrao(sb).mensagens().select('autor_nome, texto, tipo, criada_em').eq('jid', c.jid).eq('de_mim', false).order('criada_em', { ascending: false }).limit(clienteIds ? 15 : 10);
     if (!clienteIds && ult?.[0]) mq = mq.gt('criada_em', ult[0].criada_em);
     return (await mq).data;
   }));
@@ -1037,7 +1037,7 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
      da conversa ("manda o Kaique fazer AGORA"). Mas se for para ele ficar quieto ("fica na sua", "ninguém te
      chamou"), ele fica (4.67.5). */
   if (!marcado && ctx.stanzaId) {
-    const { data: c } = await sb.from('wa_mensagens').select('do_assistente, criada_em').eq('id', String(ctx.stanzaId)).maybeSingle();
+    const { data: c } = await waPadrao(sb).mensagens().select('do_assistente, criada_em').eq('id', String(ctx.stanzaId)).maybeSingle();
     if (c?.do_assistente && Date.now() - new Date(c.criada_em).getTime() <= 30 * 60_000) {
       if (MANDA_CALAR.test(semAcento(texto))) { if (key.id) await reagirNaMensagem(sb, String(key.id), '🤐', cfg.grupo_equipe!, texto); return; }
       marcado = true;
@@ -1064,7 +1064,7 @@ async function noGrupoEquipe(sb: SupabaseClient, cfg: Config, raw: any, texto: s
   texto = junto;
   /* 4.59.3: pelo teor da mensagem — só reagir, responder, os dois, ou ignorar (falaram DO Otto, não com ele) */
   if (key.id) {
-    const { data: h } = await sb.from('wa_mensagens').select('autor_nome, do_assistente, de_mim, texto').eq('jid', cfg.grupo_equipe!).order('criada_em', { ascending: false }).limit(8);
+    const { data: h } = await waPadrao(sb).mensagens().select('autor_nome, do_assistente, de_mim, texto').eq('jid', cfg.grupo_equipe!).order('criada_em', { ascending: false }).limit(8);
     const conversa = ((h || []) as any[]).reverse().filter(m => m.texto).map(m => (m.do_assistente ? cfg.nome : m.autor_nome || 'alguém') + ': ' + String(m.texto).slice(0, 200)).join('\n');
     const j = await decidirJeito(texto, chamouPeloNome(cfg, texto), conversa);
     const semEmoji = cfg.emojis === 'nada';   /* 4.73.0: sem emoji = sem reação também */
@@ -1082,9 +1082,9 @@ async function juntarSequencia(sb: SupabaseClient, cfg: Config, raw: any, texto:
   const autor = String(key.participant || raw?.participant || '');
   avisarPensando(cfg.grupo_equipe!, 'composing', 8000);
   await dorme(2800);
-  const { data: eu } = await sb.from('wa_mensagens').select('criada_em, autor_jid').eq('id', String(key.id)).maybeSingle();
+  const { data: eu } = await waPadrao(sb).mensagens().select('criada_em, autor_jid').eq('id', String(key.id)).maybeSingle();
   if (!eu) return texto;
-  let q = sb.from('wa_mensagens').select('id, texto, tipo, criada_em, de_mim, autor_jid').eq('jid', cfg.grupo_equipe!).eq('nota', false)
+  let q = waPadrao(sb).mensagens().select('id, texto, tipo, criada_em, de_mim, autor_jid').eq('jid', cfg.grupo_equipe!).eq('nota', false)
     .gt('criada_em', eu.criada_em).lt('criada_em', new Date(new Date(eu.criada_em).getTime() + 25_000).toISOString()).order('criada_em', { ascending: true }).limit(5);
   q = key.fromMe ? q.eq('de_mim', true).eq('do_assistente', false) : q.eq('autor_jid', eu.autor_jid || autor);
   const { data: depois } = await q;
@@ -1120,11 +1120,11 @@ export function podeVariarEmAudio(o: { resposta: string; pedido: string; acoes: 
 async function formatoVariado(sb: SupabaseClient, cfg: Config, jid: string, resposta: string, pedido: string, acoes: any[], ehCliente: boolean): Promise<'texto' | 'audio' | 'misto'> {
   const chance = Number(cfg.audio_variar) || 0, cada = Number(cfg.audio_cada) || 0;
   if ((!(chance > 0) && cada < 2) || ehCliente || (cfg as any).responder_audio === false) return 'texto';
-  const { data: ultimas } = await sb.from('wa_mensagens').select('tipo').eq('jid', jid).eq('do_assistente', true).order('criada_em', { ascending: false }).limit(12);
+  const { data: ultimas } = await waPadrao(sb).mensagens().select('tipo').eq('jid', jid).eq('do_assistente', true).order('criada_em', { ascending: false }).limit(12);
   const ult = ((ultimas || []) as any[])[0];
   const iA = ((ultimas || []) as any[]).findIndex(m => m.tipo === 'audio');
   const textosDesdeAudio = ((ultimas || []) as any[]).slice(0, iA < 0 ? 12 : iA).filter(m => m.tipo === 'texto').length;
-  const { data: aud } = await sb.from('wa_mensagens').select('criada_em').eq('jid', jid).eq('do_assistente', true).eq('tipo', 'audio').order('criada_em', { ascending: false }).limit(1).maybeSingle();
+  const { data: aud } = await waPadrao(sb).mensagens().select('criada_em').eq('jid', jid).eq('do_assistente', true).eq('tipo', 'audio').order('criada_em', { ascending: false }).limit(1).maybeSingle();
   const min = aud?.criada_em ? (Date.now() - new Date(aud.criada_em).getTime()) / 60000 : 1e9;
   const sorteio = Math.random();
   const base = { acoes, ehCliente, chance, sorteio, ultimoFoiAudio: ult?.tipo === 'audio', minDesdeAudio: min, cada, textosDesdeAudio };
@@ -1149,7 +1149,7 @@ async function responderMisto(sb: SupabaseClient, cfg: Config, jid: string, resp
 async function textoCitado(sb: SupabaseClient, raw: any): Promise<string> {
   const id = String(ctxDe(raw).stanzaId || '');
   if (!id) return '';
-  const { data: m } = await sb.from('wa_mensagens').select('texto, tipo, autor_nome, do_assistente').eq('id', id).maybeSingle();
+  const { data: m } = await waPadrao(sb).mensagens().select('texto, tipo, autor_nome, do_assistente').eq('id', id).maybeSingle();
   if (!m) return '';
   return (m.do_assistente ? 'Otto' : (m.autor_nome || 'alguém')) + ': ' + (m.texto ? String(m.texto).replace(/^\*[^*]+:\*\s*/, '').replace(/\s+/g, ' ').slice(0, 500) : '(' + m.tipo + ')');
 }
@@ -1157,7 +1157,7 @@ async function textoCitado(sb: SupabaseClient, raw: any): Promise<string> {
 async function citadaNaMensagem(sb: SupabaseClient, cfg: Config, raw: any): Promise<string> {
   const id = String(ctxDe(raw).stanzaId || '');
   if (!id) return '';
-  const { data: m } = await sb.from('wa_mensagens').select('texto, tipo, autor_nome, de_mim, do_assistente, enviada_por_nome').eq('id', id).maybeSingle();
+  const { data: m } = await waPadrao(sb).mensagens().select('texto, tipo, autor_nome, de_mim, do_assistente, enviada_por_nome').eq('id', id).maybeSingle();
   if (!m) return '';
   const autor = m.do_assistente ? cfg.nome + ' (você)' : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém');
   const corpo = m.texto ? String(m.texto).replace(/^🎤 /, '[áudio] ').slice(0, 800) : '(' + m.tipo + ')';
@@ -1213,7 +1213,7 @@ async function quemEQuem(sb: SupabaseClient, cfg: Config, interno: boolean): Pro
 /** resposta à outra IA do grupo: colega, bem-humorado, curto */
 async function responderBot(sb: SupabaseClient, cfg: Config, raw: any, texto: string, bot: Bot) {
   const destino = cfg.grupo_equipe!;
-  const { data: hist } = await sb.from('wa_mensagens').select('autor_nome, enviada_por_nome, de_mim, do_assistente, texto').eq('jid', destino).eq('nota', false).order('criada_em', { ascending: false }).limit(12);
+  const { data: hist } = await waPadrao(sb).mensagens().select('autor_nome, enviada_por_nome, de_mim, do_assistente, texto').eq('jid', destino).eq('nota', false).order('criada_em', { ascending: false }).limit(12);
   const conversa = ((hist || []) as any[]).reverse().filter(m => (m.texto || '').trim()).map(m => (m.do_assistente ? cfg.nome : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém')) + ': ' + String(m.texto).slice(0, 300)).join('\n');
   const s = await ia(
     `Você é ${cfg.nome}, ${papelDoOtto(cfg)} da Branding7, no grupo interno da equipe. Quem acabou de escrever é ${bot.nome}, OUTRA inteligência artificial` + (bot.sobre ? ' (' + bot.sobre + ')' : '') + '. ' +
@@ -1248,7 +1248,7 @@ async function enviarDocumento(sb: SupabaseClient, cfg: Config, jid: string, nom
     media, caption: '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':*\n' + legenda, ...(citar ? { quoted: citar } : {}) }, 90000);
   if (!r.ok) { console.log('documento', r.status, JSON.stringify(r.dados).slice(0, 200)); return null; }
   try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ }
-  if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
+  if (r.dados?.key?.id) await waPadrao(sb).mensagens().update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
   return r.dados;
 }
 /* ------------------------------------------------------------ 4.58.8: imagens */
@@ -1285,7 +1285,7 @@ async function talvezImagem(sb: SupabaseClient, cfg: Config, raw: any, pedido: s
   /* a foto que veio junto, ou a citada */
   if (msg.imageMessage) { const r = await refDaMensagem(sb, { key: raw.key, message: { imageMessage: msg.imageMessage } }); if (r) refs.push(r); }
   else if (citouImagem && ctx.stanzaId) {
-    const { data: q } = await sb.from('wa_mensagens').select('midia_raw').eq('id', String(ctx.stanzaId)).maybeSingle();
+    const { data: q } = await waPadrao(sb).mensagens().select('midia_raw').eq('id', String(ctx.stanzaId)).maybeSingle();
     const m = q?.midia_raw || { key: { id: ctx.stanzaId, remoteJid: raw?.key?.remoteJid, participant: ctx.participant }, message: { imageMessage: desembrulhar(ctx.quotedMessage).imageMessage } };
     const r = await refDaMensagem(sb, m); if (r) refs.push(r);
   }
@@ -1318,7 +1318,7 @@ async function talvezImagem(sb: SupabaseClient, cfg: Config, raw: any, pedido: s
     media: r.b64, caption: '*' + String(cfg.nome || 'Otto').split(/\s+/)[0] + ':* Prontinho.', ...(citar ? { quoted: citar } : {}) }, 90000);
   if (env.ok) {
     try { await gravar(sb, env.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ }
-    if (env.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', env.dados.key.id);
+    if (env.dados?.key?.id) await waPadrao(sb).mensagens().update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', env.dados.key.id);
   } else console.log('imagem envio', env.status, JSON.stringify(env.dados).slice(0, 200));
   await registrar(sb, { tipo: env.ok ? 'imagem' : 'erro', jid: destino, autor: String(raw?.pushName || ''), pergunta: pedido.slice(0, 500), resposta: 'imagem (' + r.modelo + ')', provedor: 'gemini', modelo: r.modelo, ms: Date.now() - t0 });
   return true;
@@ -1377,7 +1377,7 @@ async function talvezEncaminhar(sb: SupabaseClient, cfg: Config, raw: any, pedid
   if (!cfg.grupo_equipe || aqui === cfg.grupo_equipe || (!forcar && destinoDoPedido(cfg, n, aqui) !== cfg.grupo_equipe)) return false;
   if (!forcar && !/\b(isso|isto|esse|essa|este|esta|ai|aquilo|o que voce (mandou|disse|falou)|sua mensagem|essa mensagem|encaminh\w*|repass\w*)\b/.test(n) && n.split(/\s+/).length > 9) return false;
   if (!forcar && PEDE_PRINT.test(n)) return false;
-  const { data: m } = await sb.from('wa_mensagens').select('id, tipo, texto, midia_raw, midia_mime, midia_nome, criada_em').eq('jid', aqui).eq('do_assistente', true)
+  const { data: m } = await waPadrao(sb).mensagens().select('id, tipo, texto, midia_raw, midia_mime, midia_nome, criada_em').eq('jid', aqui).eq('do_assistente', true)
     .gte('criada_em', new Date(Date.now() - 20 * 60_000).toISOString()).order('criada_em', { ascending: false }).limit(1).maybeSingle();
   if (!m) return false;
   const citarAqui = raw?.key?.id ? { key: raw.key, message: { conversation: pedido.slice(0, 200) } } : undefined;
@@ -1393,7 +1393,7 @@ async function talvezEncaminhar(sb: SupabaseClient, cfg: Config, raw: any, pedid
       const r = await evo('/message/sendMedia/' + I(), 'POST', { number: cfg.grupo_equipe, mediatype: tipo, mimetype: m.midia_mime || (tipo === 'image' ? 'image/png' : 'application/pdf'),
         fileName: m.midia_nome || (tipo === 'image' ? 'imagem.png' : 'arquivo.pdf'), media: b64, ...(legenda ? { caption: legenda } : {}) }, 90000);
       ok = r.ok;
-      if (r.ok) { try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ } if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true }).eq('id', r.dados.key.id); }
+      if (r.ok) { try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ } if (r.dados?.key?.id) await waPadrao(sb).mensagens().update({ do_assistente: true }).eq('id', r.dados.key.id); }
     }
   }
   if (/@g\.us$/.test(aqui) && ok && raw?.key?.id) await reagirNaMensagem(sb, String(raw.key.id), '👍', aqui, pedido);
@@ -1405,7 +1405,7 @@ async function talvezEncaminhar(sb: SupabaseClient, cfg: Config, raw: any, pedid
 async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: string, aqui: string, forcar?: { conv: any; destino: string; legenda?: string }): Promise<boolean> {
   let n = semAcento(pedido);
   /* 4.59.17: o que se falou aqui nos últimos 20 min (para "desse grupo", "C6 farma" respondendo a pergunta, etc.) */
-  const { data: rec } = await sb.from('wa_mensagens').select('texto, do_assistente, criada_em').eq('jid', aqui).eq('nota', false)
+  const { data: rec } = await waPadrao(sb).mensagens().select('texto, do_assistente, criada_em').eq('jid', aqui).eq('nota', false)
     .gte('criada_em', new Date(Date.now() - 20 * 60_000).toISOString()).order('criada_em', { ascending: false }).limit(12);
   const recentes = ((rec || []) as any[]).filter(m => m.texto);
   /* respondendo o "De qual cliente ou conversa?" do Otto */
@@ -1431,7 +1431,7 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
   /* "desse grupo", "dele": o cliente que apareceu por último na conversa */
   if (!conv && !cls.length) for (const m of recentes) { const c = await clientesCitados(sb, String(m.texto)); if (c.length) { cls = c; break; } }
   if (!conv && cls.length) {
-    const { data } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').in('cliente_id', cls.map(c => c.id))
+    const { data } = await waPadrao(sb).conversas().select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').in('cliente_id', cls.map(c => c.id))
       .order('ultima_em', { ascending: false, nullsFirst: false }).limit(5);
     conv = ((data || []) as any[]).sort((a, b) => (b.tipo === 'grupo' ? 1 : 0) - (a.tipo === 'grupo' ? 1 : 0))[0] || null;
   }
@@ -1440,7 +1440,7 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
     /* só palavras "de nome" (5+ letras, fora das comuns) e casando a palavra inteira; conversa sem mensagem não serve */
     const palavras = semAcento(pedido).replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length >= 5 && !VAZIAS.has(w));
     if (palavras.length) {
-      const { data } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').neq('jid', destino).not('ultima_em', 'is', null).order('ultima_em', { ascending: false, nullsFirst: false }).limit(400);
+      const { data } = await waPadrao(sb).conversas().select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').neq('jid', destino).not('ultima_em', 'is', null).order('ultima_em', { ascending: false, nullsFirst: false }).limit(400);
       let melhor = 0;
       for (const c of (data || []) as any[]) {
         const ws = semAcento(c.nome || '').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/);
@@ -1459,7 +1459,7 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
     for (const x of recs) { try { if (await gravar(sb, x, {}, { historico: true })) novas++; } catch (_e) { /* segue */ } }
     console.log('print: completou', conv.jid, 'evolution', recs.length, 'novas', novas, recs[0]?.messageTimestamp || '');
   } catch (e) { console.log('print: não completou', String(e).slice(0, 200)); }
-  const { data: ms } = await sb.from('wa_mensagens').select('de_mim, autor_jid, autor_nome, enviada_por_nome, tipo, texto, criada_em, duracao, midia_nome, miniatura, citada_previa, citada_autor, do_assistente')
+  const { data: ms } = await waPadrao(sb).mensagens().select('de_mim, autor_jid, autor_nome, enviada_por_nome, tipo, texto, criada_em, duracao, midia_nome, miniatura, citada_previa, citada_autor, do_assistente')
     .eq('jid', conv.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(40);
   let lista = ((ms || []) as any[]).reverse();
   if (!lista.length) { await enviar(sb, cfg, aqui, 'A conversa ' + (conv.nome || '') + ' ainda não tem mensagens no B7.', citarAqui ? { quoted: citarAqui } : {}); return true; }
@@ -1481,7 +1481,7 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
   /* 4.59.10: logo do cliente no topo (ou a foto do grupo) e a foto de cada pessoa */
   let fotoTitulo: string | null = null;
   if (conv.cliente_id) { const { data: cr } = await sb.from('clientes_resumo').select('logo_url').eq('id', conv.cliente_id).maybeSingle(); fotoTitulo = await fotoComoDado(cr?.logo_url); }
-  if (!fotoTitulo) { const { data: cv } = await sb.from('wa_conversas').select('foto_url').eq('jid', conv.jid).maybeSingle(); fotoTitulo = await fotoComoDado(cv?.foto_url); }
+  if (!fotoTitulo) { const { data: cv } = await waPadrao(sb).conversas().select('foto_url').eq('jid', conv.jid).maybeSingle(); fotoTitulo = await fotoComoDado(cv?.foto_url); }
   const autores = [...new Set(lista.filter(m => !m.de_mim && m.autor_jid).map(m => String(m.autor_jid)))].slice(0, 12);
   if (autores.length) {
     const { data: cts } = await sb.from('wa_contatos').select('jid, foto_url').in('jid', autores);
@@ -1504,7 +1504,7 @@ async function talvezPrint(sb: SupabaseClient, cfg: Config, raw: any, pedido: st
     media: btoa(b64), caption: legenda, ...(citar ? { quoted: citar } : {}) }, 90000);
   if (env.ok) {
     try { await gravar(sb, env.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ }
-    if (env.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', env.dados.key.id);
+    if (env.dados?.key?.id) await waPadrao(sb).mensagens().update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', env.dados.key.id);
   } else console.log('print envio', env.status, JSON.stringify(env.dados).slice(0, 200));
   /* mandou em outro lugar: avisa aqui */
   if (destino !== aqui) {
@@ -1665,10 +1665,10 @@ async function talvezRecado(sb: SupabaseClient, cfg: Config, raw: any, texto: st
 async function minhaMensagem(sb: SupabaseClient, raw: any, aqui: string): Promise<any | null> {
   const ctx = ctxDe(raw);
   if (ctx.stanzaId) {
-    const { data } = await sb.from('wa_mensagens').select('id, jid, tipo, texto, do_assistente, criada_em').eq('id', String(ctx.stanzaId)).maybeSingle();
+    const { data } = await waPadrao(sb).mensagens().select('id, jid, tipo, texto, do_assistente, criada_em').eq('id', String(ctx.stanzaId)).maybeSingle();
     if (data?.do_assistente) return data;
   }
-  const { data } = await sb.from('wa_mensagens').select('id, jid, tipo, texto, do_assistente, criada_em').eq('jid', aqui).eq('do_assistente', true).eq('apagada', false)
+  const { data } = await waPadrao(sb).mensagens().select('id, jid, tipo, texto, do_assistente, criada_em').eq('jid', aqui).eq('do_assistente', true).eq('apagada', false)
     .gte('criada_em', new Date(Date.now() - 60 * 60_000).toISOString()).order('criada_em', { ascending: false }).limit(1).maybeSingle();
   return data || null;
 }
@@ -1697,7 +1697,7 @@ async function enviarAudio(sb: SupabaseClient, cfg: Config, jid: string, audioB6
   const r = await evo('/message/sendWhatsAppAudio/' + I(), 'POST', { number: jid, audio: audioB64, encoding: true, ...extra }, 90000);
   if (!r.ok) { console.log('audio envio', r.status, JSON.stringify(r.dados).slice(0, 200)); return false; }
   try { await gravar(sb, r.dados, { enviada_por_nome: cfg.nome, do_assistente: true }); } catch (_e) { /* o eco grava */ }
-  if (r.dados?.key?.id) await sb.from('wa_mensagens').update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
+  if (r.dados?.key?.id) await waPadrao(sb).mensagens().update({ do_assistente: true, enviada_por_nome: cfg.nome, status: 'SERVER_ACK' }).eq('id', r.dados.key.id);
   return true;
 }
 /* ------------------------------------------------------------ 4.65.0: modo vigia */
@@ -1709,7 +1709,7 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
     .or('vigia_ultimo.is.null,vigia_ultimo.lt.' + new Date(Date.now() - 3 * 60_000).toISOString()).select('id');
   if (!vez || !vez.length) return;
   const espera = Math.max(5, Number((cfg as any).vigia_min) || 20);
-  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').not('cliente_id', 'is', null).not('esperando_desde', 'is', null)
+  const { data: convs } = await waPadrao(sb).conversas().select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').not('cliente_id', 'is', null).not('esperando_desde', 'is', null)
     .lt('esperando_desde', new Date(Date.now() - espera * 60_000).toISOString()).gt('esperando_desde', new Date(Date.now() - 7 * 86400_000).toISOString())
     .order('esperando_desde', { ascending: true }).limit(15);
   /* quem é da equipe (para saber se alguém já respondeu do celular pessoal) */
@@ -1723,7 +1723,7 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
     const chave = 'vigia:' + c.jid + ':' + c.esperando_desde;
     const { data: ja } = await sb.from('wa_otto_avisos').select('chave').eq('chave', chave).maybeSingle();
     if (ja) continue;
-    const { data: ms } = await sb.from('wa_mensagens').select('de_mim, do_assistente, autor_jid, autor_nome, tipo, texto, criada_em').eq('jid', c.jid).eq('nota', false).eq('apagada', false)
+    const { data: ms } = await waPadrao(sb).mensagens().select('de_mim, do_assistente, autor_jid, autor_nome, tipo, texto, criada_em').eq('jid', c.jid).eq('nota', false).eq('apagada', false)
       .gte('criada_em', new Date(Date.parse(c.esperando_desde) - 30 * 60_000).toISOString()).order('criada_em').limit(40);
     const lista = (ms || []) as any[];
     const depois = lista.filter(m => m.criada_em >= c.esperando_desde);
@@ -1734,7 +1734,7 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
     const daEq = (m: any) => m.de_mim || fones.has(fim8(foneDe.get(m.autor_jid) || m.autor_jid)) || [...nomesEq].some(n => n && semAcento(String(m.autor_nome || '')).startsWith(n.split(' ')[0]) && semAcento(String(m.autor_nome || '')).includes(n.split(' ').slice(-1)[0]));
     if (depois.some(daEq)) {
       await marcarAvisados(sb, [chave]);
-      await sb.from('wa_conversas').update({ esperando_desde: null }).eq('jid', c.jid).eq('esperando_desde', c.esperando_desde);
+      await waPadrao(sb).conversas().update({ esperando_desde: null }).eq('jid', c.jid).eq('esperando_desde', c.esperando_desde);
       continue;
     }
     /* precisa de alguém? (pedido, dúvida, reclamação, material, aprovação) — "ok", "obrigado", "bom dia" não */
@@ -1748,7 +1748,7 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
     if (!(await marcarAvisados(sb, [chave])).length) continue;   /* outro pegou */
     if (j?.outra_equipe && outraEquipeDe(cfg, j.outra_equipe)) {
       /* 4.82.0: é com outra equipe (ex.: Núcleo7) — não cobra a nossa, e a conversa deixa de contar como "esperando a gente" */
-      await sb.from('wa_conversas').update({ esperando_desde: null, vez: 'ninguem', vez_motivo: 'É com a ' + outraEquipeDe(cfg, j.outra_equipe) + ': ' + String(j.resumo || '').slice(0, 90) }).eq('jid', c.jid);
+      await waPadrao(sb).conversas().update({ esperando_desde: null, vez: 'ninguem', vez_motivo: 'É com a ' + outraEquipeDe(cfg, j.outra_equipe) + ': ' + String(j.resumo || '').slice(0, 90) }).eq('jid', c.jid);
       continue;
     }
     if (!j?.precisa) continue;
@@ -1776,7 +1776,7 @@ async function talvezLembrarEspera(sb: SupabaseClient, cfg: Config) {
   const agora = new Date(), loc = new Date(agora.getTime() - 3 * 3600_000);
   const bloco = loc.toISOString().slice(0, 10) + ':' + Math.floor(loc.getUTCHours() / 3);
   const espera = Math.max(5, Number((cfg as any).vigia_min) || 20);
-  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde, vez, vez_motivo, vez_assunto, vez_avaliada_em, ultima_em')
+  const { data: convs } = await waPadrao(sb).conversas().select('jid, nome, cliente_id, esperando_desde, vez, vez_motivo, vez_assunto, vez_avaliada_em, ultima_em')
     .not('cliente_id', 'is', null).eq('arquivada', false).not('esperando_desde', 'is', null)
     .lt('esperando_desde', new Date(agora.getTime() - Math.max(60, espera * 3) * 60_000).toISOString()).gt('esperando_desde', new Date(agora.getTime() - 14 * 86400_000).toISOString())
     .order('esperando_desde', { ascending: true }).limit(12);
@@ -1815,13 +1815,13 @@ async function talvezEsperandoCliente(sb: SupabaseClient, cfg: Config) {
   /* grupos de cliente parados há X horas (até 7 dias); quem falou por último (equipe ou cliente) é conferido abaixo, pelo número —
      o "esperando_desde" não serve: marca espera quando alguém da equipe escreve do celular pessoal */
   /* 4.80.0: o B7 já sabe de quem é a vez (aguardando_cliente_desde = a última palavra foi da equipe) */
-  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, ultima_em').eq('tipo', 'grupo').not('cliente_id', 'is', null).eq('arquivada', false)
+  const { data: convs } = await waPadrao(sb).conversas().select('jid, nome, cliente_id, ultima_em').eq('tipo', 'grupo').not('cliente_id', 'is', null).eq('arquivada', false)
     .not('aguardando_cliente_desde', 'is', null).lt('aguardando_cliente_desde', limite).lt('ultima_em', limite).gt('ultima_em', new Date(Date.now() - 7 * 86400_000).toISOString()).order('ultima_em', { ascending: false }).limit(40);
   const fones = new Set((cfg.equipe || []).flatMap(e => fins8(e)));
   const cands: { c: any; ult: any; txt: string; chave: string }[] = [];
   for (const c of (convs || []) as any[]) {
     if (((cfg.grupos || {})[c.jid] || {}).desligado) continue;
-    const { data: ms } = await sb.from('wa_mensagens').select('id, de_mim, do_assistente, autor_jid, autor_nome, enviada_por_nome, tipo, texto, criada_em').eq('jid', c.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(8);
+    const { data: ms } = await waPadrao(sb).mensagens().select('id, de_mim, do_assistente, autor_jid, autor_nome, enviada_por_nome, tipo, texto, criada_em').eq('jid', c.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(8);
     const l = ((ms || []) as any[]);
     if (!l.length) continue;
     const ids = [...new Set(l.filter(m => !m.de_mim && m.autor_jid).map(m => String(m.autor_jid)))];
@@ -1966,7 +1966,7 @@ async function talvezPrivado(sb: SupabaseClient, cfg: Config, raw: any, pedido: 
   const key = raw?.key || {};
   const citar = key.id ? { key, message: { conversation: pedido.slice(0, 200) } } : undefined;
   /* conversa em volta (para o Otto saber do que se trata) */
-  const { data: h } = await sb.from('wa_mensagens').select('autor_nome, enviada_por_nome, de_mim, do_assistente, texto').eq('jid', destino).eq('nota', false).order('criada_em', { ascending: false }).limit(14);
+  const { data: h } = await waPadrao(sb).mensagens().select('autor_nome, enviada_por_nome, de_mim, do_assistente, texto').eq('jid', destino).eq('nota', false).order('criada_em', { ascending: false }).limit(14);
   const conversa = ((h || []) as any[]).reverse().filter(m => (m.texto || '').trim()).map(m => (m.do_assistente ? cfg.nome : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém')) + ': ' + String(m.texto).slice(0, 300)).join('\n');
   const quem = String(raw?.pushName || (key.fromMe ? 'Você' : 'alguém da equipe'));
   const plano: Saida = forcar ? { texto: JSON.stringify({ pv: true, alvo: forcar.alvo, mensagem: forcar.mensagem }) } : await ia('Alguém da equipe pediu ao ' + cfg.nome + ' (assistente da agência) para falar com uma pessoa NO PRIVADO (PV) do WhatsApp. Entenda o pedido e responda SÓ um JSON: ' +
@@ -2064,16 +2064,16 @@ async function bloqueioDeCliente(sb: SupabaseClient, cfg: Config, c: any, pedido
 async function acharConversa(sb: SupabaseClient, cfg: Config, nome: string): Promise<any | null> {
   const n = semAcento(nome || '');
   if (!n.trim()) return null;
-  if (cfg.grupo_equipe && /\b(equipe|interno)\b/.test(n)) { const { data } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').eq('jid', cfg.grupo_equipe).maybeSingle(); if (data) return data; }
+  if (cfg.grupo_equipe && /\b(equipe|interno)\b/.test(n)) { const { data } = await waPadrao(sb).conversas().select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').eq('jid', cfg.grupo_equipe).maybeSingle(); if (data) return data; }
   const cls = await clientesCitados(sb, nome);
   if (cls.length) {
-    const { data } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').in('cliente_id', cls.map(c => c.id)).order('ultima_em', { ascending: false, nullsFirst: false }).limit(5);
+    const { data } = await waPadrao(sb).conversas().select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').in('cliente_id', cls.map(c => c.id)).order('ultima_em', { ascending: false, nullsFirst: false }).limit(5);
     const c = ((data || []) as any[]).sort((a, b) => (b.tipo === 'grupo' ? 1 : 0) - (a.tipo === 'grupo' ? 1 : 0))[0];
     if (c) return c;
   }
   const palavras = n.replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !VAZIAS.has(w));
   if (!palavras.length) return null;
-  const { data } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').not('ultima_em', 'is', null).order('ultima_em', { ascending: false, nullsFirst: false }).limit(400);
+  const { data } = await waPadrao(sb).conversas().select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').not('ultima_em', 'is', null).order('ultima_em', { ascending: false, nullsFirst: false }).limit(400);
   let melhor = 0, conv: any = null;
   for (const c of (data || []) as any[]) {
     const ws = semAcento(c.nome || '').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/);
@@ -2087,7 +2087,7 @@ async function consultarConversa(sb: SupabaseClient, cfg: Config, nome: string):
   if (!conv) return 'Não achei conversa/cliente "' + nome + '".';
   let pend: string[] = [];
   if (conv.cliente_id) { try { pend = (await carregarContexto(sb, { clienteId: conv.cliente_id } as any)).pendencias; } catch (_e) { /* sem */ } }
-  const { data: ms } = await sb.from('wa_mensagens').select('de_mim, autor_nome, enviada_por_nome, do_assistente, tipo, texto, criada_em').eq('jid', conv.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(18);
+  const { data: ms } = await waPadrao(sb).mensagens().select('de_mim, autor_nome, enviada_por_nome, do_assistente, tipo, texto, criada_em').eq('jid', conv.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(18);
   const hm = (iso: string) => { const d = new Date(new Date(iso).getTime() - 3 * 3600000); return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + ' ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); };
   const linhas = ((ms || []) as any[]).reverse().map(m => hm(m.criada_em) + ' ' + (m.de_mim ? '[EQUIPE] ' + (m.do_assistente ? cfg.nome : m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'Cliente')) + ': ' + (m.texto ? String(m.texto).slice(0, 300) : '(' + m.tipo + ')'));
   return 'CONVERSA "' + (conv.nome || '') + '"' + (conv.esperando_desde ? ' (cliente esperando resposta desde ' + hm(conv.esperando_desde) + ')' : '') +
@@ -2128,7 +2128,7 @@ async function talvezParticipar(sb: SupabaseClient, cfg: Config, raw: any, texto
   const g = cfg.grupo_equipe, key = raw?.key || {};
   const fone = await foneDoAutor(sb, cfg, raw);
   const desde = (iso?: string | null) => iso ? (Date.now() - new Date(iso).getTime()) / 60000 : 1e9;
-  const { data: o } = await sb.from('wa_mensagens').select('criada_em').eq('jid', g).eq('do_assistente', true).order('criada_em', { ascending: false }).limit(1).maybeSingle();
+  const { data: o } = await waPadrao(sb).mensagens().select('criada_em').eq('jid', g).eq('do_assistente', true).order('criada_em', { ascending: false }).limit(1).maybeSingle();
   const { data: ps } = await sb.from('wa_assistente_registro').select('em, pergunta').eq('tipo', 'participou').eq('jid', g).gte('em', new Date(Date.now() - 12 * 3600_000).toISOString()).order('em', { ascending: false }).limit(20);
   const turno = turnoDoDia();
   const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
@@ -2139,16 +2139,16 @@ async function talvezParticipar(sb: SupabaseClient, cfg: Config, raw: any, texto
   if (assunto === 'pergunta') {
     /* espera um pouco: se alguém da equipe responder antes, não precisa dele */
     await dorme(35_000);
-    const { data: eu } = await sb.from('wa_mensagens').select('criada_em, autor_jid').eq('id', String(key.id || '')).maybeSingle();
+    const { data: eu } = await waPadrao(sb).mensagens().select('criada_em, autor_jid').eq('id', String(key.id || '')).maybeSingle();
     if (eu) {
-      const { count } = await sb.from('wa_mensagens').select('id', { count: 'exact', head: true }).eq('jid', g).eq('nota', false).gt('criada_em', eu.criada_em).neq('autor_jid', eu.autor_jid || '-');
+      const { count } = await waPadrao(sb).mensagens().select('id', { count: 'exact', head: true }).eq('jid', g).eq('nota', false).gt('criada_em', eu.criada_em).neq('autor_jid', eu.autor_jid || '-');
       if ((count || 0) > 0) return false;
     }
     await registrar(sb, { tipo: 'participou', jid: g, autor: String(raw?.pushName || ''), pergunta: (marca + texto).slice(0, 500), resposta: '(tentou ajudar com a pergunta)' });
     try { await agente(sb, cfg, raw, texto, g, undefined, undefined, true); } catch (e) { console.log('participar: agente', String(e).slice(0, 200)); }
     return true;
   }
-  const { data: h } = await sb.from('wa_mensagens').select('autor_nome, do_assistente, texto').eq('jid', g).eq('nota', false).order('criada_em', { ascending: false }).limit(8);
+  const { data: h } = await waPadrao(sb).mensagens().select('autor_nome, do_assistente, texto').eq('jid', g).eq('nota', false).order('criada_em', { ascending: false }).limit(8);
   const conversa = ((h || []) as any[]).reverse().filter(m => m.texto).map(m => (m.do_assistente ? cfg.nome : m.autor_nome || 'alguém') + ': ' + String(m.texto).slice(0, 200)).join('\n');
   const quem = String(raw?.pushName || 'alguém');
   const r = await ia(`Você é ${cfg.nome}, ${papelDoOtto(cfg)} da Branding7, no grupo interno da equipe. Ninguém te chamou, mas a mensagem é ` +
@@ -2182,10 +2182,10 @@ async function talvezZoar(sb: SupabaseClient, cfg: Config, raw: any, texto: stri
   const g = cfg.grupo_equipe;
   const desde = (iso?: string | null) => iso ? (Date.now() - new Date(iso).getTime()) / 60000 : 1e9;
   const { data: z } = await sb.from('wa_assistente_registro').select('em').eq('tipo', 'zoeira').eq('jid', g).order('em', { ascending: false }).limit(1).maybeSingle();
-  const { data: o } = await sb.from('wa_mensagens').select('criada_em').eq('jid', g).eq('do_assistente', true).order('criada_em', { ascending: false }).limit(1).maybeSingle();
+  const { data: o } = await waPadrao(sb).mensagens().select('criada_em').eq('jid', g).eq('do_assistente', true).order('criada_em', { ascending: false }).limit(1).maybeSingle();
   const fone = await foneDoAutor(sb, cfg, raw);
   if (!podeZoarAgora({ cfg, texto, daEquipe: numeroDaEquipe(cfg, fone), sorteio, minDesdeZoeira: desde(z?.em), minDesdeOtto: desde(o?.criada_em), fds: fdsQuieto(cfg) })) return;
-  const { data: h } = await sb.from('wa_mensagens').select('autor_nome, do_assistente, texto').eq('jid', g).eq('nota', false).order('criada_em', { ascending: false }).limit(8);
+  const { data: h } = await waPadrao(sb).mensagens().select('autor_nome, do_assistente, texto').eq('jid', g).eq('nota', false).order('criada_em', { ascending: false }).limit(8);
   const conversa = ((h || []) as any[]).reverse().filter(m => m.texto).map(m => (m.do_assistente ? cfg.nome : m.autor_nome || 'alguém') + ': ' + String(m.texto).slice(0, 200)).join('\n');
   const quem = String(raw?.pushName || 'alguém');
   const r = await ia(`Você é ${cfg.nome}, ${papelDoOtto(cfg)} da Branding7, no grupo interno da equipe. Ninguém te chamou: você pode soltar UMA zoeira curta (1 frase, tom de colega) sobre a última mensagem — só se tiver graça de verdade. ` +
@@ -2215,7 +2215,7 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     if (PEDE_PENDENCIAS.test(semAcento(pedido))) { const esperando = await coletarEsperando(sb, cfg); dados = '\nGRUPOS DE CLIENTE ESPERANDO RESPOSTA:\n' + (esperando.join('\n\n') || '(nenhum)'); }
     else dados = '\nCLIENTES ESPERANDO RESPOSTA (só os nomes — use "consultar" se precisar do detalhe): ' + ((await nomesEsperando(sb, cfg)).join(', ') || 'nenhum');
   }
-  const { data: hist } = await sb.from('wa_mensagens').select('de_mim, autor_nome, enviada_por_nome, texto, tipo, do_assistente').eq('jid', aqui).eq('nota', false).order('criada_em', { ascending: false }).limit(12);
+  const { data: hist } = await waPadrao(sb).mensagens().select('de_mim, autor_nome, enviada_por_nome, texto, tipo, do_assistente').eq('jid', aqui).eq('nota', false).order('criada_em', { ascending: false }).limit(12);
   const conversaAqui = ((hist || []) as any[]).reverse().map(m => (m.do_assistente ? cfg.nome + ' (você)' : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém')) + ': ' + (m.texto ? String(m.texto).slice(0, 300) : '(' + m.tipo + ')')).join('\n');
   const { data: cls } = await sb.from('clientes').select('nome').is('deleted_at', null).order('nome').limit(200);
   const hoje = new Date(Date.now() - 3 * 3600000);
@@ -2436,11 +2436,11 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
           if (!String(a.novo_texto || '').trim()) { falhas.push('faltou o texto novo'); continue; }
           if (!podePalavrao(cfg, aqui) && temPalavrao(novo)) { falhas.push('esse texto não pode ir aqui'); continue; }
           const r = await evo('/chat/updateMessage/' + I(), 'POST', { number: aqui, key: { remoteJid: m.jid, fromMe: true, id: m.id }, text: novo.slice(0, 3000) });
-          if (r.ok) { await sb.from('wa_mensagens').update({ editada: true, texto: novo.slice(0, 3000) }).eq('id', m.id); feitos.push('editou'); if (key.id && ehGrupo) await reagirNaMensagem(sb, String(key.id), '👍', aqui, pedido); }
+          if (r.ok) { await waPadrao(sb).mensagens().update({ editada: true, texto: novo.slice(0, 3000) }).eq('id', m.id); feitos.push('editou'); if (key.id && ehGrupo) await reagirNaMensagem(sb, String(key.id), '👍', aqui, pedido); }
           else falhas.push('o WhatsApp não deixou editar (passou de 15 minutos?)');
         } else {
           const r = await evo('/chat/deleteMessageForEveryone/' + I(), 'DELETE', { id: m.id, remoteJid: m.jid, fromMe: true });
-          if (r.ok) { await sb.from('wa_mensagens').update({ apagada: true, texto: null }).eq('id', m.id); feitos.push('apagou'); if (key.id && ehGrupo) await reagirNaMensagem(sb, String(key.id), '👍', aqui, pedido); }
+          if (r.ok) { await waPadrao(sb).mensagens().update({ apagada: true, texto: null }).eq('id', m.id); feitos.push('apagou'); if (key.id && ehGrupo) await reagirNaMensagem(sb, String(key.id), '👍', aqui, pedido); }
           else falhas.push('o WhatsApp não deixou apagar');
         }
         continue;
@@ -2498,9 +2498,9 @@ async function agente(sb: SupabaseClient, cfg: Config, raw: any, texto: string, 
     /* 4.78.1: o WhatsApp (Evolution) não deixa o ÁUDIO responder citando a mensagem. Num grupo, se já veio outra
        mensagem depois desta (ou ele já respondeu outra coisa), o áudio sorteado fica sem dono — vai em texto, citando. */
     if (ehGrupo && formato !== 'texto' && !plano.misto && !pedido_ && key.id) {
-      const { data: eu } = await sb.from('wa_mensagens').select('criada_em').eq('id', String(key.id)).maybeSingle();
+      const { data: eu } = await waPadrao(sb).mensagens().select('criada_em').eq('id', String(key.id)).maybeSingle();
       if (eu) {
-        const { count } = await sb.from('wa_mensagens').select('id', { count: 'exact', head: true }).eq('jid', aqui).eq('nota', false).gt('criada_em', eu.criada_em);
+        const { count } = await waPadrao(sb).mensagens().select('id', { count: 'exact', head: true }).eq('jid', aqui).eq('nota', false).gt('criada_em', eu.criada_em);
         if ((count || 0) > 0) formato = 'texto';
       }
     }
@@ -2524,7 +2524,7 @@ export function pedeTranscricao(texto: string): boolean { return PEDE_TRANSCRICA
 async function talvezTranscreverCitado(sb: SupabaseClient, cfg: Config, raw: any, texto: string, aqui: string): Promise<boolean> {
   const ctx = ctxDe(raw);
   if (!ctx.stanzaId || !pedeTranscricao(texto)) return false;
-  const { data: m } = await sb.from('wa_mensagens').select('id, jid, tipo, texto, midia_raw, de_mim, autor_jid, autor_nome').eq('id', String(ctx.stanzaId)).maybeSingle();
+  const { data: m } = await waPadrao(sb).mensagens().select('id, jid, tipo, texto, midia_raw, de_mim, autor_jid, autor_nome').eq('id', String(ctx.stanzaId)).maybeSingle();
   if (!m || m.tipo !== 'audio') return false;
   const ja = String(m.texto || '');
   const t = ja.startsWith('🎤 ') ? ja.slice(3).trim() : (await transcreverGuardada(sb, m)).trim();
@@ -2533,7 +2533,7 @@ async function talvezTranscreverCitado(sb: SupabaseClient, cfg: Config, raw: any
   if (!dest) return true;
   let corpo = t ? '🎤 *Transcrição:*\n' + t : 'Esse áudio não tem fala que eu consiga entender.';
   if (ehCli) {
-    const { data: cv } = await sb.from('wa_conversas').select('nome').eq('jid', aqui).maybeSingle();
+    const { data: cv } = await waPadrao(sb).conversas().select('nome').eq('jid', aqui).maybeSingle();
     corpo = '🎤 *Transcrição do áudio' + (m.autor_nome ? ' de ' + m.autor_nome : '') + ' no grupo ' + (cv?.nome || 'do cliente') + ':*\n' + (t || '(sem fala que eu consiga entender)');
   }
   const citar = dest === m.jid ? { quoted: { key: { id: m.id, remoteJid: m.jid, fromMe: !!m.de_mim, participant: m.autor_jid || undefined }, message: { conversation: '🎤 Áudio' } } } : {};
@@ -2552,11 +2552,11 @@ async function talvezAprenderCorrecao(sb: SupabaseClient, cfg: Config, raw: any,
   const ctx = ctxDe(raw), key = raw?.key || {};
   let doOtto: any = null;
   if (ctx.stanzaId) {
-    const { data } = await sb.from('wa_mensagens').select('texto, do_assistente, criada_em').eq('id', String(ctx.stanzaId)).maybeSingle();
+    const { data } = await waPadrao(sb).mensagens().select('texto, do_assistente, criada_em').eq('id', String(ctx.stanzaId)).maybeSingle();
     if (data?.do_assistente) doOtto = data;
   }
   if (!doOtto) {
-    const { data } = await sb.from('wa_mensagens').select('texto, do_assistente, criada_em').eq('jid', aqui).eq('nota', false).neq('id', String(key.id || '')).order('criada_em', { ascending: false }).limit(1).maybeSingle();
+    const { data } = await waPadrao(sb).mensagens().select('texto, do_assistente, criada_em').eq('jid', aqui).eq('nota', false).neq('id', String(key.id || '')).order('criada_em', { ascending: false }).limit(1).maybeSingle();
     if (data?.do_assistente && Date.now() - new Date(data.criada_em).getTime() <= 15 * 60_000) doOtto = data;
   }
   if (!doOtto?.texto) return;
@@ -2581,9 +2581,9 @@ async function consultaInterna(sb: SupabaseClient, cfg: Config, raw: any, texto:
   /* 4.76.0: hora de parar — papo que não pede nada ("kkk", "show", ou ele já falou 3+ vezes em 10 min) vira só reação */
   {
     const key = raw?.key || {};
-    const { count } = await sb.from('wa_mensagens').select('id', { count: 'exact', head: true }).eq('jid', destino).eq('do_assistente', true).gte('criada_em', new Date(Date.now() - 10 * 60_000).toISOString());
+    const { count } = await waPadrao(sb).mensagens().select('id', { count: 'exact', head: true }).eq('jid', destino).eq('do_assistente', true).gte('criada_em', new Date(Date.now() - 10 * 60_000).toISOString());
     /* ...a não ser que ele tenha acabado de PERGUNTAR algo ("Quer que eu marque como entregue?" → "sim") */
-    const { data: ultO } = await sb.from('wa_mensagens').select('texto, criada_em').eq('jid', destino).eq('do_assistente', true).order('criada_em', { ascending: false }).limit(1).maybeSingle();
+    const { data: ultO } = await waPadrao(sb).mensagens().select('texto, criada_em').eq('jid', destino).eq('do_assistente', true).order('criada_em', { ascending: false }).limit(1).maybeSingle();
     const perguntou = !!ultO && Date.now() - new Date(ultO.criada_em).getTime() < 30 * 60_000 && /\?\s*(\p{Extended_Pictographic}|\s)*$/u.test(String(ultO.texto || ''));
     if (key.id && !perguntou && !temAudio(raw) && jaDeu({ texto: texto.replace(/@\d{6,}/g, ''), ottoRecentes: count || 0 })) {
       const t = semAcento(texto);
@@ -2624,7 +2624,7 @@ async function consultaAntiga(sb: SupabaseClient, cfg: Config, raw: any, texto: 
     contexto = '\n\nGRUPOS DE CLIENTE ESPERANDO RESPOSTA:\n' + (esperando.join('\n\n') || '(nenhum)');
   }
   /* 4.59.1: a conversa em volta, para responder de acordo com a mensagem (não só com o sistema) */
-  const { data: hist } = await sb.from('wa_mensagens').select('de_mim, autor_nome, enviada_por_nome, texto, tipo, do_assistente')
+  const { data: hist } = await waPadrao(sb).mensagens().select('de_mim, autor_nome, enviada_por_nome, texto, tipo, do_assistente')
     .eq('jid', destino).eq('nota', false).order('criada_em', { ascending: false }).limit(16);
   const conversaAqui = (hist || []).reverse().filter((m: any) => (m.texto || '').trim()).map((m: any) =>
     (m.do_assistente ? cfg.nome : m.de_mim ? (m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'alguém')) + ': ' + String(m.texto).slice(0, 400)).join('\n');
@@ -2657,11 +2657,11 @@ async function consultaAntiga(sb: SupabaseClient, cfg: Config, raw: any, texto: 
 /** Rascunho de resposta para a pessoa da equipe revisar e mandar. Escreve COMO a Branding7 (não como o Otto). */
 export async function sugerirResposta(sb: SupabaseClient, jid: string, quem: string, pedido = ''): Promise<{ texto: string; erro?: string }> {
   const cfg = await lerConfig(sb);
-  const { data: conv } = await sb.from('wa_conversas').select('jid, nome, tipo, cliente_id, esperando_desde').eq('jid', jid).maybeSingle();
+  const { data: conv } = await waPadrao(sb).conversas().select('jid, nome, tipo, cliente_id, esperando_desde').eq('jid', jid).maybeSingle();
   if (!conv) return { texto: '', erro: 'Conversa não encontrada.' };
   let pend: string[] = [];
   if (conv.cliente_id) { try { pend = (await carregarContexto(sb, { clienteId: conv.cliente_id } as any)).pendencias; } catch (_e) { /* sem */ } }
-  const { data: ms } = await sb.from('wa_mensagens').select('de_mim, autor_nome, enviada_por_nome, do_assistente, tipo, texto, criada_em').eq('jid', jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(20);
+  const { data: ms } = await waPadrao(sb).mensagens().select('de_mim, autor_nome, enviada_por_nome, do_assistente, tipo, texto, criada_em').eq('jid', jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(20);
   const linhas = ((ms || []) as any[]).reverse().map(m => (m.de_mim ? '[EQUIPE] ' + (m.do_assistente ? (cfg?.nome || 'Otto') : m.enviada_por_nome || 'Branding7') : (m.autor_nome || 'Cliente')) + ': ' + (m.texto ? String(m.texto).slice(0, 400) : '(' + m.tipo + ')'));
   if (!linhas.length) return { texto: '', erro: 'Ainda não há mensagens nesta conversa.' };
   const { data: ap } = await sb.from('wa_assistente_aprendizados').select('pergunta, resposta').eq('ativo', true).order('criado_em', { ascending: false }).limit(25);
@@ -2715,7 +2715,7 @@ async function talvezAvisarCelular(sb: SupabaseClient, cfg: Config) {
   const { data: vez } = await sb.from('wa_assistente').update({ push_ultimo: new Date().toISOString() }).eq('id', 1)
     .or('push_ultimo.is.null,push_ultimo.lt.' + new Date(Date.now() - 2 * 60_000).toISOString()).select('id');
   if (!vez || !vez.length) return;
-  const { data: convs } = await sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde, push_avisado_em, ultima_em, vez, vez_motivo, vez_avaliada_em').not('cliente_id', 'is', null).eq('arquivada', false)
+  const { data: convs } = await waPadrao(sb).conversas().select('jid, nome, cliente_id, esperando_desde, push_avisado_em, ultima_em, vez, vez_motivo, vez_avaliada_em').not('cliente_id', 'is', null).eq('arquivada', false)
     .not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - min * 60_000).toISOString()).gt('esperando_desde', new Date(Date.now() - 24 * 3600_000).toISOString()).limit(20);
   /* 4.80.4: só avisa quem o Otto JÁ LEU e confirmou que espera a gente (vez = cliente, avaliado depois da última
      mensagem). Sem veredito (IA fora do ar), espera mais 30 min e vai pela regra. */
@@ -2732,7 +2732,7 @@ async function talvezAvisarCelular(sb: SupabaseClient, cfg: Config) {
   const nomeCli = new Map(((cls || []) as any[]).map(x => [x.id, x.nome]));
   for (const c of pendentes) {
     /* marca antes de mandar: duas checagens ao mesmo tempo não avisam duas vezes */
-    const { data: marcou } = await sb.from('wa_conversas').update({ push_avisado_em: new Date().toISOString() }).eq('jid', c.jid)
+    const { data: marcou } = await waPadrao(sb).conversas().update({ push_avisado_em: new Date().toISOString() }).eq('jid', c.jid)
       .or('push_avisado_em.is.null,push_avisado_em.lt.' + c.esperando_desde).select('jid');
     if (!marcou || !marcou.length) continue;
     const cliente = nomeCli.get(c.cliente_id) || c.nome || 'Cliente';
@@ -2740,7 +2740,7 @@ async function talvezAvisarCelular(sb: SupabaseClient, cfg: Config) {
     if (lido(c) && c.vez_motivo) corpo = String(c.vez_motivo);   /* o que falta, nas palavras do Otto */
     else {
       /* última mensagem do CLIENTE — não da equipe mandando do próprio celular (de_mim = false também) */
-      const { data: ms } = await sb.from('wa_mensagens').select('autor_jid, autor_nome, texto, tipo').eq('jid', c.jid).eq('de_mim', false).eq('nota', false).order('criada_em', { ascending: false }).limit(8);
+      const { data: ms } = await waPadrao(sb).mensagens().select('autor_jid, autor_nome, texto, tipo').eq('jid', c.jid).eq('de_mim', false).eq('nota', false).order('criada_em', { ascending: false }).limit(8);
       const ids = [...new Set(((ms || []) as any[]).map(m => m.autor_jid).filter(Boolean))];
       const { data: cts } = ids.length ? await sb.from('wa_contatos').select('jid, numero').in('jid', ids) : { data: [] as any[] };
       const foneDe = new Map(((cts || []) as any[]).map(x => [x.jid, dig(x.numero)]));
@@ -2771,7 +2771,7 @@ async function dadosBomDia(sb: SupabaseClient, cfg: Config): Promise<{ texto: st
     sb.from('design_resumo').select('titulo, cliente_nome, designer_id, designer_nome, status').eq('prazo', hoje).neq('status', 'finalizado').limit(60),
     sb.from('design_resumo').select('titulo, cliente_nome, designer_id, designer_nome').lt('prazo', hoje).neq('status', 'finalizado').limit(200),
     sb.from('gravacoes').select('nome, data_gravacao, hora_inicio, client_id, videomaker_id, situacao').eq('data_gravacao', hoje).is('deleted_at', null).is('archived_at', null).order('hora_inicio', { ascending: true, nullsFirst: false }).limit(20),
-    sb.from('wa_conversas').select('nome, cliente_id, esperando_desde').not('cliente_id', 'is', null).eq('arquivada', false).not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - 30 * 60_000).toISOString()).order('esperando_desde').limit(30),
+    waPadrao(sb).conversas().select('nome, cliente_id, esperando_desde').not('cliente_id', 'is', null).eq('arquivada', false).not('esperando_desde', 'is', null).lt('esperando_desde', new Date(Date.now() - 30 * 60_000).toISOString()).order('esperando_desde').limit(30),
     sb.from('clientes').select('id, nome'), sb.from('perfis').select('id, nome, papel, funcao, estado')
   ]);
   const cliente = new Map(((cls || []) as any[]).map(c => [c.id, c.nome]));

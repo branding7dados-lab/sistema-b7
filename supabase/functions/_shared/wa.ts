@@ -5,6 +5,8 @@
 //   • interpretar uma mensagem do WhatsApp e gravar em wa_conversas/wa_mensagens
 // =====================================================================
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { criarResolvedor, waPadraoCom, type Numero } from './wa-numeros.ts';
+export type { Numero } from './wa-numeros.ts';
 
 export const admin = (): SupabaseClient => createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -15,6 +17,20 @@ export const admin = (): SupabaseClient => createClient(
 export const BASE = () => (Deno.env.get('EVOLUTION_URL') || '').replace(/\/+$/, '');
 export const CHAVE = () => Deno.env.get('EVOLUTION_API_KEY') || '';
 export const INST = () => Deno.env.get('EVOLUTION_INSTANCE') || 'b7-piloto';
+
+/* 4.84.0: vários números. INST() continua sendo o número padrão (Otto, relógio); o resto usa o número da conversa. */
+export const numeros = criarResolvedor(async () => {
+  const { data, error } = await admin().from('wa_numeros').select('*').order('ordem');
+  return error ? [] : (data || []) as Numero[];
+});
+/** instância do Evolution de um número (já pronta para a URL) */
+export const instanciaDe = (n?: Numero | null) => encodeURIComponent(n?.instancia || INST());
+const idPadrao = async () => (await numeros.padrao())?.id || null;
+/** wa_conversas / wa_mensagens presos ao número padrão (o Otto só enxerga ele) */
+export const waPadrao = (sb: SupabaseClient) => waPadraoCom(sb, idPadrao);
+/** filtro do número numa consulta (sem número = banco antigo: não filtra) */
+const noNum = (q: any, nid: string | null) => nid ? q.eq('numero_id', nid) : q;
+const nidDe = async (num?: Numero | null) => num?.id || await idPadrao();
 
 export async function evo(caminho: string, metodo = 'GET', corpo?: unknown, ms = 25000): Promise<{ ok: boolean; status: number; dados: any }> {
   const ctl = new AbortController();
@@ -166,11 +182,13 @@ async function numerosDaEquipe(sb: SupabaseClient): Promise<Set<string>> {
   equipeCache = { em: Date.now(), nums };
   return nums;
 }
-export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, opcoes: { historico?: boolean } = {}): Promise<Linha | null> {
+export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, opcoes: { historico?: boolean } = {}, num?: Numero | null): Promise<Linha | null> {
   const r = interpretar(raw);
   if (!r) return null;
-  if (r.efeito) { await aplicarEfeito(sb, raw?.key?.remoteJid, r.efeito); return null; }
+  const nid = await nidDe(num);
+  if (r.efeito) { await aplicarEfeito(sb, raw?.key?.remoteJid, r.efeito, nid); return null; }
   const l = Object.assign(r.linha!, extra);
+  if (nid) l.numero_id = nid;
   if (/@lid$/.test(String(raw?.key?.remoteJid || ''))) l.jid = await jidCanonico(sb, raw.key);
   const jid = String(l.jid);
   /* 4.53.1: sem pushName (código @lid) — usa o nome já conhecido do contato */
@@ -182,15 +200,15 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
     if (!ct?.nome_fixo && raw.pushName && raw.pushName !== 'Você' && !semNome(raw.pushName))
       await sb.from('wa_contatos').upsert({ jid: String(l.autor_jid), nome: String(raw.pushName), atualizado_em: new Date().toISOString() });
   }
-  await garantirConversa(sb, jid, l.de_mim ? null : (ehGrupo(jid) ? null : String(raw.pushName || '')));
-  const { data: ja } = await sb.from('wa_mensagens').select('id, enviada_por, midia_path, status').eq('id', l.id).maybeSingle();
+  await garantirConversa(sb, jid, l.de_mim ? null : (ehGrupo(jid) ? null : String(raw.pushName || '')), undefined, undefined, num);
+  const { data: ja } = await noNum(sb.from('wa_mensagens').select('id, enviada_por, midia_path, status'), nid).eq('id', l.id).maybeSingle();
   if (ja) {
     /* já existe (ex.: o B7 gravou ao enviar e o eco chegou): só completa o que faltar */
     const patch: Linha = {};
     for (const k of ['miniatura', 'midia_mime', 'midia_tamanho', 'duracao', 'midia_nome']) if (l[k] != null) patch[k] = l[k];
     /* 4.53.2: o status só sobe (✓ → ✓✓ → lida); o eco "PENDING" não volta o relógio */
     if (l.status != null && STATUS_ORDEM.indexOf(String(l.status)) > STATUS_ORDEM.indexOf(String(ja.status || ''))) patch.status = l.status;
-    if (Object.keys(patch).length) await sb.from('wa_mensagens').update(patch).eq('id', l.id);
+    if (Object.keys(patch).length) await noNum(sb.from('wa_mensagens').update(patch), nid).eq('id', l.id);
     return null;
   }
   const { error } = await sb.from('wa_mensagens').insert(l);
@@ -206,7 +224,7 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
     if (fone) daEquipe = (await numerosDaEquipe(sb)).has(fone.slice(-8));
   }
   /* a conversa: prévia, hora, não lidas, "esperando resposta" */
-  const { data: c } = await sb.from('wa_conversas').select('ultima_em, nao_lidas, esperando_desde, aguardando_cliente_desde, arquivada_auto').eq('jid', jid).maybeSingle();
+  const { data: c } = await noNum(sb.from('wa_conversas').select('ultima_em, nao_lidas, esperando_desde, aguardando_cliente_desde, arquivada_auto'), nid).eq('jid', jid).maybeSingle();
   const maisNova = !c?.ultima_em || new Date(String(l.criada_em)) >= new Date(c.ultima_em);
   const patch: Linha = { atualizado_em: new Date().toISOString() };
   if (maisNova) {
@@ -222,16 +240,16 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
   if (!l.de_mim && !opcoes.historico) patch.nao_lidas = (c?.nao_lidas || 0) + 1;
   /* 4.81.0: arquivada sozinha por estar parada — mensagem nova traz de volta para a lista */
   if (maisNova && !opcoes.historico && c?.arquivada_auto) { patch.arquivada = false; patch.arquivada_auto = false; }
-  await sb.from('wa_conversas').update(patch).eq('jid', jid);
+  await noNum(sb.from('wa_conversas').update(patch), nid).eq('jid', jid);
   return l;
 }
 
-async function aplicarEfeito(sb: SupabaseClient, jid: string, e: { tipo: string; alvo: string; valor?: string; autor?: string }) {
+async function aplicarEfeito(sb: SupabaseClient, jid: string, e: { tipo: string; alvo: string; valor?: string; autor?: string }, nid: string | null) {
   if (!e.alvo) return;
-  if (e.tipo === 'apagada') { await sb.from('wa_mensagens').update({ apagada: true, texto: null }).eq('id', e.alvo); return; }
-  if (e.tipo === 'editada') { await sb.from('wa_mensagens').update({ editada: true, texto: e.valor || '' }).eq('id', e.alvo); return; }
+  if (e.tipo === 'apagada') { await noNum(sb.from('wa_mensagens').update({ apagada: true, texto: null }), nid).eq('id', e.alvo); return; }
+  if (e.tipo === 'editada') { await noNum(sb.from('wa_mensagens').update({ editada: true, texto: e.valor || '' }), nid).eq('id', e.alvo); return; }
   if (e.tipo === 'reacao') {
-    const { data } = await sb.from('wa_mensagens').select('reacoes').eq('id', e.alvo).maybeSingle();
+    const { data } = await noNum(sb.from('wa_mensagens').select('reacoes'), nid).eq('id', e.alvo).maybeSingle();
     if (!data) return;
     const r: Record<string, string[]> = data.reacoes || {};
     let quem = e.autor || jid;
@@ -240,13 +258,14 @@ async function aplicarEfeito(sb: SupabaseClient, jid: string, e: { tipo: string;
     if (quem === 'eu') { const l = Object.values(r).flat(); if (l.includes('otto') && !l.includes('eu')) quem = 'otto'; }
     for (const k of Object.keys(r)) { r[k] = r[k].filter(x => x !== quem); if (!r[k].length) delete r[k]; }
     if (e.valor) (r[e.valor] = r[e.valor] || []).push(quem);
-    await sb.from('wa_mensagens').update({ reacoes: r }).eq('id', e.alvo);
+    await noNum(sb.from('wa_mensagens').update({ reacoes: r }), nid).eq('id', e.alvo);
   }
 }
 
 /** cria a conversa se não existir; nome do grupo vem do Evolution; liga ao cliente pelo nome do grupo */
-export async function garantirConversa(sb: SupabaseClient, jid: string, nomeContato: string | null, nomeGrupo?: string | null, foto?: string | null) {
-  const { data: c } = await sb.from('wa_conversas').select('jid, nome, nome_fixo, cliente_id, foto_url').eq('jid', jid).maybeSingle();
+export async function garantirConversa(sb: SupabaseClient, jid: string, nomeContato: string | null, nomeGrupo?: string | null, foto?: string | null, num?: Numero | null) {
+  const nid = await nidDe(num);
+  const { data: c } = await noNum(sb.from('wa_conversas').select('jid, nome, nome_fixo, cliente_id, foto_url'), nid).eq('jid', jid).maybeSingle();
   const semNome = (n: unknown) => !n || /^\+?\d+$/.test(String(n)) || !/[\p{L}\p{N}]/u.test(String(n));
   const grupo = ehGrupo(jid);
   let nome = c?.nome || null;
@@ -254,7 +273,7 @@ export async function garantirConversa(sb: SupabaseClient, jid: string, nomeCont
     if (nomeGrupo) nome = nomeGrupo;
     else {
       try {
-        const g = await evo('/group/findGroupInfos/' + encodeURIComponent(INST()) + '?groupJid=' + encodeURIComponent(jid), 'GET', undefined, 8000);
+        const g = await evo('/group/findGroupInfos/' + instanciaDe(num || await numeros.padrao()) + '?groupJid=' + encodeURIComponent(jid), 'GET', undefined, 8000);
         if (g.ok && g.dados?.subject) { nome = g.dados.subject; if (!foto && g.dados.pictureUrl) foto = g.dados.pictureUrl; }
       } catch (_e) { /* fica sem nome por ora */ }
     }
@@ -272,13 +291,13 @@ export async function garantirConversa(sb: SupabaseClient, jid: string, nomeCont
     cliente = g?.cliente_id || null;
   }
   if (!c) {
-    await sb.from('wa_conversas').insert({ jid, tipo: grupo ? 'grupo' : 'contato', nome: nome || numeroDe(jid), cliente_id: cliente, foto_url: foto || null });
+    await sb.from('wa_conversas').insert({ ...(nid ? { numero_id: nid } : {}), jid, tipo: grupo ? 'grupo' : 'contato', nome: nome || numeroDe(jid), cliente_id: cliente, foto_url: foto || null });
   } else {
     const p: Linha = {};
     if (nome && nome !== c.nome) p.nome = nome;
     if (cliente && !c.cliente_id) p.cliente_id = cliente;
     if (foto && foto !== c.foto_url) p.foto_url = foto;
-    if (Object.keys(p).length) await sb.from('wa_conversas').update(p).eq('jid', jid);
+    if (Object.keys(p).length) await noNum(sb.from('wa_conversas').update(p), nid).eq('jid', jid);
   }
 }
 

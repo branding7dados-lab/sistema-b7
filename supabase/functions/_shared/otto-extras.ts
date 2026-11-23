@@ -3,6 +3,7 @@
 // =====================================================================
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { gerar, provedorAtual } from './ia/servico.ts';
+import { waPadrao } from './wa.ts';
 
 const sem = (s: unknown) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const agoraBR = () => new Date(Date.now() - 3 * 3600_000);
@@ -210,7 +211,7 @@ export type Aviso = { chave: string; linha: string; marcar?: string | null; item
 /** 4.83.1: a IA lê as últimas mensagens e confirma: foi o CLIENTE aprovando um material que a agência entregou?
  *  Qualquer dúvida (ou IA fora do ar) = não. A mensagem candidata já não é de ninguém da equipe. */
 async function confirmaAprovacao(sb: SupabaseClient, m: any): Promise<boolean> {
-  const { data: ant } = await sb.from('wa_mensagens').select('de_mim, autor_nome, tipo, texto, criada_em').eq('jid', m.jid).lte('criada_em', m.criada_em)
+  const { data: ant } = await waPadrao(sb).mensagens().select('de_mim, autor_nome, tipo, texto, criada_em').eq('jid', m.jid).lte('criada_em', m.criada_em)
     .eq('nota', false).order('criada_em', { ascending: false }).limit(10);
   const linhas = ((ant || []) as any[]).reverse().map(x => (x.de_mim ? '[AGÊNCIA] ' : '') + (x.autor_nome || (x.de_mim ? 'Branding7' : 'Contato')) + ': ' + (x.texto ? String(x.texto).slice(0, 220) : '(' + x.tipo + ')'));
   try {
@@ -228,7 +229,7 @@ export async function avisosPendentes(sb: SupabaseClient, equipe: { nome?: strin
   const [{ data: ds }, { data: ps }, { data: convs }, { data: cls }] = await Promise.all([
     sb.from('demandas_edicao').select('id, codigo, titulo, prazo, editing_status, videomaker_id, client_id').is('deleted_at', null).not('editing_status', 'in', '(entregue,descartado,standby)').not('prazo', 'is', null).lte('prazo', amanha).gte('prazo', new Date(Date.parse(hoje + 'T12:00:00Z') - 30 * 86400_000).toISOString().slice(0, 10)).limit(200),
     sb.from('perfis').select('id, nome, papel, funcao, estado'),
-    sb.from('wa_conversas').select('jid, nome, cliente_id, esperando_desde').not('cliente_id', 'is', null).not('esperando_desde', 'is', null)
+    waPadrao(sb).conversas().select('jid, nome, cliente_id, esperando_desde').not('cliente_id', 'is', null).not('esperando_desde', 'is', null)
       .lt('esperando_desde', new Date(Date.now() - 2 * 3600_000).toISOString()).gt('esperando_desde', new Date(Date.now() - 24 * 3600_000).toISOString()).limit(50),
     sb.from('clientes').select('id, nome')
   ]);
@@ -258,11 +259,11 @@ export async function avisosPendentes(sb: SupabaseClient, equipe: { nome?: strin
      Agora: (1) mensagem de alguém da equipe nunca conta — pelo número (todos os números da pessoa, inclusive o @lid)
      ou pelo nome; (2) a frase de aprovação é só o gatilho: a IA lê a conversa e confirma que foi o CLIENTE aprovando
      um material que a agência mandou. Na dúvida, não avisa. */
-  const { data: ms } = await sb.from('wa_mensagens').select('id, jid, texto, autor_nome, autor_jid, criada_em').eq('de_mim', false).eq('tipo', 'texto')
+  const { data: ms } = await waPadrao(sb).mensagens().select('id, jid, texto, autor_nome, autor_jid, criada_em').eq('de_mim', false).eq('tipo', 'texto')
     .gte('criada_em', new Date(Date.now() - 40 * 60_000).toISOString()).limit(200);
   const jids = [...new Set(((ms || []) as any[]).map(m => m.jid))];
   if (jids.length) {
-    const { data: cv } = await sb.from('wa_conversas').select('jid, nome, cliente_id').in('jid', jids).not('cliente_id', 'is', null);
+    const { data: cv } = await waPadrao(sb).conversas().select('jid, nome, cliente_id').in('jid', jids).not('cliente_id', 'is', null);
     const ehCliente = new Map(((cv || []) as any[]).map(c => [c.jid, c]));
     const fim8 = (x: unknown) => String(x || '').split('@')[0].replace(/\D/g, '').slice(-8);
     const fonesEq = new Set(equipe.flatMap(e => [e.numero, ...String(e.outros_numeros || '').split(/[,;\s]+/)]).map(fim8).filter(x => x.length === 8));
@@ -305,17 +306,17 @@ export async function dadosDoDia(sb: SupabaseClient): Promise<string> {
   const ini = new Date(Date.parse(hoje + 'T03:00:00Z')).toISOString();   /* 00:00 de Brasília */
   const amanha = new Date(Date.parse(hoje + 'T12:00:00Z') + 86400_000).toISOString().slice(0, 10);
   const [{ data: ms }, { data: entregues }, { data: criadas }, { data: vencem }, { data: atrasadas }, { data: esperando }, { data: cls }, { data: ps }] = await Promise.all([
-    sb.from('wa_mensagens').select('jid, de_mim').gte('criada_em', ini).limit(5000),
+    waPadrao(sb).mensagens().select('jid, de_mim').gte('criada_em', ini).limit(5000),
     sb.from('demandas_edicao').select('codigo, titulo, client_id, videomaker_id').gte('entregue_em', ini).is('deleted_at', null).limit(100),
     sb.from('demandas_edicao').select('codigo, titulo, client_id').gte('created_at', ini).is('deleted_at', null).limit(100),
     sb.from('demandas_edicao').select('codigo, titulo, client_id, videomaker_id, editing_status').eq('prazo', amanha).is('deleted_at', null).not('editing_status', 'in', '(entregue,descartado)').limit(100),
     sb.from('demandas_edicao').select('codigo, titulo, client_id, videomaker_id, prazo').lt('prazo', hoje).is('deleted_at', null).not('editing_status', 'in', '(entregue,descartado,standby)').limit(100),
-    sb.from('wa_conversas').select('nome, cliente_id, esperando_desde').not('cliente_id', 'is', null).not('esperando_desde', 'is', null).limit(60),
+    waPadrao(sb).conversas().select('nome, cliente_id, esperando_desde').not('cliente_id', 'is', null).not('esperando_desde', 'is', null).limit(60),
     sb.from('clientes').select('id, nome'), sb.from('perfis').select('id, nome')
   ]);
   const cliente = new Map(((cls || []) as any[]).map(c => [c.id, c.nome]));
   const pessoa = new Map(((ps || []) as any[]).map(p => [p.id, p.nome]));
-  const { data: cv } = await sb.from('wa_conversas').select('jid, nome, cliente_id').not('cliente_id', 'is', null);
+  const { data: cv } = await waPadrao(sb).conversas().select('jid, nome, cliente_id').not('cliente_id', 'is', null);
   const conv = new Map(((cv || []) as any[]).map(c => [c.jid, c]));
   const porCliente: Record<string, number> = {};
   for (const m of (ms || []) as any[]) if (!m.de_mim && conv.has(m.jid)) { const c = conv.get(m.jid); const n = cliente.get(c.cliente_id) || c.nome; porCliente[n] = (porCliente[n] || 0) + 1; }
