@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.85.2', versao: '4.85.2', em: '2026-11-23T20:30:00-03:00', rota: 'operacoes',
+    titulo: 'Operações: “Não se aplica”',
+    itens: ['No Calendário editorial e na Publicação agora dá para marcar “Não se aplica” quando o cliente não tem essa etapa no mês — ele sai do filtro “Com pendência” e conta como mês concluído.'] },
   { id: 'v-4.85.1', versao: '4.85.1', em: '2026-11-23T20:00:00-03:00', rota: 'whatsapp',
     titulo: 'Mandar mensagem pelo perfil',
     itens: ['No perfil de qualquer contato (ou no ⋯ de um membro do grupo) agora tem o botão Mensagem, como no WhatsApp: abre a conversa no privado — e, se ainda não existir, o B7 cria na hora.'] },

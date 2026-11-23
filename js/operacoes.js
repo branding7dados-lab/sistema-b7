@@ -16,15 +16,16 @@ B7.Operacoes = (function () {
   const painel = () => document.getElementById('painel-dashboard');
   const sb = () => B7.sb;
   const COLS = [
-    ['calendario', 'Calendário editorial', ['Pendente', 'Em execução', 'Feito', 'Entregue ao cliente']],
+    ['calendario', 'Calendário editorial', ['Pendente', 'Em execução', 'Feito', 'Entregue ao cliente', 'Não se aplica']],
     ['artes', 'Artes', ['Pendente', 'Em execução', 'Entregue', 'Sem artes']],
     ['campanha', 'Campanha', ['Pendente', 'Em execução', 'Rodando', 'Concluída', 'Não tem']],
     ['gravacao', 'Gravação', ['Não agendada', 'Agendada', 'Realizada', 'Não tem']],
     ['edicao', 'Edição', ['Pendente', 'Em execução', 'Entregue', 'Sem vídeos']],
-    ['publicacao', 'Publicação', ['Pendente', 'Em execução', 'Feito', 'Não feito']]
+    ['publicacao', 'Publicação', ['Pendente', 'Em execução', 'Feito', 'Não feito', 'Não se aplica']]
   ];
   const FEITO = ['Feito', 'Entregue', 'Entregue ao cliente', 'Realizada', 'Concluída', 'Rodando'];
-  const NAO_SE_APLICA = ['Sem artes', 'Sem vídeos', 'Não tem'];
+  /* 4.85.2: "Não se aplica" — o cliente não tem essa etapa no mês: não conta como pendência (pedido da equipe) */
+  const NAO_SE_APLICA = ['Sem artes', 'Sem vídeos', 'Não tem', 'Não se aplica'];
   const ANDAMENTO = ['Em execução', 'Agendada'];
   const tom = s => !s ? 'na' : FEITO.includes(s) ? 'ok' : NAO_SE_APLICA.includes(s) ? 'na' : ANDAMENTO.includes(s) ? 'and' : s === 'Não feito' ? 'atraso' : 'pend';
   const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
