@@ -588,6 +588,16 @@ B7.DB = (function () {
     async cadastroCliente(clienteId) { return this.rpc('cliente_cadastro', { p_cliente: clienteId }); },
     async salvarCadastro(clienteId, dados) { return this.rpc('cliente_cadastro_salvar', { p_cliente: clienteId, p_dados: dados }); },
     async pessoasCadastro() { return this.rpc('cliente_cadastro_pessoas', {}); },
+    /* 4.89.0: puxar do Núcleo 7 (função n7-clientes; ela só lê o Núcleo 7) */
+    async n7Clientes(acao, extra) {
+      const { data, error } = await sb().functions.invoke('n7-clientes', { body: Object.assign({ acao: acao }, extra || {}) });
+      if (error) {
+        let corpoErro = null;
+        try { corpoErro = await error.context.clone().json(); } catch (x) {}
+        throw new Error((corpoErro && corpoErro.erro) || 'Não foi possível falar com o Núcleo 7 agora.');
+      }
+      return data || {};
+    },
     async pacoteDoCliente(clienteId) {
       const r = ok(await sb().from('clientes').select('pacote_id').eq('id', clienteId).maybeSingle());
       return r ? r.pacote_id : null;

@@ -25,6 +25,11 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.89.0', versao: '4.89.0', em: '2026-11-24T21:00:00-03:00', rota: 'clientes',
+    titulo: 'Puxar o cadastro do Núcleo 7',
+    itens: ['Na aba Cadastro do cliente, "Puxar do Núcleo 7" traz o que já está preenchido lá: CNPJ, cidade, Instagram, site, logo, duração do contrato, o responsável e o que foi combinado. Você vê os dois lados e escolhe o que trazer.',
+      'Na tela Clientes, "Puxar cadastros do Núcleo 7" (administração) preenche de uma vez os campos vazios de todos os clientes. Nada que já está preenchido é trocado.',
+      'Valor, pagamento e contrato continuam só no Núcleo 7.'] },
   { id: 'v-4.88.2', versao: '4.88.2', em: '2026-11-24T19:00:00-03:00', rota: 'clientes',
     titulo: 'Cadastro: serviços contratados e duração do contrato',
     itens: ['"Pacote" agora se chama "Serviços contratados": no cadastro do cliente, na Gestão, nas Configurações e na nova linha editorial.',

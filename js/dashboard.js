@@ -1014,7 +1014,10 @@ B7.Dashboard = (function () {
         '<p>' + clientes.length + ' cliente' + (clientes.length === 1 ? '' : 's') + ' ativo' + (clientes.length === 1 ? '' : 's') +
           (inativosN ? ' · ' + inativosN + ' inativo' + (inativosN === 1 ? '' : 's') : '') +
           (fixadosN ? ' · ' + fixadosN + ' fixado' + (fixadosN === 1 ? '' : 's') : '') + ' · cada um com o seu workspace.</p></div>' +
-        '<button class="b pri cl2-novo" data-novo-cliente>' + IC.mais + '<span>Novo cliente</span></button></div>' +
+        '<div class="cl2-acoes">' +
+          /* 4.89.0: preencher o cadastro dos clientes com o que já está no Núcleo 7 (administrador) */
+          (B7.N7Puxar && B7.Auth && B7.Auth.ehAdmin && B7.Auth.ehAdmin() ? '<button class="b contorno" data-n7-todos>Puxar cadastros do Núcleo 7</button>' : '') +
+          '<button class="b pri cl2-novo" data-novo-cliente>' + IC.mais + '<span>Novo cliente</span></button></div></div>' +
       (todosClientes.length
         ? '<div class="cl2-barra">' +
             '<label class="cl2-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
@@ -3009,6 +3012,7 @@ B7.Dashboard = (function () {
       ev.stopPropagation();
       modalNovaGravacao(b.dataset.novaGravacao || undefined);
     });
+    p.querySelectorAll('[data-n7-todos]').forEach(b => b.onclick = () => B7.N7Puxar.todos(() => { esquecerSecoes(); B7.Rota.recarregar(); }));
     p.querySelectorAll('[data-novo-cliente]').forEach(b => b.onclick = ev => {
       ev.stopPropagation(); modalNovoCliente();
     });

@@ -898,6 +898,10 @@ B7.AJUDA_DADOS = [
       []
      ],
      [
+      "Na aba \"Cadastro\", \"Puxar do Núcleo 7\" traz o que já está preenchido no Núcleo 7 (CNPJ, cidade, Instagram, site, logo, duração do contrato, responsável e o que foi combinado). A janela mostra o que está no B7 e o que está no Núcleo 7, campo a campo: os campos vazios no B7 já vêm marcados; quando os dois têm valores diferentes, você decide. Se houver mais de um cliente com o mesmo nome no Núcleo 7, escolha o certo na lista. Na tela Clientes, a administração tem \"Puxar cadastros do Núcleo 7\", que preenche de uma vez só os campos vazios de todos os clientes.",
+      []
+     ],
+     [
       "Na etapa \"Serviços contratados\", escolha o que o cliente contratou (os serviços são criados em Gestão → \"Serviços contratados\"). Se ele negociou quantidades diferentes, marque \"Ajustar as quantidades só para este cliente\" e mude os números. Em \"VALE DESDE\", escolha a data em que o contrato começa a contar. O que foi contratado é a entrega mínima do mês e é com ele que a Gestão compara em \"Contratado × entregue\".",
       []
      ],

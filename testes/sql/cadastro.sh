@@ -17,5 +17,7 @@ P -f supabase/sql/zzz389_cadastro_cliente.sql >/dev/null
 P -f supabase/sql/zzz389_cadastro_cliente.sql >/dev/null   # idempotente
 P -f supabase/sql/zzz390_contrato_duracao.sql >/dev/null
 P -f supabase/sql/zzz390_contrato_duracao.sql >/dev/null   # idempotente
+P -f supabase/sql/zzz391_n7_clientes.sql >/dev/null
+P -f supabase/sql/zzz391_n7_clientes.sql >/dev/null   # idempotente
 P -f testes/sql/cadastro.test.sql
-echo "OK: zzz389 e zzz390 passaram (aplicadas 2×)"
+echo "OK: zzz389, zzz390 e zzz391 passaram (aplicadas 2×)"
