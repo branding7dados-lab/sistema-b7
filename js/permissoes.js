@@ -120,9 +120,12 @@ B7.Perm = (function () {
   };
   const funcao = () => (B7.Auth && B7.Auth.funcao ? B7.Auth.funcao() : null);
   const souAdmin = () => papel() === 'admin';
+  /* 4.86.0: Financeiro = administrador sem WhatsApp e sem Pessoas e acessos */
+  const souFinanceiro = () => !!(B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro());
+  const SEM_FINANCEIRO = ['whatsapp', 'usuarios'];
   function modulosEfetivos() {
     if (semSessao() || papel() === 'cliente') return [];
-    if (souAdmin()) return MODULOS.map(m => m.id);
+    if (souAdmin()) return MODULOS.map(m => m.id).filter(id => !(souFinanceiro() && SEM_FINANCEIRO.includes(id)));
     const doBanco = B7.Auth && B7.Auth.modulos ? B7.Auth.modulos() : null;
     return doBanco || PADRAO_FUNCAO[funcao()] || [];
   }
@@ -275,6 +278,7 @@ B7.Perm = (function () {
     const base = String(rota || '').replace(/^#\//, '').split('/')[0];
     if (papel() === 'cliente') return ROTAS.cliente.includes(base);
     if (base === 'painel') return painelElegivel();
+    if (souAdmin() && souFinanceiro() && SEM_FINANCEIRO.includes(base)) return false;
     if (souAdmin()) return true;
     if (ROTAS_INTERNAS.includes(base)) return true;
     /* Arquivados é ferramenta de gestão (restaura gravações): equipe */
@@ -285,6 +289,7 @@ B7.Perm = (function () {
 
   function podeConfig(secao) {
     if (semSessao()) return true;
+    if (souAdmin() && souFinanceiro() && secao === 'usuarios') return false;
     const lista = CONFIG[papel()];
     return !lista || lista.includes(secao);
   }
@@ -292,7 +297,7 @@ B7.Perm = (function () {
   /* Para onde mandar quem tentou uma rota que não pode abrir. O cliente
      é REDIRECIONADO (app.js troca o endereço), não só avisado: uma
      rota interna digitada à mão não pode nem ficar na barra. */
-  function inicio() { return '#/'; }
+  function inicio() { return souAdmin() && souFinanceiro() ? '#/gestao' : '#/'; }
   function redirecionaSeNegado() { return papel() === 'cliente'; }
 
   /* Esconde o que o papel não alcança. Some do DOM em vez de ficar

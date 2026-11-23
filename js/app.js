@@ -476,6 +476,11 @@ B7.Rota = (function () {
         try { history.replaceState(null, '', pref); } catch (e) {}
         return true;
       }
+      /* 4.86.0: o Financeiro começa na Gestão */
+      if (!pref && B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro()) {
+        try { history.replaceState(null, '', '#/gestao'); } catch (e) {}
+        return true;
+      }
     }
     if ((!location.hash || location.hash === '#') && B7.Perm && B7.Perm.painelElegivel && B7.Perm.painelElegivel()) {
       try { history.replaceState(null, '', '#/painel'); } catch (e) {}

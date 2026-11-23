@@ -122,6 +122,7 @@ B7.Usuarios = (function () {
   const identidadeDe = u => ({
     tipo: u.papel === 'cliente' ? 'cliente' : 'interno',
     ehAdmin: u.eh_admin !== undefined ? !!u.eh_admin : u.papel === 'admin',
+    financeiro: !!u.financeiro,
     funcao: u.funcao_personalizada || (u.funcao !== undefined ? (u.funcao || '') : (['coordenador', 'designer', 'videomaker'].includes(u.papel) ? u.papel : ''))
   });
   function modulosEfetivosDe(u) {
@@ -167,6 +168,9 @@ B7.Usuarios = (function () {
     return '<section class="ng-bloco ac-interno" id="' + px + '-interno"><h4>' + IC_ACESSO + 'Função e acesso</h4>' +
       '<label class="op-mini nu-chave-linha ac-admin" id="' + px + '-admin"><span>Administrador' +
         '<small>abre tudo e gerencia contas e configurações</small></span><input type="checkbox" role="switch"></label>' +
+      /* 4.86.0: Financeiro — administrador sem WhatsApp e sem Pessoas e acessos */
+      '<label class="op-mini nu-chave-linha ac-admin ac-fin" id="' + px + '-fin" hidden><span>Financeiro' +
+        '<small>administrador sem WhatsApp e sem Pessoas e acessos — acompanha a gestão (começa na Gestão)</small></span><input type="checkbox" role="switch"></label>' +
       '<label class="rot ac-rot">FUNÇÃO PRINCIPAL</label>' +
       '<div class="nu-papeis ac-funcoes' + (todasFuncoes().length > 3 ? ' ac-varias' : '') + '" id="' + px + '-funcao">' +
         todasFuncoes().map(f => '<button type="button" class="nu-papel' + (f.base ? ' ac-fn-pers' : '') + '" data-funcao="' + esc(f.id) + '"><i aria-hidden="true"></i><b>' + esc(f.rotulo) + '</b></button>').join('') +
@@ -244,7 +248,7 @@ B7.Usuarios = (function () {
      zzz216: secundarias = { funcao: 'ver'|'editar'|'total' } (abre o pacote até o nível, sem mudar a função);
      cargos = funções que a pessoa também exerce de verdade (recebe trabalho e ganha o Painel). */
   function ligarAcesso(m, px, ini, aoTipo) {
-    const E = { tipo: ini.tipo, ehAdmin: !!ini.ehAdmin, funcao: ini.funcao || '', excecoes: Object.assign({}, ini.excecoes || {}),
+    const E = { tipo: ini.tipo, ehAdmin: !!ini.ehAdmin, financeiro: !!ini.financeiro, funcao: ini.funcao || '', excecoes: Object.assign({}, ini.excecoes || {}),
                 secundarias: Object.assign({}, ini.secundarias || {}), cargos: (ini.cargos || []).slice() };
     const funcaoInicial = E.funcao;
     const q = sel => m.querySelector('#' + px + '-' + sel);
@@ -292,6 +296,7 @@ B7.Usuarios = (function () {
         : 'Pessoa da equipe: tem uma função e abre os módulos liberados.';
       q('interno').style.display = E.tipo === 'interno' ? '' : 'none';
       const adm = q('admin'); adm.querySelector('input').checked = E.ehAdmin; adm.classList.toggle('on', E.ehAdmin);
+      const fin = q('fin'); if (fin) { fin.hidden = !E.ehAdmin; fin.querySelector('input').checked = E.ehAdmin && E.financeiro; fin.classList.toggle('on', E.ehAdmin && E.financeiro); }
       q('funcao').classList.toggle('ac-tres', !E.ehAdmin);
       q('funcao').querySelectorAll('[data-funcao]').forEach(b => {
         b.classList.toggle('on', b.dataset.funcao === E.funcao);
@@ -338,8 +343,10 @@ B7.Usuarios = (function () {
     q('tipo').querySelectorAll('[data-tipo]').forEach(b => b.addEventListener('click', () => {
       E.tipo = b.dataset.tipo; pintar(); if (aoTipo) aoTipo(E.tipo);
     }));
+    if (q('fin')) q('fin').querySelector('input').addEventListener('change', ev => { E.financeiro = ev.target.checked; pintar(); });
     q('admin').querySelector('input').addEventListener('change', ev => {
       E.ehAdmin = ev.target.checked;
+      if (!E.ehAdmin) E.financeiro = false;
       if (!E.ehAdmin && !E.funcao) E.funcao = funcaoInicial || '';
       pintar();
     });
@@ -359,7 +366,7 @@ B7.Usuarios = (function () {
         if (E.tipo === 'cliente') return { tipo: 'cliente', papel: 'cliente' };
         if (!E.ehAdmin && !E.funcao) return { erro: 'Escolha a função principal (ou marque Administrador).' };
         limpar();
-        return { tipo: 'interno', eh_admin: E.ehAdmin, funcao: E.funcao || null, modulos: E.ehAdmin ? {} : Object.assign({}, E.excecoes),
+        return { tipo: 'interno', eh_admin: E.ehAdmin, financeiro: !!(E.ehAdmin && E.financeiro), funcao: E.funcao || null, modulos: E.ehAdmin ? {} : Object.assign({}, E.excecoes),
                  secundarias: E.ehAdmin ? {} : Object.assign({}, E.secundarias), cargos: E.ehAdmin ? [] : E.cargos.slice() };
       }
     };
@@ -1212,7 +1219,7 @@ B7.Usuarios = (function () {
 
     const blocoCliente = ligarCliente(m, 'ed', ligadas, clientes);
     const idt0 = identidadeDe(u);
-    const acesso = ligarAcesso(m, 'ed', { tipo: idt0.tipo, ehAdmin: idt0.ehAdmin, funcao: idt0.funcao, excecoes: ACESSO.excecoes[u.id] || {},
+    const acesso = ligarAcesso(m, 'ed', { tipo: idt0.tipo, ehAdmin: idt0.ehAdmin, financeiro: idt0.financeiro, funcao: idt0.funcao, excecoes: ACESSO.excecoes[u.id] || {},
         secundarias: ACESSO.secundarias[u.id] || {}, cargos: (extrasAtuais || []).slice() },
       tipo => { blocoCliente.style.display = tipo === 'cliente' ? '' : 'none'; });
 
