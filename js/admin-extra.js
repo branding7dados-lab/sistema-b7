@@ -1234,7 +1234,7 @@ B7.AberturaAdm = (function () {
         B7.Abertura.CARGAS.map(([v, r]) => '<option value="' + v + '"' + (v === (cfg.carregamento || 'relampago') ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select>' +
         '<button type="button" class="b fina contorno" id="abadm-testar-carga">Testar</button></div>' +
       '<div class="adm-sub">Para uma pessoa só <small>deixe em "Padrão do sistema" para seguir a de cima</small></div>' +
-      pessoas.map(p => '<div class="adm-sessao"><span class="adm-sessao-tx"><b>' + esc(p.nome) + '</b><small>' + esc(ROT_PAPEL[p.papel] || p.papel || '') + '</small></span>' +
+      pessoas.map(p => '<div class="adm-sessao"><span class="adm-sessao-tx"><b>' + esc(p.nome) + '</b><small>' + esc((p.financeiro ? 'Financeiro' : ROT_PAPEL[p.papel]) || p.papel || '') + '</small></span>' +
         '<select class="campo fina" data-pessoa="' + esc(p.id) + '" aria-label="Abertura de ' + esc(p.nome) + '">' + opcoes((cfg.pessoas || {})[p.id], true) + '</select></div>').join('') +
       '<p class="adm-nota">Estilos: Streaming (o logo, duas batidas e o mergulho em faixas de luz que abrem o sistema) · Hiperespaço (o salto para a velocidade da luz) · Tinta (gotas de tinta que giram até o logo) · Glitch (um terminal que quebra e estoura no logo) · Aurora (cortinas de luz no céu) · Neon (o letreiro que liga piscando) · Mosaico (quadrados que viram e se abrem no logo) · Big bang (partículas e nebulosa) · Clássica (a lâmpada que acende).</p>';
     const salvar = m.querySelector('#abadm-salvar');

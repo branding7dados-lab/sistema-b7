@@ -62,7 +62,7 @@ B7.Perfil = (function () {
           '<b>' + esc(u.nome) + '</b>' +
           '<span>@' + esc(u.username) + '</span>' +
           '<span class="perfil-papel ' + esc(u.papel) + '">' +
-            esc(ROTULO[u.papel] || u.papel) + '</span>' +
+            esc(((B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro()) ? 'Financeiro' : ROTULO[u.papel]) || u.papel) + '</span>' +
         '</div>' +
         '<button type="button" class="pf-x" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
       '</div>' +
@@ -186,7 +186,7 @@ B7.Perfil = (function () {
             titulo(IC.escudo, 'cinza', 'Definido pela Branding7') +
             '<div class="perfil-linha"><span>Usuário</span><b>@' + esc(u.username) + '</b></div>' +
             '<div class="perfil-linha"><span>Perfil</span><b>' +
-              esc(ROTULO[u.papel] || u.papel) + '</b></div>' +
+              esc(((B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro()) ? 'Financeiro' : ROTULO[u.papel]) || u.papel) + '</b></div>' +
             (u.papel === 'cliente'
               ? '<div class="perfil-linha"><span>Empresas</span><b>' +
                 (empresas.length ? esc(empresas.map(e => e.nome).join(', ')) : '—') + '</b></div>' +

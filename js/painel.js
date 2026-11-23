@@ -608,7 +608,8 @@ B7.Painel = (function () {
   function papeis() {
     const p = B7.Auth.papel();
     const extras = (B7.Auth.funcoesExtra ? B7.Auth.funcoesExtra() : []).filter(f => f !== p);
-    return [p].concat(extras).map(x => ROTULO_PAPEL[x] || x).join(' · ');
+    const fin = (B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro());
+    return [p].concat(extras).map(x => (x === 'admin' && fin ? 'Financeiro' : ROTULO_PAPEL[x] || x)).join(' · ');
   }
 
   /* Cabeçalho comum aos Painéis: data, saudação, papéis reais, a

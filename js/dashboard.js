@@ -2319,7 +2319,7 @@ B7.Dashboard = (function () {
         '<header class="cfg-topo"><h1 class="cfg-titulo">Configurações</h1>' +
           '<p class="cfg-sub">Sua conta e o jeito do B7' + (ehAdm ? ' — e o da equipe' : '') + '.</p></header>' +
         (u ? '<button type="button" class="cfg-eu" data-abrir-perfil><span class="cfg-eu-marca" aria-hidden="true"></span>' + (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-eu-av') : '') +
-          '<span class="cfg-eu-tx"><b>' + esc(u.nome || u.username || '') + '</b><small>' + esc(PAPEL_CFG[u.papel] || u.papel || '') +
+          '<span class="cfg-eu-tx"><b>' + esc(u.nome || u.username || '') + '</b><small>' + esc((u.papel === 'admin' && (B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro()) ? 'Financeiro' : PAPEL_CFG[u.papel]) || u.papel || '') +
           (ehSuper ? ' · Super admin' : '') + '</small></span>' + SETA_CFG + '</button>' : '') +
         '<label class="cfg-busca">' + svgF('lupa') + '<input type="search" id="cfg-q" placeholder="Procurar um ajuste" autocomplete="off" aria-label="Procurar um ajuste"></label>' +
         '<nav class="cfg-nav" aria-label="Seções das configurações">' + BLOCOS.map(([b, rot]) => {

@@ -24,7 +24,7 @@ B7.Auth = (function () {
        3.0.0 → 3.0.1  correção ou ajuste
      A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
      programa do Windows. O aviso de atualização só compara se mudou. */
-  const VERSAO = '4.87.0';
+  const VERSAO = '4.87.1';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -575,6 +575,7 @@ B7.Auth = (function () {
     if (!u) return;
     const rotulo = { admin: 'Administrador', coordenador: 'Coordenador de mídias',
                      cliente: 'Cliente' }[u.papel] || u.papel;
+    const rotuloVer = u.papel === 'admin' && ehFinanceiro() ? 'Financeiro' : rotulo;
 
     const m = B7.UI.modal(
       '<div class="perfil-topo">' +
@@ -583,7 +584,7 @@ B7.Auth = (function () {
             ? '<img src="' + esc(u.avatar_url) + '" alt="">'
             : esc((u.nome || u.username).slice(0, 2).toUpperCase())) + '</div>' +
         '<div><h3>' + esc(u.nome) + '</h3>' +
-        '<div class="perfil-sub">@' + esc(u.username) + ' · ' + esc(rotulo) + '</div></div>' +
+        '<div class="perfil-sub">@' + esc(u.username) + ' · ' + esc(rotuloVer) + '</div></div>' +
       '</div>' +
 
       '<div class="corpo">' +

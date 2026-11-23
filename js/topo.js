@@ -380,7 +380,9 @@ B7.Topo = (function () {
     const extras = (Array.isArray(u.funcoes_extra) ? u.funcoes_extra : []).filter(f => f !== p);
     /* coordenação como função extra só vale para admin (B7.Perm) */
     const validos = extras.filter(f => f !== 'coordenador' || p === 'admin');
-    return [p].concat(validos).map(x => ROTULO_PAPEL[x] || x).join(' · ');
+    /* 4.87.1: o Financeiro é administrador por dentro, mas aparece como Financeiro */
+    const fin = !!u.financeiro || (u === (B7.Auth && B7.Auth.usuario()) && (B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro()));
+    return [p].concat(validos).map(x => (x === 'admin' && fin ? 'Financeiro' : ROTULO_PAPEL[x] || x)).join(' · ');
   }
   function modoTema() {
     let salvo = null; try { salvo = localStorage.getItem('b7_tema'); } catch (e) {}
