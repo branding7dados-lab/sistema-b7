@@ -584,6 +584,10 @@ B7.DB = (function () {
       return id ? ok(await sb().from('pacotes_producao').update(d).eq('id', id).select().single())
                 : ok(await sb().from('pacotes_producao').insert(d).select().single());
     },
+    /* 4.88.0: cadastro do cliente (zzz389) — sai e entra por funções que conferem a equipe */
+    async cadastroCliente(clienteId) { return this.rpc('cliente_cadastro', { p_cliente: clienteId }); },
+    async salvarCadastro(clienteId, dados) { return this.rpc('cliente_cadastro_salvar', { p_cliente: clienteId, p_dados: dados }); },
+    async pessoasCadastro() { return this.rpc('cliente_cadastro_pessoas', {}); },
     async pacoteDoCliente(clienteId) {
       const r = ok(await sb().from('clientes').select('pacote_id').eq('id', clienteId).maybeSingle());
       return r ? r.pacote_id : null;

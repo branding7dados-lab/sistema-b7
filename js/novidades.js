@@ -25,6 +25,15 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.88.0', versao: '4.88.0', em: '2026-11-24T15:00:00-03:00', rota: 'clientes',
+    titulo: 'Cadastro do cliente novo, com pacote e marca',
+    itens: ['Novo cliente agora é em etapas: Cliente, Marca, Pacote, Equipe e Observações. Só o nome é obrigatório; o resto dá para completar depois.',
+      'Na página do cliente, a aba Cadastro mostra tudo em blocos, cada um com o seu Editar. "Editar cliente" abre essa aba.',
+      'Pacote do cliente: escolha o pacote padrão e, se precisar, ajuste as quantidades só para ele. O Contratado × entregue passa a usar esse pacote.',
+      'Marca do cliente: logo, cores (toque para copiar o código), fontes e o link do material.',
+      'Gestão → Pacotes: crie e edite os pacotes que a B7 vende e veja quantos clientes estão em cada um.',
+      'O grupo do WhatsApp saiu do cadastro: ele é ligado pelo WhatsApp do sistema.',
+      'WhatsApp: ao responder uma mensagem, a mensagem citada aparece por inteiro em cima da caixa de digitar (antes ficava escondida atrás dela).'] },
   { id: 'v-4.87.1', versao: '4.87.1', em: '2026-11-24T11:00:00-03:00',
     titulo: 'Financeiro aparece como Financeiro',
     itens: ['No menu da conta, no Painel, nas Configurações e no perfil, quem é do Financeiro aparece como Financeiro (antes aparecia Administrador).',

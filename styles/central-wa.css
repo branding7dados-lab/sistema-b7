@@ -601,3 +601,10 @@ html[data-theme="dark"] .wz-mc{color:#53bdeb;}
 
 /* 4.85.0: um bloco por dia — a data fica grudada no topo só durante o seu dia (não empilha uma data sobre a outra) */
 .wz-dg{display:flex;flex-direction:column;gap:3px;}
+
+/* 4.88.0: responder — a citação mora dentro da caixa de digitar flutuante, na linha de cima */
+.wz-comp{flex-wrap:wrap;}
+.wz-comp > .wz-cita{flex:0 0 100%;order:-1;min-width:0;padding:2px 2px 8px;background:none;}
+.wz-comp > .wz-cita[hidden]{display:none;}
+.wz-comp.gravando > .wz-cita{visibility:hidden;}
+.wz-msgs.com-cita{padding-bottom:156px;}

@@ -890,31 +890,31 @@ B7.AJUDA_DADOS = [
       []
      ],
      [
-      "Para criar, clique em \"Novo cliente\". Escreva o nome (obrigatório). Se quiser, arraste a logo para a área (ou clique em \"Selecionar\") e escreva observações como tom de voz e contato.",
+      "Para criar, clique em \"Novo cliente\". A janela tem 5 etapas: \"Cliente\", \"Marca\", \"Pacote\", \"Equipe\" e \"Observações\". Só o nome é obrigatório. Escreva o nome e clique em \"Criar e continuar\": o cliente já fica criado. Nas outras etapas, preencha e clique em \"Salvar e continuar\", ou em \"Pular\" para deixar para depois.",
       []
      ],
      [
-      "Em \"COMO TRABALHAMOS COM ESTE CLIENTE\", marque tudo o que vale: \"Linha editorial\", \"Pauta semanal\" e/ou \"Roteiros e trends\". Pode marcar mais de uma. Se não marcar nenhuma, fica só \"Linha editorial\".",
+      "Na etapa \"Cliente\", em \"COMO TRABALHAMOS COM ESTE CLIENTE\", marque tudo o que vale: \"Linha editorial\", \"Pauta semanal\" e/ou \"Roteiros e trends\". Pode marcar mais de uma. Se não marcar nenhuma, fica só \"Linha editorial\".",
       []
      ],
      [
-      "Clique em \"Criar cliente\". Se a logo falhar, o cliente é criado do mesmo jeito. Depois você tenta de novo em \"Editar cliente\".",
+      "Na etapa \"Pacote\", escolha o pacote do cliente (os pacotes são criados em Gestão → \"Pacotes\"). Se ele negociou quantidades diferentes, marque \"Ajustar as quantidades só para este cliente\" e mude os números. Em \"VALE DESDE\", escolha a data em que o pacote começa a contar. O pacote é a entrega mínima do mês e é com ele que a Gestão compara em \"Contratado × entregue\".",
       []
      ],
      [
-      "Para abrir um cliente, clique no cartão dele (ou no \"⋯\" → \"Abrir workspace\"). No topo da página do cliente ficam as abas: \"Visão geral\", \"Editorial\", \"Gravações\", \"Roteiros\", \"Vídeos\", \"Design\", \"Ideias\", \"Inteligência\" e \"Arquivados\". A aba \"Editorial\" só aparece se \"Linha editorial\" estiver marcada nos modos de trabalho.",
+      "Para abrir um cliente, clique no cartão dele (ou no \"⋯\" → \"Abrir workspace\"). No topo da página do cliente ficam as abas: \"Visão geral\", \"Cadastro\", \"Editorial\", \"Gravações\", \"Roteiros\", \"Vídeos\", \"Design\", \"Ideias\", \"Inteligência\" e \"Arquivados\". A aba \"Editorial\" só aparece se \"Linha editorial\" estiver marcada nos modos de trabalho.",
       []
      ],
      [
-      "Para mudar nome, logo, observações ou modos, clique em \"Editar cliente\" (no \"⋯\" do cartão ou no \"⋯\" do topo da página do cliente). Altere e clique em \"Salvar alterações\".",
+      "Para mudar qualquer dado, abra a aba \"Cadastro\" na página do cliente (o \"Editar cliente\" do \"⋯\" leva para ela). Cada bloco (\"Cliente\", \"Marca\", \"Pacote\", \"Equipe\", \"Observações\") tem o seu botão \"Editar\" (ou \"Completar\", quando está vazio). Altere e clique em \"Salvar\".",
       []
      ],
      [
-      "Na mesma janela \"Editar cliente\", preencha \"GRUPO DO WHATSAPP\" com o nome do grupo exatamente como aparece no WhatsApp. É esse nome que o \"Enviar no WhatsApp\" usa para abrir o grupo certo.",
+      "No bloco \"Marca\", guarde a logo, as cores (até 8, com o código de cada uma), as fontes e o link do material da marca. Na ficha, toque numa cor para copiar o código. Se trocar o pacote de um cliente que tinha as quantidades ajustadas, o sistema avisa que o ajuste será descartado; \"Voltar ao padrão\" desfaz o ajuste. O grupo do WhatsApp do cliente não fica no cadastro: ligue o grupo ao cliente na Central do WhatsApp, em \"Ligar a um cliente…\".",
       []
      ],
      [
-      "Ainda em \"Editar cliente\", se o cliente grava sempre no mesmo dia, ligue \"Este cliente tem dia fixo de gravar\" (veja \"Gravação fixa\" nas dicas). Escolha \"Toda semana\" (e o dia da semana) ou \"Todo mês\" (e o dia do mês). Se quiser, preencha o horário \"das … às …\". Escolha \"criar com … de antecedência\" (3, 5, 7, 10 ou 14 dias). Clique em \"Salvar alterações\".",
+      "Ainda na aba \"Cadastro\", no bloco \"Gravação fixa\" (administração e coordenação), se o cliente grava sempre no mesmo dia, clique em \"Editar\" e ligue \"Este cliente tem dia fixo de gravar\" (veja \"Gravação fixa\" nas dicas). Escolha \"Toda semana\" (e o dia da semana) ou \"Todo mês\" (e o dia do mês). Se quiser, preencha o horário \"das … às …\". Escolha \"criar com … de antecedência\" (3, 5, 7, 10 ou 14 dias). Clique em \"Salvar\".",
       []
      ],
      [
@@ -1527,7 +1527,7 @@ B7.AJUDA_DADOS = [
     ],
     "dicas": [
      [
-      "Cliente com dia fixo de gravar: em Clientes, clique em \"Editar cliente\" e ligue \"Este cliente tem dia fixo de gravar\". Escolha \"Toda semana\" ou \"Todo mês\", o dia, o horário (opcional) e \"criar com N dias de antecedência\". O sistema cria sozinho a gravação \"Gravação DD/MM\" e não repete se já existir uma naquele dia. Isso é só para administrador e coordenador.",
+      "Cliente com dia fixo de gravar: na página do cliente, aba \"Cadastro\", bloco \"Gravação fixa\", clique em \"Editar\" e ligue \"Este cliente tem dia fixo de gravar\". Escolha \"Toda semana\" ou \"Todo mês\", o dia, o horário (opcional) e \"criar com N dias de antecedência\". O sistema cria sozinho a gravação \"Gravação DD/MM\" e não repete se já existir uma naquele dia. Isso é só para administrador e coordenador.",
       []
      ],
      [
