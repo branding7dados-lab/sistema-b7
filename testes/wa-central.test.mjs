@@ -30,7 +30,7 @@ const enviados = [];
 const falhas = []; const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if (!c) falhas.push(m); };
 
 const nav = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
-async function abrirCentral(viewport, rota = '#/whatsapp') {
+async function abrirCentral(viewport, rota = '#/whatsapp', papel = 'admin') {
   const ctx = await nav.newContext({ viewport, deviceScaleFactor: process.env.PRINT ? 2 : 1 });
   await ctx.route(/supabase\.co\//, async rota => {
     const url = new URL(rota.request().url()), req = rota.request();
@@ -59,15 +59,16 @@ async function abrirCentral(viewport, rota = '#/whatsapp') {
   const pg = await ctx.newPage();
   pg.on('pageerror', e => falhas.push('erro de JavaScript: ' + e.message));
   await pg.goto(BASE + '/index.html'); await pg.waitForTimeout(1200);
-  await pg.evaluate((r) => {
-    const U = { id: 'u-teste', papel: 'admin', nome: 'Yury Teste', username: 'teste', estado: 'ativa', preferencias: {}, empresas: [] };
-    Object.assign(B7.Auth, { usuario: () => U, papel: () => 'admin', ehAdmin: () => true, ehAdminReal: () => true, ehEquipe: () => true, ehCliente: () => false, funcoesExtra: () => [], naContaDeOutro: () => false, emSimulacao: () => false });
+  await pg.evaluate(([r, papel]) => {
+    const adm = papel === 'admin';
+    const U = { id: 'u-teste', papel, nome: 'Yury Teste', username: 'teste', estado: 'ativa', preferencias: {}, empresas: [] };
+    Object.assign(B7.Auth, { usuario: () => U, papel: () => papel, funcao: () => (adm ? null : papel), modulos: () => null, niveis: () => null, ehAdmin: () => adm, ehAdminReal: () => adm, ehEquipe: () => adm, ehCliente: () => false, funcoesExtra: () => [], naContaDeOutro: () => false, emSimulacao: () => false });
     document.querySelectorAll('.b7-abertura').forEach(e => e.remove());
     if (B7.montarShellInterno) B7.montarShellInterno();
     try { B7.pref.gravar('wa_num', 'todos'); } catch (e) {}
     location.hash = r;
-  }, rota);
-  await pg.waitForSelector(rota === '#/whatsapp' ? '.wz-it' : '.cwa-num-l', { timeout: 8000 }).catch(() => null);
+  }, [rota, papel]);
+  await pg.waitForSelector(rota === '#/whatsapp' ? '.wz-it' : papel === 'admin' ? '.cwa-num-l' : '.asw-nav', { timeout: 8000 }).catch(() => null);
   await pg.waitForTimeout(500);
   return { ctx, pg };
 }
@@ -132,6 +133,15 @@ const itens = pg => pg.$$eval('.wz-it', l => l.map(e => ({ nome: e.querySelector
   await pg.selectOption('#wae-c', '120@g.us'); await pg.click('#wae-ok'); await pg.waitForTimeout(800);
   const e = enviados.find(x => x.acao === 'enviar_texto');
   ok(e && e.numero === 'n-des', 'o envio sai pelo número escolhido');
+  await ctx.close(); }
+
+{ /* quem não é administrador: só as configurações pessoais; as da equipe (Números, Otto, grupos…) não aparecem */
+  const { ctx, pg } = await abrirCentral({ width: 1360, height: 860 }, '#/whatsapp/config?aba=conexao', 'designer');
+  if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/config-designer.png', import.meta.url)) });
+  const abas = await pg.$$eval('.asw-nav [data-aba]', l => l.map(b => b.dataset.aba));
+  ok(abas.length && abas.every(a => ['meu', 'modelos', 'respostas'].includes(a)), 'designer: só Meu jeito, Modelos e Respostas (' + abas.join(', ') + ')');
+  ok(!(await pg.$('.cwa-num-l')) && !(await pg.$('[data-acao="n-novo"]')), 'designer: pedir ?aba=conexao não mostra os números');
+  ok(!enviados.some(e => e.acao === 'numeros'), 'designer: a tela nem pede a lista de números ao servidor');
   await ctx.close(); }
 
 await nav.close(); servidor.close();
