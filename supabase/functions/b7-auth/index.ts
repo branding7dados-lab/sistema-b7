@@ -754,6 +754,8 @@ Deno.serve(comCors(async (req) => {
     if (DF.ACOES_SEG_ADMIN.includes(acao)) {
       const eu = await quemChamou(req);
       if (!eu || eu.papel !== 'admin') return json({ erro: 'Só o administrador pode fazer isso.' }, 403);
+      /* 4.86.0: verificação em 2 etapas de outras pessoas é Pessoas e acessos — não é do Financeiro */
+      if (eu.financeiro) return json({ erro: 'Pessoas e acessos é só do administrador.' }, 403);
       if (acao === 'seg_politica') {
         const lim = await limiteDe(admin(), eu.id, 'seguranca');
         if (lim === 'bloqueado') return json({ erro: 'A política de segurança está liberada só para super admin.' }, 403);
@@ -927,6 +929,8 @@ Deno.serve(comCors(async (req) => {
       const clientId = String(corpo.client_id || '');
       const { data: cli } = await sb.from('clientes').select('id, nome, servico').eq('id', clientId).maybeSingle();
       if (!cli) return json({ erro: 'Empresa não encontrada.' }, 404);
+      /* 4.86.0: contas do portal (convidar, nova senha, remover) são acessos — ficam com o administrador, não com o Financeiro */
+      if (autor.papel === 'admin' && autor.financeiro) return json({ erro: 'As contas do portal ficam com o administrador.' }, 403);
       if (autor.papel !== 'admin') {
         const { data: v } = await sb.from('perfil_clientes').select('papel')
           .eq('perfil_id', autor.id).eq('client_id', clientId).maybeSingle();

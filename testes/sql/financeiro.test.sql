@@ -41,4 +41,18 @@ do $$ begin
   assert not exists (select 1 from wa_quem_ve_whatsapp() x where x = '00000000-0000-0000-0000-0000000000f1'), 'financeiro não recebe aviso de WhatsApp';
   assert position('sou_admin_pleno_pleno' in pg_get_functiondef('public.perfil_definir_cargos(uuid)'::regprocedure)) = 0, 'rodar 2× não estraga';
 end $$;
+-- revisão: financeiro que também tem a função videomaker continua SEM WhatsApp (banco e aviso)
+update perfis set funcoes_adicionais = '{videomaker}' where id = '00000000-0000-0000-0000-0000000000f1';
+set role authenticated;
+do $$ begin perform set_config('teste.uid', '00000000-0000-0000-0000-0000000000f1', false); end $$;
+do $$ begin
+  assert not wa_pode_ver_numero(wa_numero_padrao()), 'financeiro + videomaker: não vê o WhatsApp';
+  assert not pode_ver_wa(), 'financeiro + videomaker: fora da Central';
+  assert (select count(*) from wa_numeros) = 0, 'financeiro + videomaker: não vê os números';
+end $$;
+reset role;
+do $$ begin
+  assert not exists (select 1 from wa_quem_ve_whatsapp() x where x = '00000000-0000-0000-0000-0000000000f1'), 'financeiro + videomaker: sem aviso do WhatsApp';
+  assert exists (select 1 from wa_quem_ve_whatsapp() x where x = '00000000-0000-0000-0000-0000000000b1'), 'videomaker comum continua recebendo';
+end $$;
 \echo 'financeiro OK'

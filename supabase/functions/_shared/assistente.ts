@@ -2726,6 +2726,8 @@ async function talvezAvisarCelular(sb: SupabaseClient, cfg: Config) {
   const fonesEq = new Set((cfg.equipe || []).flatMap(e => fins8(e)));
   let para: string[] = Array.isArray((cfg as any).push_para) ? (cfg as any).push_para.filter(Boolean) : [];
   if (!para.length) { const { data } = await sb.rpc('wa_quem_ve_whatsapp'); para = ((data || []) as any[]).map(x => typeof x === 'string' ? x : x?.wa_quem_ve_whatsapp).filter(Boolean); }
+  /* 4.86.0: o Financeiro não recebe aviso do WhatsApp, mesmo que esteja na lista escolhida */
+  if (para.length) { const { data: fin } = await sb.from('perfis').select('id').in('id', para).eq('financeiro', true); const fora = new Set(((fin || []) as any[]).map(x => x.id)); if (fora.size) para = para.filter(x => !fora.has(x)); }
   if (!para.length) return;
   const ids = [...new Set(pendentes.map(c => c.cliente_id))];
   const { data: cls } = await sb.from('clientes').select('id, nome').in('id', ids);

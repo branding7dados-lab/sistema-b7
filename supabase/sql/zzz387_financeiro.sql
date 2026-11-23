@@ -36,8 +36,7 @@ declare
   -- Pessoas e acessos (o que a tela de Pessoas chama) + o acesso ao WhatsApp
   alvo text[] := array['perfil_definir_cargos', 'perfil_acao_definir', 'perfil_parceiro_definir', 'funcao_acao_definir',
     'funcao_personalizada_salvar', 'funcao_personalizada_excluir', 'acesso_decidir', 'acesso_revogar', 'acesso_ceder',
-    'acesso_prazo', 'acessos_historico', 'acesso_pedidos_listar', 'sessoes_listar', 'sessoes_encerrar_pessoa',
-    'wa_pode_ver_numero'];
+    'acesso_prazo', 'acessos_historico', 'acesso_pedidos_listar', 'sessoes_listar', 'sessoes_encerrar_pessoa', 'sessao_encerrar'];
 begin
   -- 1) funções: sou_admin() → sou_admin_pleno()
   for r in select p.oid from pg_proc p join pg_namespace s on s.oid = p.pronamespace
@@ -47,16 +46,7 @@ begin
     n := regexp_replace(n, '([^a-z_.])sou_admin\(\)', '\1sou_admin_pleno()', 'g');
     if n <> d then execute n; end if;
   end loop;
-  -- 2) aviso de "cliente esperando" no celular: o financeiro não recebe
-  for r in select p.oid from pg_proc p join pg_namespace s on s.oid = p.pronamespace
-            where s.nspname = 'public' and p.proname = 'wa_quem_ve_whatsapp' loop
-    d := pg_get_functiondef(r.oid);
-    if position('financeiro' in d) = 0 then
-      n := replace(d, 'coalesce(p.eh_admin, false)', '(coalesce(p.eh_admin, false) and not coalesce(p.financeiro, false))');
-      if n <> d then execute n; end if;
-    end if;
-  end loop;
-  -- 3) políticas: todas as do WhatsApp; nas de Pessoas, só as de escrita (ler perfis é de todos: nomes e fotos)
+  -- 2) políticas: todas as do WhatsApp; nas de Pessoas, só as de escrita (ler perfis é de todos: nomes e fotos)
   for r in select tablename, policyname, cmd as c0, qual, with_check from pg_policies
             where schemaname = 'public'
               and (tablename ~ '^wa_' or (tablename in ('perfis', 'perfil_modulos', 'perfil_acoes', 'funcao_modulos', 'funcao_acoes',
@@ -71,4 +61,44 @@ begin
       execute sqlcmd;
     end if;
   end loop;
+end $$;
+
+-- WhatsApp: o financeiro NUNCA vê, mesmo que também tenha uma função (ex.: videomaker) — revisão de segurança
+create or replace function public.wa_pode_ver_numero(p_numero uuid)
+returns boolean language sql stable security definer set search_path to 'public'
+as $$
+  select not public.sou_financeiro() and (coalesce(public.sou_admin(), false) or exists (
+    select 1 from public.wa_numeros n join public.perfis p on p.id = auth.uid()
+     where n.id = p_numero and n.ativo and p.estado = 'ativa' and p.papel <> 'cliente'
+       and (p.papel = any(n.equipes) or exists (select 1 from unnest(n.equipes) e where public.tenho_funcao_extra(e, p.id)))))
+$$;
+grant execute on function public.wa_pode_ver_numero(uuid) to authenticated;
+
+-- aviso de "cliente esperando" no celular: o financeiro não recebe
+create or replace function public.wa_quem_ve_whatsapp()
+returns setof uuid language sql stable security definer set search_path to 'public'
+as $$
+  select p.id from public.perfis p
+   where p.estado = 'ativa' and p.papel <> 'cliente' and not coalesce(p.financeiro, false)
+     and (coalesce(p.eh_admin, false) or coalesce(public.eh_videomaker_elegivel(p.id), false))
+$$;
+revoke all on function public.wa_quem_ve_whatsapp() from public, anon, authenticated;
+grant execute on function public.wa_quem_ve_whatsapp() to service_role;
+
+-- conferência: as funções de Pessoas que existem precisam ter ficado só com o administrador pleno.
+-- Se alguma não usa sou_admin() (e por isso não foi trocada), a migração PARA com o nome dela — melhor
+-- falhar alto do que deixar o financeiro mexer em acessos sem ninguém saber.
+do $$
+declare r record; d text; ruins text[] := '{}';
+begin
+  for r in select p.oid, p.proname from pg_proc p join pg_namespace s on s.oid = p.pronamespace
+            where s.nspname = 'public' and p.prokind = 'f' and p.proname = any(array['perfil_definir_cargos', 'perfil_acao_definir', 'perfil_parceiro_definir',
+              'funcao_acao_definir', 'funcao_personalizada_salvar', 'funcao_personalizada_excluir', 'acesso_decidir', 'acesso_revogar', 'acesso_ceder',
+              'acesso_prazo', 'acessos_historico', 'acesso_pedidos_listar', 'sessoes_listar', 'sessoes_encerrar_pessoa']) loop
+    d := pg_get_functiondef(r.oid);
+    if position('sou_admin_pleno()' in d) = 0 or d ~ '([^a-z_.])sou_admin\(\)' or d ~ 'public\.sou_admin\(\)' then ruins := ruins || r.proname; end if;
+  end loop;
+  if cardinality(ruins) > 0 then
+    raise exception 'zzz387: estas funções de Pessoas não ficaram só com o administrador pleno: %', array_to_string(ruins, ', ');
+  end if;
 end $$;

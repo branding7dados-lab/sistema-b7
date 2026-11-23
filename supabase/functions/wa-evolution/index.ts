@@ -465,6 +465,8 @@ Deno.serve(comCors(async (req: Request) => {
   if (req.method !== 'POST') return json({ erro: 'Use POST.' }, 405);
   const p = await quemChamou(req);
   if (!p) return json({ erro: 'Entre no sistema de novo.' }, 401);
+  /* 4.86.0: o Financeiro não tem WhatsApp (nem com função de videomaker) */
+  if (p.financeiro) return json({ erro: 'O WhatsApp não faz parte do acesso do Financeiro.' }, 403);
   let c: Record<string, any> = {};
   try { c = await req.json(); } catch (_e) { /* vazio */ }
   const acao = String(c.acao || 'estado');

@@ -2204,14 +2204,16 @@ B7.Dashboard = (function () {
             botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : ''));
 
     /* zzz247: tudo o que o admin ajusta da equipe, num lugar só */
+    const finAdm = !!(B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro());
     const secEquipe = !ehAdm ? '' :
       (B7.Equipe || B7.Comunicado ? grupo('Recado e comunicado', 'O recado fica fixo no alto da tela de todo mundo até a data escolhida; o comunicado chega na conversa de cada pessoa.',
         (B7.Equipe ? L({ ic: 'sino', tom: 'violeta', t: 'Recado fixo para a equipe', d: '<span data-recado-d>verificando…</span>', botao: true, acao: 'Escrever', attrs: ' data-recado' }) : '') +
         (B7.Comunicado ? L({ ic: 'sino', tom: 'rosa', t: 'Enviar comunicado', d: 'para toda a equipe ou só para algumas pessoas', botao: true, acao: 'Enviar', attrs: ' data-comunicado' }) : '')) : '') +
       grupo('Segurança da equipe', 'Vale para todas as contas da equipe. O banco confere de novo em cada ação.',
-        L({ ic: 'escudo', tom: 'verde', t: 'Verificação em 2 etapas', d: 'quem precisa ligar ao entrar',
-            dir: '<select class="cfg-sel" data-eq-2fa aria-label="Verificação em 2 etapas para a equipe" disabled><option value="">verificando…</option></select>' }) +
-        (B7.Sessoes ? L({ ic: 'celular', tom: 'azul', t: 'Sessões ativas', d: 'em quais aparelhos cada conta está aberta; encerre uma sessão', botao: true, acao: 'Ver', attrs: ' data-sessoes' }) : '') +
+        /* 4.86.0: 2 etapas da equipe e sessões são Pessoas e acessos — não aparecem para o Financeiro */
+        (finAdm ? '' : L({ ic: 'escudo', tom: 'verde', t: 'Verificação em 2 etapas', d: 'quem precisa ligar ao entrar',
+            dir: '<select class="cfg-sel" data-eq-2fa aria-label="Verificação em 2 etapas para a equipe" disabled><option value="">verificando…</option></select>' })) +
+        (B7.Sessoes && !finAdm ? L({ ic: 'celular', tom: 'azul', t: 'Sessões ativas', d: 'em quais aparelhos cada conta está aberta; encerre uma sessão', botao: true, acao: 'Ver', attrs: ' data-sessoes' }) : '') +
         (B7.Equipe ? L({ ic: 'exportar', tom: 'violeta', t: 'Exportar lista da equipe', d: 'planilha com nome, função, situação, último acesso, aniversário e ausência', botao: true, acao: 'Exportar', attrs: ' data-eq-csv' }) : '')) +
       grupo('Arquivo', 'Nada que vai para a lixeira é apagado do banco: dá para restaurar.',
         L({ ic: 'lixo', tom: 'vermelho', t: 'Lixeira', d: 'clientes, gravações e peças excluídos', botao: true, attrs: ' data-ir="#/lixeira"' }) +
