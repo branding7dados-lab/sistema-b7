@@ -15,7 +15,8 @@ const pedidos = []; let DEMORA = 0;
 const CONTR = { fechado: true, ritmo: 1, clientes: [
   { id: 'c1', nome: 'Alfa', pacote: 'Mensal', contratado: 12, planejados: 12, publicados: 10, faltam: 2, abaixo: true, atras_ritmo: false, itens: [{ tipo: 'Reel', contratado: 4, planejados: 4, publicados: 2 }, { tipo: 'Card', contratado: 8, planejados: 8, publicados: 8 }] },
   { id: 'c3', nome: 'Gama', pacote: 'Mensal', contratado: 12, planejados: 12, publicados: 12, faltam: 0, abaixo: false, atras_ritmo: false, itens: [{ tipo: 'Reel', contratado: 4, planejados: 4, publicados: 4 }] }],
-  sem_pacote: [{ id: 'c2', nome: 'Beta' }] };
+  sem_pacote: [{ id: 'c2', nome: 'Beta' }], comeca: [{ id: 'c4', nome: 'Delta', desde: '2027-01-01' }] };
+const PACOTES = [{ id: 'p1', nome: 'Pro', descricao: '', itens: [{ tipo: 'Card', qtd: 12 }, { tipo: 'Reel', qtd: 4, producao: 'gravacao' }], dias_semana: [1, 3, 5] }];
 const RISCOS = { clientes: [{ id: 'c1', nome: 'Alfa', pontos: 76, antes: 95, motivos: ['saúde caiu 19 pontos em 4 semanas', 'ficou abaixo do contratado no mês passado (10 de 12)'],
   semanas: [{ semana: '2026-10-26', pontos: 95 }, { semana: '2026-11-02', pontos: 90 }, { semana: '2026-11-16', pontos: 76 }] }] };
 const MS = ['2026-06', '2026-07', '2026-08', '2026-09', '2026-10', '2026-11'];
@@ -27,8 +28,9 @@ await ctx.route(/supabase\.co\//, async rota => {
   const url = new URL(rota.request().url()), f = url.pathname.split('/rpc/')[1];
   if (f) { const corpo = JSON.parse(rota.request().postData() || '{}'); pedidos.push([f, corpo]);
     if (DEMORA && f === 'gestao_riscos') await new Promise(r => setTimeout(r, DEMORA));
-    const r = f === 'gestao_painel' ? { kpis: {}, clientes: [], serie: [], pedidos: [] } : f === 'gestao_contratado' ? CONTR : f === 'gestao_riscos' ? RISCOS : f === 'gestao_prazos' ? PRAZOS : null;
+    const r = f === 'gestao_painel' ? { kpis: {}, clientes: [], serie: [], pedidos: [] } : f === 'gestao_contratado' ? CONTR : f === 'gestao_riscos' ? RISCOS : f === 'gestao_prazos' ? PRAZOS : f === 'pacotes_uso' ? { p1: 3 } : null;
     return rota.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(r) }); }
+  if (url.pathname.startsWith('/rest/v1/pacotes_producao')) return rota.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(PACOTES) });
   if (url.pathname.startsWith('/rest/v1/')) return rota.fulfill({ status: 200, contentType: 'application/json', headers: { 'content-range': '0-0/0' }, body: '[]' });
   return rota.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
 });
@@ -45,6 +47,7 @@ await pg.waitForSelector('.ge-lin', { timeout: 8000 }).catch(() => null);
 const linhas = await pg.$$eval('.ge-lin', l => l.map(e => e.innerText.replace(/\s+/g, ' ')));
 ok(linhas.length === 2 && /Alfa/.test(linhas[0]) && /faltaram 2/.test(linhas[0]) && /Reel 2\/4/.test(linhas[0]), 'Contratado × entregue: Alfa abaixo, com o tipo que faltou');
 ok(!!(await pg.$('.ge-chip')), 'clientes sem pacote aparecem com atalho');
+ok(/Delta · começa em jan\/2027/.test(await pg.$eval('[data-ge-comeca]', e => e.innerText).catch(() => '')), 'pacote que ainda não começou aparece à parte, com o mês');
 if (process.env.PRINT) { await mkdir(new URL('prints-wa/', import.meta.url), { recursive: true }); await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/gestao-contratado.png', import.meta.url)) }); }
 await pg.check('[data-so-abaixo]'); await pg.waitForTimeout(400);
 ok((await pg.$$('.ge-lin')).length === 1, '"Só quem está abaixo" deixa só a Alfa');
@@ -68,6 +71,13 @@ await pg.click('[data-aba="riscos"]'); await pg.waitForTimeout(150);
 await pg.click('[data-aba="contratado"]'); await pg.waitForTimeout(1600);
 ok(!(await pg.$('.ge-motivos')) && !!(await pg.$('.ge-barra')), 'trocar de aba rápido: a resposta velha não aparece');
 DEMORA = 0;
+/* 4.88.0: aba Pacotes */
+await pg.click('[data-aba="pacotes"]'); await pg.waitForSelector('[data-pc-novo]', { timeout: 5000 }).catch(() => null);
+const pc = await pg.$eval('#gt-corpo', e => e.innerText.replace(/\s+/g, ' ')).catch(() => '');
+ok(/Pro/.test(pc) && /12 cards \+ 4 reels/.test(pc) && /3 clientes/.test(pc) && /Novo pacote/.test(pc), 'Pacotes na Gestão: lista com o que vem em cada um e quantos clientes usam (' + pc.slice(0, 160) + ')');
+await pg.click('[data-pc-editar="p1"]'); await pg.waitForSelector('[data-pc-salvar]', { timeout: 3000 }).catch(() => null);
+ok((await pg.$eval('[data-pc-tipo="Card"]', e => e.value).catch(() => '')) === '12' && (await pg.$eval('[data-pc-tipo="Reel"]', e => e.value).catch(() => '')) === '4', 'editor do pacote abre com as quantidades');
+if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/gestao-pacotes.png', import.meta.url)) });
 await nav.close(); srv.close();
 if (falhas) process.exit(1);
 console.log('Gestão (abas novas): ok');

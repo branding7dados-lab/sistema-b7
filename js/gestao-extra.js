@@ -10,6 +10,7 @@ window.B7 = window.B7 || {};
 B7.GestaoExtra = (function () {
   const esc = s => B7.UI.esc(s);
   const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const mesDe = d => { const m = /^(\d{4})-(\d{2})/.exec(String(d || '')); return m ? MESES[+m[2] - 1] + '/' + m[1] : ''; };
   const MESES_L = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   const rotMes = ym => { const [a, m] = String(ym).split('-'); return MESES[+m - 1] + '/' + String(a).slice(2); };
   const logo = (url, nome) => '<span class="ge-logo">' + (url ? '<img src="' + esc(url) + '" alt="" loading="lazy" onerror="this.remove()">' : '') + '<b>' + esc(String(nome || '?').slice(0, 2).toUpperCase()) + '</b></span>';
@@ -25,7 +26,7 @@ B7.GestaoExtra = (function () {
     let d;
     try { d = (await B7.DB.rpc('gestao_contratado', { p_ano: anoC, p_mes: mesC })) || {}; } catch (e) { if (cx.isConnected) erro(cx, e, () => contratado(cx)); return; }
     if (!cx.isConnected) return;
-    const l = d.clientes || [], sem = d.sem_pacote || [];
+    const l = d.clientes || [], sem = d.sem_pacote || [], comeca = d.comeca || [];
     const abaixo = l.filter(c => c.abaixo || c.atras_ritmo);
     const vis = soAbaixo ? abaixo : l;
     const barra = c => { const p = c.contratado ? Math.min(100, Math.round(100 * c.publicados / c.contratado)) : 0, r = Math.round(100 * (d.ritmo || 0));
@@ -43,13 +44,16 @@ B7.GestaoExtra = (function () {
         ' Contam os conteúdos da Linha editorial do mês, por tipo do pacote.</p>' +
       '<section class="gt-bloco ge-lista">' + (vis.length ? vis.map(c =>
         '<button type="button" class="ge-lin" data-ir="#/cliente/' + esc(c.id) + '">' + logo(c.logo, c.nome) +
-          '<span class="ge-lin-tx"><b>' + esc(c.nome) + '</b><small>' + esc(c.pacote || 'Pacote') + ' · ' + c.planejados + ' planejados</small>' +
+          '<span class="ge-lin-tx"><b>' + esc(c.nome) + '</b><small>' + esc(c.pacote || 'Pacote') + (c.ajustado ? ' (ajustado)' : '') + ' · ' + c.planejados + ' planejados</small>' +
             '<span class="ge-tipos">' + (c.itens || []).map(t => '<span class="' + (t.publicados < t.contratado && d.fechado ? 'falta' : '') + '">' + esc(t.tipo) + ' ' + t.publicados + '/' + t.contratado + '</span>').join('') + '</span></span>' +
           '<span class="ge-lin-n">' + barra(c) + '<b>' + c.publicados + '/' + c.contratado + '</b>' +
             (c.abaixo ? '<em class="ge-selo ruim">faltaram ' + c.faltam + '</em>' : c.atras_ritmo ? '<em class="ge-selo atencao">atrás do ritmo</em>' : '') + '</span></button>').join('')
         : vazio(soAbaixo ? 'Ninguém abaixo do contratado neste mês.' : 'Nenhum cliente com pacote definido.')) + '</section>' +
-      (sem.length ? '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Sem pacote definido <small>' + sem.length + '</small></h2></div><p class="gt-nota">Defina o pacote na página do cliente para entrar nesta conta.</p>' +
-        '<div class="ge-chips">' + sem.map(c => '<button type="button" class="ge-chip" data-ir="#/cliente/' + esc(c.id) + '">' + esc(c.nome) + '</button>').join('') + '</div></section>' : '');
+      (sem.length ? '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Sem pacote definido <small>' + sem.length + '</small></h2></div><p class="gt-nota">Defina o pacote no cadastro do cliente para entrar nesta conta.</p>' +
+        '<div class="ge-chips">' + sem.map(c => '<button type="button" class="ge-chip" data-ir="#/cliente/' + esc(c.id) + '/cadastro">' + esc(c.nome) + '</button>').join('') + '</div></section>' : '') +
+      /* 4.88.0: pacote com "vale desde" depois deste mês — ainda não entra na conta */
+      (comeca.length ? '<section class="gt-bloco" data-ge-comeca><div class="gt-bloco-cab"><h2>Pacote ainda não começou <small>' + comeca.length + '</small></h2></div>' +
+        '<div class="ge-chips">' + comeca.map(c => '<button type="button" class="ge-chip" data-ir="#/cliente/' + esc(c.id) + '/cadastro">' + esc(c.nome) + ' · começa em ' + esc(mesDe(c.desde)) + '</button>').join('') + '</div></section>' : '');
     cx.querySelectorAll('[data-mes]').forEach(b => b.onclick = () => { mesC += +b.dataset.mes; if (mesC < 1) { mesC = 12; anoC--; } if (mesC > 12) { mesC = 1; anoC++; } contratado(cx); });
     cx.querySelector('[data-so-abaixo]').onchange = e => { soAbaixo = e.target.checked; contratado(cx); };
     ligarIr(cx);
