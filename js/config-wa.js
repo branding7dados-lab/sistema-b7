@@ -65,7 +65,7 @@ B7.ConfigWA = (function () {
     'otto-saber': 'O que ele lembra e as respostas que vocês ensinaram.',
     'otto-controle': 'O que ele pode fazer sozinho e quem pode dar ordens.',
     'otto-testar': 'Converse com ele aqui, sem mandar nada no WhatsApp.',
-    conexao: 'O número da Branding7 ligado ao B7.',
+    conexao: 'Os números de WhatsApp da Branding7 ligados ao B7. Cada um tem a sua equipe; o administrador vê todos.',
     arquivos: 'Onde ficam fotos, vídeos e áudios, e o que fazer com conversas paradas.'
   };
   /* ------------------------------------------------------------ abrir */
@@ -114,14 +114,15 @@ B7.ConfigWA = (function () {
 
   /* o que demora (número, Drive, armazenamento) chega depois e repinta só o necessário */
   async function carregarVivos() {
-    const [e, d, a, b] = await Promise.all([
+    const [e, nl, d, a, b] = await Promise.all([
       B7.DB.waEvolution('estado').catch(x => ({ erro: x.message })),
+      B7.DB.waEvolution('numeros').then(r => r.lista || null).catch(() => null),
       sb().rpc('wa_drive_status').then(r => r.data).catch(() => null),
       sb().from('wa_mensagens').select('id', { count: 'exact', head: true }).not('drive_id', 'is', null).then(r => r.count || 0).catch(() => null),
       sb().from('wa_mensagens').select('midia_tamanho').not('midia_path', 'is', null).is('drive_id', null).limit(2000).then(r => r.data || []).catch(() => null)
     ]);
     if (!S || !raiz || !raiz.isConnected) return;
-    S.estado = e || {}; S.drive = d || {}; S.uso = { drive: a, sistema: b ? b.length : null, bytes: b ? b.reduce((s, x) => s + (Number(x.midia_tamanho) || 0), 0) : null };
+    S.estado = e || {}; S.numeros = nl; S.drive = d || {}; S.uso = { drive: a, sistema: b ? b.length : null, bytes: b ? b.reduce((s, x) => s + (Number(x.midia_tamanho) || 0), 0) : null };
     if (String(S.aba).startsWith('otto-')) {   /* não redesenha por cima do Otto aberto: só as pílulas do topo */
       const pl = raiz.querySelector('.cwa-pils'); if (pl) pl.outerHTML = pilulas();
       return;
@@ -188,7 +189,7 @@ B7.ConfigWA = (function () {
       ['Equipe e clientes', [['respostas', 'Respostas rápidas', n((S.w.respostas || []).length)], ['grupos', 'Grupos e clientes', n(S.grupos.filter(g => !g.cliente_id && !g.arquivada).length), true],
         ['avisos', 'Avisos e horários', null, true], ['assuntos', 'Assuntos e responsáveis', S.a && S.a.avisos_regras ? n((S.a.avisos_regras.responsaveis || []).length) : null, true]]],
       ['Otto', S.adm && B7.AssistenteWA && B7.AssistenteWA.ABAS_OTTO ? B7.AssistenteWA.ABAS_OTTO.map(([k, r]) => ['otto-' + k, r, null, true, true]) : []],
-      ['Sistema', [['conexao', 'Número conectado', null, true], ['arquivos', 'Arquivos e conversas', null, true]]]
+      ['Sistema', [['conexao', 'Números do WhatsApp', S.numeros ? n(S.numeros.length) : null, true], ['arquivos', 'Arquivos e conversas', null, true]]]
     ].map(([t, l]) => [t, l.filter(a => S.adm || !a[3])]).filter(([, l]) => l.length);
     const todos = GRUPOS.flatMap(([, l]) => l), atualA = todos.find(a => a[0] === S.aba) || todos[0];
     const e = S.estado, on = e && e.estado === 'open', d = S.drive || {}, dOk = d.conectado && d.status === 'ativa';
@@ -233,7 +234,10 @@ B7.ConfigWA = (function () {
       const card = (k, t, st, txt, acao) => '<button class="cwa-card ' + st + '" data-aba="' + k + '"><span class="cwa-card-ic">' + icone(k) + '</span><span class="cwa-card-t"><b>' + t + '</b><small>' + txt + '</small></span><i class="cwa-pt"></i><em>' + acao + ' ›</em></button>';
       return bloco('', '',
         '<div class="cwa-cards">' +
-          card('conexao', 'Número do WhatsApp', e == null ? 'esp' : on ? 'ok' : 'ruim', e == null ? 'Conferindo…' : on ? 'Conectado' + (e.numero ? ' · +' + esc(e.numero) : '') : 'Desconectado — leia o QR Code de novo', on ? 'Ver' : 'Conectar') +
+          (S.numeros && S.numeros.length > 1
+            ? (() => { const off = S.numeros.filter(x => x.estado !== 'open'); return card('conexao', 'Números do WhatsApp', off.length ? 'ruim' : 'ok',
+                off.length ? off.map(x => esc(x.nome)).join(', ') + (off.length > 1 ? ' desconectados' : ' desconectado') : S.numeros.length + ' números conectados', off.length ? 'Conectar' : 'Ver'); })()
+            : card('conexao', 'Número do WhatsApp', e == null ? 'esp' : on ? 'ok' : 'ruim', e == null ? 'Conferindo…' : on ? 'Conectado' + (e.numero ? ' · +' + esc(e.numero) : '') : 'Desconectado — leia o QR Code de novo', on ? 'Ver' : 'Conectar')) +
           card('arquivos', 'Arquivos no Google Drive', S.drive == null ? 'esp' : dOk ? (S.uso && S.uso.sistema ? 'meio' : 'ok') : 'ruim',
             S.drive == null ? 'Conferindo…' : dOk ? (S.uso && S.uso.sistema ? S.uso.sistema + ' arquivo(s) ainda indo para o Drive' : 'Tudo guardado no Drive') : 'Drive desconectado — os arquivos pesam no sistema', dOk ? 'Ver' : 'Conectar') +
           card('grupos', 'Grupos ligados a clientes', semCli ? 'meio' : 'ok', semCli ? semCli + ' grupo(s) sem cliente — o Otto e os avisos não sabem de quem são' : 'Todos os grupos ativos têm cliente', semCli ? 'Ligar' : 'Ver') +
@@ -376,14 +380,26 @@ B7.ConfigWA = (function () {
             seg('w.auto_arquivar_dias', w.auto_arquivar_dias, [[0, 'Nunca'], [15, '15 dias'], [30, '30 dias'], [60, '60 dias']])));
     }
     if (S.aba === 'conexao') {
-      const e = S.estado, on = e && e.estado === 'open';
-      return bloco('', 'Mensagens, ' + esc(S.ottoNome) + ' e avisos dependem dele.',
-          '<div class="cwa-drive ' + (e == null ? 'esp' : on ? 'ok' : 'ruim') + '"><i></i><div><b>' + (e == null ? 'Conferindo…' : on ? 'Conectado' : e.erro ? 'Não consegui conferir' : 'Desconectado') + '</b>' +
-            '<small>' + (e && e.numero ? '+' + esc(e.numero) : '') + (e && e.instancia ? ' · conexão ' + esc(e.instancia) : '') + (e && e.erro ? esc(e.erro) : '') + '</small></div>' +
-            '<button class="b ' + (on ? 'contorno' : 'pri') + '" data-acao="conexao">' + (on ? 'Detalhes' : 'Conectar') + '</button></div>') +
-        bloco('Histórico', '',
-          linha('Puxar conversas recentes', 'Traz grupos, conversas e mensagens que ainda não estão no B7 (ex.: depois de reconectar o número).', '<button class="b contorno" data-acao="importar">Puxar agora</button>') +
-          linha('Quem acessa o WhatsApp', 'Administrador e videomaker com acesso liberado. Muda em Pessoas e acessos.', '<a class="b contorno" href="#/usuarios">Pessoas e acessos</a>'));
+      /* 4.84.0: vários números — um por equipe (Videomakers, Designers, Coordenação…) */
+      const ns = S.numeros;
+      const ROT = { open: ['ok', 'Conectado'], connecting: ['esp', 'Esperando o QR Code'], close: ['ruim', 'Desconectado'], sem_conexao: ['ruim', 'Desconectado'] };
+      const EQ = { videomaker: 'Vídeo', designer: 'Design', coordenador: 'Coordenação' };
+      const linhaN = x => { const [cl, tx] = ROT[x.estado] || ['esp', 'Conferindo…'], on = x.estado === 'open';
+        return '<div class="cwa-num-l ' + cl + '" data-num-l="' + esc(x.id) + '"><i class="cwa-num-cor" style="--c:' + esc(x.cor) + '"></i>' +
+          '<div class="cwa-num-t"><b>' + esc(x.nome) + (x.padrao ? ' <em class="cwa-num-selo">Padrão · ' + esc(S.ottoNome) + '</em>' : '') + '</b>' +
+            '<small><span class="cwa-num-est"><i></i>' + tx + '</span>' + (x.numero ? ' · +' + esc(x.numero) : '') + '</small>' +
+            '<span class="cwa-num-eq">' + ((x.equipes || []).length ? x.equipes.map(q => '<span>' + esc(EQ[q] || q) + '</span>').join('') : '<span class="vazio">Só administrador</span>') + '</span></div>' +
+          '<div class="cwa-num-ac"><button class="b ' + (on ? 'contorno' : 'pri') + '" data-acao="n-conectar" data-id="' + esc(x.id) + '">' + (on ? 'Detalhes' : 'Conectar') + '</button>' +
+            '<button class="b contorno" data-acao="n-editar" data-id="' + esc(x.id) + '">Editar</button>' +
+            '<button class="b contorno" data-acao="n-importar" data-id="' + esc(x.id) + '" title="Puxar conversas recentes deste número">Puxar conversas</button>' +
+            (x.padrao ? '' : '<button class="b contorno perigo" data-acao="n-desativar" data-id="' + esc(x.id) + '">Desativar</button>') +
+            '</div></div>'; };
+      return bloco('', 'Cada equipe atende pelo seu número. Quem é da equipe vê só o número dela; o administrador vê todos e alterna na Central.',
+          (ns == null ? '<div class="cwa-drive esp"><i></i><div><b>Conferindo os números…</b></div></div>' :
+            '<div class="cwa-nums">' + ns.map(linhaN).join('') + '</div>') +
+          '<div class="cwa-atalhos"><button class="b pri" data-acao="n-novo">+ Adicionar número</button></div>') +
+        bloco('Quem acessa', '',
+          linha('Equipes de cada número', 'Videomaker, designer ou coordenador (papel ou função extra) veem o número da sua equipe. Muda em Pessoas e acessos.', '<a class="b contorno" href="#/usuarios">Pessoas e acessos</a>'));
     }
     return '';
   }
@@ -474,8 +490,55 @@ B7.ConfigWA = (function () {
     if (a === 'novo-outro') { S.a.avisos_regras.outros.push({ equipe: '', assuntos: '' }); desenhar(); const l = raiz.querySelectorAll('.cwa-outro-n'); if (l.length) l[l.length - 1].focus(); return; }
     if (a === 'novo-resp') { S.a.avisos_regras.responsaveis.push({ cliente_id: null, assunto: 'qualquer', pessoa_id: '' }); return desenhar(); }
     if (a === 'conexao') { if (B7.WaCentral) B7.WaCentral.abrir(); return; }
+    if (a === 'n-novo' || a === 'n-editar') return formNumero(a === 'n-editar' ? (S.numeros || []).find(x => x.id === ac.dataset.id) : null);
+    if (a === 'n-conectar') { if (B7.WaNumeros) await B7.WaNumeros.carregar(true); if (B7.WaCentral) B7.WaCentral.abrir(ac.dataset.id, recarregarNumeros); return; }
+    if (a === 'n-importar') { if (B7.CentralWA && B7.CentralWA.importar) B7.CentralWA.importar(ac.dataset.id); return; }
+    if (a === 'n-desativar') {
+      const x = (S.numeros || []).find(y => y.id === ac.dataset.id); if (!x) return;
+      if (!(await B7.UI.confirmar({ titulo: 'Desativar ' + x.nome + '?', texto: 'As conversas ficam guardadas, mas o número sai da Central e é desconectado do WhatsApp.', confirmar: 'Desativar', perigo: true }))) return;
+      try { const r = await B7.DB.waEvolution('numero_desativar', { id: x.id }); if (r.erro) throw new Error(r.erro); B7.UI.toast(x.nome + ' desativado.'); }
+      catch (e2) { B7.UI.toast(e2.message, { tipo: 'erro' }); }
+      return recarregarNumeros();
+    }
     if (a === 'drive') { if (B7.CentralWA && B7.CentralWA.drive) await B7.CentralWA.drive(); carregarVivos(); return; }
     if (a === 'importar') { if (B7.CentralWA && B7.CentralWA.importar) B7.CentralWA.importar(); return; }
+  }
+
+  /* 4.84.0: números */
+  async function recarregarNumeros() {
+    if (!S || !raiz || !raiz.isConnected) return;
+    try { const r = await B7.DB.waEvolution('numeros'); S.numeros = r.lista || S.numeros; } catch (e) { /* fica o que tinha */ }
+    if (B7.WaNumeros) B7.WaNumeros.carregar(true);
+    if (S.aba === 'conexao') desenhar();
+  }
+  const CORES = ['#E8452C', '#5E47DE', '#1B8F6A', '#2E8BFF', '#C21C83', '#F0A443'];
+  function formNumero(x) {
+    const eq = new Set((x && x.equipes) || []);
+    const usadas = new Set((S.numeros || []).map(y => y.cor));
+    let cor = (x && x.cor) || CORES.find(c => !usadas.has(c)) || CORES[0];
+    const caixa = (k, r) => '<label class="cwa-nf-eq"><input type="checkbox" value="' + k + '"' + (eq.has(k) ? ' checked' : '') + '><span>' + r + '</span></label>';
+    const m = B7.UI.modal('<h3>' + (x ? 'Editar ' + esc(x.nome) : 'Adicionar número') + '</h3>' +
+      '<div class="sub">' + (x ? 'O telefone conectado não muda aqui.' : 'Depois de salvar, leia o QR Code com o celular desse número.') + '</div>' +
+      '<div class="cwa-nf"><label class="cwa-nf-l"><span>Nome</span><input id="cwa-nf-nome" maxlength="40" placeholder="Ex.: Designers" value="' + esc((x && x.nome) || '') + '"></label>' +
+      '<div class="cwa-nf-l"><span>Cor na Central</span><div class="cwa-nf-cores">' + CORES.map(c => '<button type="button" data-cor="' + c + '" style="--c:' + c + '"' + (c === cor ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + ' aria-label="Cor ' + c + '"></button>').join('') + '</div></div>' +
+      '<div class="cwa-nf-l"><span>Quem vê este número</span><div class="cwa-nf-eqs">' + caixa('videomaker', 'Videomakers') + caixa('designer', 'Designers') + caixa('coordenador', 'Coordenação') + '</div><small>O administrador sempre vê.</small></div></div>' +
+      '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" id="cwa-nf-ok">' + (x ? 'Salvar' : 'Salvar e conectar') + '</button></div>', { extra: 'cwa-nf-modal' });
+    m.addEventListener('click', e => { const b = e.target.closest('[data-cor]'); if (!b) return; cor = b.dataset.cor; m.querySelectorAll('[data-cor]').forEach(y => { y.classList.toggle('on', y === b); y.setAttribute('aria-pressed', String(y === b)); }); });
+    const nome = m.querySelector('#cwa-nf-nome'); setTimeout(() => nome.focus(), 50);
+    m.querySelector('#cwa-nf-ok').onclick = async ev => {
+      const bt = ev.currentTarget; const v = nome.value.replace(/\s+/g, ' ').trim();
+      if (v.length < 2) { B7.UI.toast('Dê um nome ao número (ex.: Designers).'); nome.focus(); return; }
+      const equipes = [...m.querySelectorAll('.cwa-nf-eqs input:checked')].map(i => i.value);
+      bt.disabled = true; bt.textContent = 'Salvando…';
+      try {
+        const r = await B7.DB.waEvolution('numero_salvar', { id: x ? x.id : undefined, nome: v, cor, equipes });
+        if (r.erro) throw new Error(r.erro);
+        m.fechar();
+        await recarregarNumeros();
+        if (!x && r.numero && B7.WaCentral) { if (B7.WaNumeros) await B7.WaNumeros.carregar(true); B7.WaCentral.abrir(r.numero.id, recarregarNumeros); }
+        else B7.UI.toast('Número salvo.');
+      } catch (e2) { bt.disabled = false; bt.textContent = x ? 'Salvar' : 'Salvar e conectar'; B7.UI.toast(e2.message, { tipo: 'erro' }); }
+    };
   }
 
   return { abrir };

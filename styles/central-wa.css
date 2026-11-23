@@ -34,6 +34,15 @@
 .wz-filtros button{flex:none;border:0;padding:6px 12px;border-radius:99px;font:600 12.5px/1.2 inherit;background:var(--suave);color:var(--ink-2);cursor:pointer;}
 .wz-filtros button b{font-weight:800;margin-left:2px;}
 .wz-filtros button.on{background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));color:#fff;}
+/* 4.84.0: vários números — barra "Todos · Vídeo · Design" (só com 2+ números) e o ponto da cor de cada número */
+.wz-nums{display:flex;gap:6px;padding:0 14px 10px;overflow-x:auto;scrollbar-width:none;}
+.wz-nums::-webkit-scrollbar{display:none;}
+.wz-num{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--linha,color-mix(in srgb,var(--ink-3) 25%,transparent));padding:6px 11px;border-radius:12px;font:600 12.5px/1.2 inherit;background:var(--card);color:var(--ink-2);cursor:pointer;}
+.wz-num b{font-weight:800;font-size:11px;min-width:18px;padding:1px 5px;border-radius:99px;background:var(--c,var(--acento));color:#fff;text-align:center;}
+.wz-num[data-num="todos"] b{background:var(--ink-2);}
+.wz-num.on{border-color:var(--c,var(--ink-2));background:color-mix(in srgb,var(--c,var(--ink-2)) 12%,var(--card));color:var(--ink);}
+.wz-num-pt{display:inline-block;flex:none;width:9px;height:9px;border-radius:50%;background:var(--c,#1B8F6A);box-shadow:0 0 0 2px color-mix(in srgb,var(--c,#1B8F6A) 22%,transparent);vertical-align:middle;}
+.wz-via{display:inline-flex;align-items:center;gap:5px;font-weight:600;}
 .wz-itens{flex:1;min-height:0;overflow-y:auto;}
 .wz-lista-vazia{padding:30px 20px;text-align:center;color:var(--ink-3);font-size:13.5px;line-height:1.8;}
 .wz-it{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;border:0;background:none;text-align:left;cursor:pointer;position:relative;font:inherit;color:inherit;}

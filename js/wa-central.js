@@ -13,15 +13,19 @@ B7.WaCentral = (function () {
   const IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M4.2 19.8l1.1-3.9A8.2 8.2 0 1 1 8.4 19z"/><path d="M9.2 8.6c.2-.5.5-.5.8-.5h.5c.2 0 .4.1.5.4l.6 1.5c.1.2 0 .4-.1.6l-.5.6c.6 1.2 1.6 2.2 2.8 2.8l.6-.5c.2-.1.4-.2.6-.1l1.5.6c.3.1.4.3.4.5v.5c0 .3 0 .6-.5.8-.6.3-1.5.5-2.6.1a9 9 0 0 1-4.6-4.6c-.4-1.1-.2-2 .1-2.6z"/></svg>';
 
-  function abrir() {
+  /* 4.84.0: abrir(numeroId) — a janela de conexão de UM número (vazio = o padrão) */
+  function abrir(numeroId, aoFechar) {
     if (!souAdmin()) { B7.UI.toast('Só administrador conecta o número do WhatsApp.'); return; }
     let vivo = true, relogio = 0, qrEm = 0;
+    const nObj = numeroId && B7.WaNumeros ? B7.WaNumeros.porId(numeroId) : null;
+    const ev = (acao, extra) => B7.DB.waEvolution(acao, Object.assign({ numero: numeroId || undefined }, extra || {}));
+    const titulo = nObj ? 'WhatsApp · ' + nObj.nome : 'WhatsApp do B7';
     const m = B7.UI.modal(
-      '<div class="wac"><div class="wac-cab"><span class="wac-selo">' + IC + '</span><div><small>PILOTO · EVOLUTION</small><h3>WhatsApp do B7</h3></div></div>' +
+      '<div class="wac"><div class="wac-cab"><span class="wac-selo">' + IC + '</span><div><small>NÚMERO DO WHATSAPP</small><h3>' + esc(titulo) + '</h3></div></div>' +
       '<div class="wac-corpo" id="wac-corpo"><div class="wac-carrega"><i></i><span>Conferindo a conexão…</span></div></div>' +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div></div>', { extra: 'wac-modal' });
     const corpo = m.querySelector('#wac-corpo');
-    const parar = () => { vivo = false; clearInterval(relogio); };
+    const parar = () => { if (!vivo) return; vivo = false; clearInterval(relogio); if (aoFechar) try { aoFechar(); } catch (e) { /* segue */ } };
     const fechar0 = m.fechar; m.fechar = () => { parar(); fechar0(); };
     m.addEventListener('click', e => { if (e.target.closest('[data-fecha]')) parar(); });
     /* se a janela sumir de outro jeito (Esc, fundo), para de consultar */
@@ -33,7 +37,7 @@ B7.WaCentral = (function () {
 
     async function estado() {
       let r;
-      try { r = await B7.DB.waEvolution('estado'); } catch (e) { return erro(e.message); }
+      try { r = await ev('estado'); } catch (e) { return erro(e.message); }
       if (!vivo) return;
       if (r.configurado === false) return pinta('<div class="wac-msg"><b>Falta configurar</b><p>Os segredos <code>EVOLUTION_URL</code> e <code>EVOLUTION_API_KEY</code> ainda não estão no Supabase (Edge Functions → Secrets).</p></div>');
       if (r.erro) return erro(r.erro);
@@ -52,7 +56,7 @@ B7.WaCentral = (function () {
     async function conectar() {
       pinta('<div class="wac-carrega"><i></i><span>Gerando o QR Code…</span></div>');
       let r;
-      try { r = await B7.DB.waEvolution('conectar'); } catch (e) { return erro(e.message); }
+      try { r = await ev('conectar'); } catch (e) { return erro(e.message); }
       if (!vivo) return;
       if (r.conectado) return estado();
       if (r.erro) return erro(r.erro);
@@ -67,7 +71,7 @@ B7.WaCentral = (function () {
       clearInterval(relogio);
       relogio = setInterval(async () => {
         if (!vivo) return;
-        let s; try { s = await B7.DB.waEvolution('estado'); } catch (e) { return; }
+        let s; try { s = await ev('estado'); } catch (e) { return; }
         if (s && s.estado === 'open') { clearInterval(relogio); B7.UI.toast('WhatsApp conectado ao B7.'); return estado(); }
         if (Date.now() - qrEm > 45000) { clearInterval(relogio); conectar(); }   /* o QR do WhatsApp vence em ~1 min */
       }, 3000);
@@ -93,7 +97,7 @@ B7.WaCentral = (function () {
       const numero = '55' + dig;
       pinta('<div class="wac-carrega"><i></i><span>Pedindo o código ao WhatsApp…</span></div>');
       let r;
-      try { r = await B7.DB.waEvolution('conectar', { numero }); } catch (e) { return erro(e.message); }
+      try { r = await ev('conectar', { telefone: numero }); } catch (e) { return erro(e.message); }
       if (!vivo) return;
       if (r.conectado) return estado();
       if (r.erro) return erro(r.erro);
@@ -110,7 +114,7 @@ B7.WaCentral = (function () {
       clearInterval(relogio);
       relogio = setInterval(async () => {
         if (!vivo) return;
-        let s; try { s = await B7.DB.waEvolution('estado'); } catch (x) { return; }
+        let s; try { s = await ev('estado'); } catch (x) { return; }
         if (s && s.estado === 'open') { clearInterval(relogio); B7.UI.toast('WhatsApp conectado ao B7.'); estado(); }
       }, 3000);
     }
@@ -127,7 +131,7 @@ B7.WaCentral = (function () {
         const ok = await B7.UI.confirmar({ titulo: 'Desconectar o número?', texto: 'O B7 deixa de receber e enviar por este número até conectar de novo pelo QR Code.', confirmar: 'Desconectar', perigo: true });
         if (!ok) return;
         try {
-          const r = await B7.DB.waEvolution('desconectar');
+          const r = await ev('desconectar');
           if (r && r.erro) B7.UI.toast(r.erro, { tipo: 'erro' });
           else B7.UI.toast('Número desconectado. Agora é só conectar de novo pelo QR Code.');
         } catch (x) { B7.UI.toast(x.message, { tipo: 'erro' }); }

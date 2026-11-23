@@ -25,8 +25,16 @@ B7.CentralWA = (function () {
   const fone = jid => /@lid$/.test(String(jid || '')) ? 'Contato do WhatsApp' : '+' + num(jid);
   const ehGrupo = jid => /@g\.us$/.test(jid || '');
 
-  const S = { conversas: [], porJid: new Map(), aberta: null, msgs: [], fim: false, filtro: 'tudo', busca: '', citar: null, canal: null, clientes: [], gravando: null, lado: true };
+  const S = { conversas: [], porJid: new Map(), aberta: null, abertaNum: null, nums: [], num: 'todos', msgs: [], fim: false, filtro: 'tudo', busca: '', citar: null, canal: null, clientes: [], gravando: null, lado: true };
   let raiz = null;
+  /* 4.84.0: vários números. Uma conversa é (número, jid): o mesmo grupo pode estar no número dos vídeos e no do design.
+     S.porJid guarda pela chave "número|jid"; conv(jid) procura no número da conversa aberta. */
+  const chave = (num, jid) => (num || '') + '|' + jid;
+  const conv = (jid, num) => S.porJid.get(chave(num === undefined ? S.abertaNum : num, jid)) || null;
+  const noNum = q => S.abertaNum ? q.eq('numero_id', S.abertaNum) : q;
+  const indexar = () => { S.porJid = new Map(S.conversas.map(c => [chave(c.numero_id, c.jid), c])); };
+  const varios = () => S.nums.length > 1;
+  const numDe = c => c && B7.WaNumeros ? B7.WaNumeros.porId(c.numero_id) : null;
 
   /* ------------------------------------------------------------ ícones */
   const I = {
@@ -85,7 +93,12 @@ B7.CentralWA = (function () {
       .replace(/(^|[\s>])~([^~\n]+)~(?=[\s<.,!?]|$)/g, '$1<s>$2</s>');
     return h.replace(/\n/g, '<br>');
   }
-  async function chamar(acao, extra) { return B7.DB.waEvolution(acao, extra); }
+  /* toda ação vai pelo número da conversa aberta (ou o escolhido na barra) */
+  async function chamar(acao, extra) {
+    const e = Object.assign({}, extra || {});
+    if (e.numero === undefined) e.numero = S.abertaNum || (S.num !== 'todos' ? S.num : null) || undefined;
+    return B7.DB.waEvolution(acao, e);
+  }
   function avatar(c, cls) {
     const nome = c.nome || num(c.jid);
     const cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
@@ -106,7 +119,8 @@ B7.CentralWA = (function () {
     raiz = painel.querySelector('#wz');
     let pode = false;
     try { const r = await sb().rpc('pode_ver_wa'); pode = !!r.data; } catch (e) {}
-    if (!pode) { raiz.innerHTML = '<div class="wz-vazio"><span class="wz-vazio-ic">' + I.wa + '</span><b>As conversas do WhatsApp são da equipe de vídeo</b><p>Peça acesso a um administrador.</p></div>'; return; }
+    if (!pode) { raiz.innerHTML = '<div class="wz-vazio"><span class="wz-vazio-ic">' + I.wa + '</span><b>Você ainda não tem um número de WhatsApp da sua equipe</b><p>Peça a um administrador para ligar o número da sua equipe ao B7.</p></div>'; return; }
+    await carregarNums();
     try { S.clientes = (await sb().from('clientes_resumo').select('id,nome,logo_url').is('deleted_at', null).order('nome')).data || []; } catch (e) {}
     S.contatos = null;
     await Promise.all([carregarConversas(), recarregarConfig()]);
@@ -115,10 +129,16 @@ B7.CentralWA = (function () {
     ligarTempoReal();
     atualizarContatosDeVezEmQuando();
     if (B7.Rota && B7.Rota.aoSair) B7.Rota.aoSair(sair);
-    const alvo = (location.hash.split('?')[1] || '').match(/jid=([^&]+)/);
-    if (alvo) abrirConversa(decodeURIComponent(alvo[1]));
+    const q = location.hash.split('?')[1] || '';
+    const alvo = q.match(/jid=([^&]+)/), alvoNum = q.match(/num=([^&]+)/);
+    if (alvo) abrirConversa(decodeURIComponent(alvo[1]), alvoNum ? decodeURIComponent(alvoNum[1]) : null);
   }
   /* 4.81.0: configurações da equipe (respostas rápidas, fotos automáticas) — #/whatsapp/config */
+  async function carregarNums() {
+    S.nums = B7.WaNumeros ? await B7.WaNumeros.carregar(true) : [];
+    const e = B7.WaNumeros ? B7.WaNumeros.escolhido() : 'todos';
+    S.num = varios() && S.nums.some(n => n.id === e) ? e : 'todos';
+  }
   async function recarregarConfig() {
     try { const r = await sb().from('wa_config').select('respostas,fotos_auto').eq('id', 1).maybeSingle(); S.wcfg = r.data || {}; } catch (e) { S.wcfg = {}; }
   }
@@ -126,7 +146,7 @@ B7.CentralWA = (function () {
   function sair() {
     if (S.canal) { B7.DB.fecharCanal(S.canal); S.canal = null; }
     pararGravacao(true);
-    S.aberta = null; document.body.classList.remove('wz-tela-cheia');
+    S.aberta = null; S.abertaNum = null; document.body.classList.remove('wz-tela-cheia');
   }
 
   async function carregarContatos() {
@@ -144,14 +164,14 @@ B7.CentralWA = (function () {
     let ult = 0; try { ult = Number(localStorage.getItem('b7.wz.contatos2') || 0); } catch (e) {}
     if (Date.now() - ult < 6 * 3600e3) return;
     try { localStorage.setItem('b7.wz.contatos2', String(Date.now())); } catch (e) {}
-    chamar('contatos').then(async () => { await Promise.all([carregarContatos(), carregarConversas()]); pintarLista(); }).catch(() => {});
+    Promise.all((S.nums.length ? S.nums : [null]).map(n => chamar('contatos', { numero: n ? n.id : undefined }))).then(async () => { await Promise.all([carregarContatos(), carregarConversas()]); pintarLista(); }).catch(() => {});
   }
   async function carregarConversas() {
     /* 4.53.6: os nomes dos contatos chegam depois — não seguram a abertura da tela */
     if (!S.contatos) { S.contatos = new Map(); carregarContatos().then(() => { if (raiz && raiz.isConnected) pintarLista(); }); }
     const { data } = await sb().from('wa_conversas').select('*').order('fixada', { ascending: false }).order('ultima_em', { ascending: false, nullsFirst: false }).limit(400);
     S.conversas = data || [];
-    S.porJid = new Map(S.conversas.map(c => [c.jid, c]));
+    indexar();
     pintarContagem();
   }
 
@@ -163,6 +183,7 @@ B7.CentralWA = (function () {
           '<a class="wz-ic wz-cfg" href="#/whatsapp/config" title="Configurações do WhatsApp" aria-label="Configurações do WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>' +
           /* 4.81.3: o menu ⋮ saiu — número, histórico, Drive e Otto ficam nas Configurações (engrenagem) */
         '</div>' +
+        '<div id="wz-nums-cx"></div>' +
         '<label class="wz-busca">' + I.busca + '<input id="wz-busca" placeholder="Buscar conversa ou cliente" autocomplete="off"></label>' +
         '<div class="wz-filtros" id="wz-filtros"></div>' +
         '<div class="wz-itens" id="wz-itens"></div>' +
@@ -174,9 +195,15 @@ B7.CentralWA = (function () {
     raiz.addEventListener('click', cliqueGeral);
     pintarFiltros(); pintarLista(); pintarChat(); pintarLado();
   }
+  function pintarNums() {
+    const cx = raiz && raiz.querySelector('#wz-nums-cx'); if (!cx || !B7.WaNumeros) return;
+    const n = {}; S.conversas.forEach(c => { if (!c.arquivada && c.nao_lidas > 0) n[c.numero_id] = (n[c.numero_id] || 0) + 1; });
+    cx.innerHTML = B7.WaNumeros.barraHtml(S.nums, S.num, n);
+  }
 
   const FILTROS = [['tudo', 'Tudo'], ['naolidas', 'Não lidas'], ['esperando', 'Esperando'], ['grupos', 'Grupos'], ['arquivadas', 'Arquivadas']];
   function filtrar(c) {
+    if (S.num !== 'todos' && c.numero_id !== S.num) return false;
     if (S.busca) {
       const cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
       if (!((c.nome || '') + ' ' + (cli ? cli.nome : '') + ' ' + num(c.jid)).toLowerCase().includes(S.busca)) return false;
@@ -190,7 +217,9 @@ B7.CentralWA = (function () {
   }
   function pintarFiltros() {
     const cx = raiz && raiz.querySelector('#wz-filtros'); if (!cx) return;
-    const n = { naolidas: S.conversas.filter(c => !c.arquivada && c.nao_lidas > 0).length, esperando: S.conversas.filter(c => !c.arquivada && espera(c.esperando_desde)).length };
+    pintarNums();
+    const doNum = S.conversas.filter(c => S.num === 'todos' || c.numero_id === S.num);
+    const n = { naolidas: doNum.filter(c => !c.arquivada && c.nao_lidas > 0).length, esperando: doNum.filter(c => !c.arquivada && espera(c.esperando_desde)).length };
     cx.innerHTML = FILTROS.map(([k, r]) => '<button class="' + (S.filtro === k ? 'on' : '') + '" data-filtro="' + k + '">' + r + (n[k] ? ' <b>' + n[k] + '</b>' : '') + '</button>').join('');
   }
   function pintarLista() {
@@ -198,33 +227,36 @@ B7.CentralWA = (function () {
     const vis = S.conversas.filter(filtrar);
     if (!vis.length) {
       cx.innerHTML = '<div class="wz-lista-vazia">' + (S.conversas.length ? 'Nada por aqui com esse filtro.' :
-        'Nenhuma conversa ainda.' + (souAdmin() ? '<br><button class="b contorno" data-wz="conexao">Conectar o número</button> <button class="b contorno" data-wz="importar">Puxar conversas recentes</button>' : '')) + '</div>';
+        'Nenhuma conversa ainda.' + (souAdmin() ? '<br><a class="b contorno" href="#/whatsapp/config?aba=conexao">Conectar o número</a> <button class="b contorno" data-wz="importar">Puxar conversas recentes</button>' : '')) + '</div>';
       return;
     }
     cx.innerHTML = vis.map(c => {
       const esp = espera(c.esperando_desde);
       const pa = c.previa_autor && /^\+?\d+$/.test(c.previa_autor) ? (nomeCodigo(c.previa_autor.replace('+', '')) || '') : c.previa_autor;
       const autor = c.previa_de_mim ? 'Você: ' : (c.tipo === 'grupo' && pa ? pa.split(' ')[0] + ': ' : '');
-      return '<button class="wz-it' + (S.aberta === c.jid ? ' on' : '') + (c.nao_lidas ? ' nl' : '') + '" data-jid="' + esc(c.jid) + '">' + avatar(c) +
-        '<span class="wz-it-tx"><span class="wz-l1"><b>' + esc(c.nome || num(c.jid)) + '</b><time>' + esc(hora(c.ultima_em)) + '</time></span>' +
+      const pt = varios() && S.num === 'todos' && B7.WaNumeros ? B7.WaNumeros.ponto(numDe(c)) + ' ' : '';
+      return '<button class="wz-it' + (S.aberta === c.jid && S.abertaNum === c.numero_id ? ' on' : '') + (c.nao_lidas ? ' nl' : '') + '" data-jid="' + esc(c.jid) + '" data-num="' + esc(c.numero_id || '') + '">' + avatar(c) +
+        '<span class="wz-it-tx"><span class="wz-l1"><b>' + esc(c.nome || num(c.jid)) + '</b><time>' + pt + esc(hora(c.ultima_em)) + '</time></span>' +
         '<span class="wz-l2"><span>' + esc(autor + semCodigos(c.previa)) + '</span>' +
           (esp ? '<em class="wz-esp">' + esc(esp) + '</em>' : '') + (c.nao_lidas ? '<i class="wz-n">' + c.nao_lidas + '</i>' : '') + (c.fixada ? '<i class="wz-pin">📌</i>' : '') + '</span></span></button>';
     }).join('');
   }
 
   /* ------------------------------------------------------------ conversa */
-  async function abrirConversa(jid) {
-    if (!S.porJid.has(jid)) return;
+  async function abrirConversa(jid, numId) {
+    /* sem número: o da conversa aberta, o escolhido na barra, ou a primeira conversa com esse jid */
+    let c = numId ? conv(jid, numId) : (conv(jid) || (S.num !== 'todos' ? conv(jid, S.num) : null) || S.conversas.find(x => x.jid === jid));
+    if (!c) return;
+    S.abertaNum = c.numero_id || null;
     S.aberta = jid; S.msgs = []; S.fim = false; S.citar = null; S.grudado = true;
     raiz.classList.add('wz-com-chat'); document.body.classList.add('wz-tela-cheia');
     pintarLista(); pintarChat(true); pintarLado();
     await carregarMensagens();
-    const c = S.porJid.get(jid);
     if (c && c.nao_lidas) { c.nao_lidas = 0; pintarLista(); pintarFiltros(); pintarContagem(); chamar('lida', { jid }).catch(() => {}); }
   }
   async function carregarMensagens(antigas) {
     const jid = S.aberta; if (!jid) return;
-    let q = sb().from('wa_mensagens').select('*').eq('jid', jid).order('criada_em', { ascending: false }).limit(60);
+    let q = noNum(sb().from('wa_mensagens').select('*')).eq('jid', jid).order('criada_em', { ascending: false }).limit(60);
     if (antigas && S.msgs.length) q = q.lt('criada_em', S.msgs[0].criada_em);
     const { data } = await q;
     if (S.aberta !== jid) return;
@@ -245,10 +277,10 @@ B7.CentralWA = (function () {
     let alvo = achar();
     if (!alvo && S.aberta && S.msgs.length) {
       const jid = S.aberta;
-      const { data: m } = await sb().from('wa_mensagens').select('criada_em').eq('id', id).eq('jid', jid).maybeSingle();
+      const { data: m } = await noNum(sb().from('wa_mensagens').select('criada_em')).eq('id', id).eq('jid', jid).maybeSingle();
       if (!m) { B7.UI.toast('Essa mensagem não está mais aqui (apagada ou de antes do B7).'); return; }
       if (m.criada_em < S.msgs[0].criada_em) {
-        const { data } = await sb().from('wa_mensagens').select('*').eq('jid', jid).gte('criada_em', m.criada_em).lt('criada_em', S.msgs[0].criada_em).order('criada_em', { ascending: true }).limit(1500);
+        const { data } = await noNum(sb().from('wa_mensagens').select('*')).eq('jid', jid).gte('criada_em', m.criada_em).lt('criada_em', S.msgs[0].criada_em).order('criada_em', { ascending: true }).limit(1500);
         if (S.aberta !== jid) return;
         S.msgs = (data || []).concat(S.msgs);
         pintarMensagens();
@@ -263,15 +295,16 @@ B7.CentralWA = (function () {
 
   function pintarChat() {
     const cx = raiz && raiz.querySelector('#wz-chat'); if (!cx) return;
-    const c = S.aberta && S.porJid.get(S.aberta);
+    const c = S.aberta && conv(S.aberta);
     if (!c) {
-      cx.innerHTML = '<div class="wz-bemvindo"><span class="wz-vazio-ic">' + I.wa + '</span><b>WhatsApp do B7</b><p>Escolha uma conversa na lista. As mensagens chegam aqui na hora, para você e para o Kaique.</p></div>';
+      cx.innerHTML = '<div class="wz-bemvindo"><span class="wz-vazio-ic">' + I.wa + '</span><b>WhatsApp do B7</b><p>Escolha uma conversa na lista. As mensagens chegam aqui na hora, para toda a equipe do número.</p></div>';
       return;
     }
     const cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
     cx.innerHTML =
       '<header class="wz-cab"><button class="wz-ic wz-volta" data-wz="voltar" aria-label="Voltar">' + I.volta + '</button>' + avatar(c, 'p') +
-        '<div class="wz-cab-tx"><b class="wz-cab-nome" data-wz="renomear" title="Clique para renomear">' + esc(c.nome || num(c.jid)) + '</b><small>' + (c.tipo === 'grupo' ? 'Grupo' : esc(fone(c.jid))) + (cli ? ' · cliente ' + esc(cli.nome) : '') + '</small></div>' +
+        '<div class="wz-cab-tx"><b class="wz-cab-nome" data-wz="renomear" title="Clique para renomear">' + esc(c.nome || num(c.jid)) + '</b><small>' + (c.tipo === 'grupo' ? 'Grupo' : esc(fone(c.jid))) + (cli ? ' · cliente ' + esc(cli.nome) : '') +
+          (varios() && numDe(c) ? ' · <span class="wz-via">via ' + B7.WaNumeros.ponto(numDe(c)) + ' ' + esc(numDe(c).nome) + '</span>' : '') + '</small></div>' +
         '<div class="wz-cab-acoes"><button class="wz-ic wz-so-pc' + (S.lado ? ' on' : '') + '" data-wz="lado" title="Painel do cliente">' + I.lado + '</button>' +
           '<div class="menu"><button class="wz-ic" data-menu aria-label="Opções da conversa">' + I.mais + '</button><div class="lista">' +
             '<button data-wz="renomear">' + (c.tipo === 'grupo' ? 'Renomear grupo (só no B7)' : 'Renomear contato') + '</button>' +
@@ -349,7 +382,7 @@ B7.CentralWA = (function () {
     return '<span class="wz-fa ' + (cls || '') + '" style="--c:' + corDe(m.autor_nome || m.autor_jid) + '" title="' + esc(nome) + '">' + (foto ? '<img src="' + esc(foto) + '" alt="" loading="lazy" onerror="this.remove()">' : '') + '<b>' + esc(ini(nome)) + '</b></span>';
   }
   function fotoConversa(jid) {
-    const c = S.porJid && S.porJid.get(jid); if (!c) return '';
+    const c = conv(jid); if (!c) return '';
     return '<span class="wz-fa aud" style="--c:' + corDe(c.nome) + '">' + (c.foto_url ? '<img src="' + esc(c.foto_url) + '" alt="" loading="lazy" onerror="this.remove()">' : '') + '<b>' + esc(ini(c.nome)) + '</b></span>';
   }
   function bolha(m, grupo, seguida) {
@@ -445,7 +478,7 @@ B7.CentralWA = (function () {
       const blob = await r.blob();
       const mime = String(m.midia_mime || blob.type || '').split(';')[0];
       const ext = EXT_MIME[mime] || (mime.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'bin';
-      const c = S.porJid.get(m.jid);
+      const c = conv(m.jid, m.numero_id);
       const quando = new Date(m.criada_em); const dd = n => String(n).padStart(2, '0');
       const carimbo = quando.getFullYear() + '-' + dd(quando.getMonth() + 1) + '-' + dd(quando.getDate()) + ' ' + dd(quando.getHours()) + 'h' + dd(quando.getMinutes());
       const quem = (m.de_mim ? (m.enviada_por_nome || 'B7') : (m.autor_nome || (c && c.nome) || 'contato')).split(' ')[0];
@@ -520,7 +553,8 @@ B7.CentralWA = (function () {
   }, true);
 
   function cliqueGeral(e) {
-    const it = e.target.closest('.wz-it'); if (it) return abrirConversa(it.dataset.jid);
+    const it = e.target.closest('.wz-it'); if (it) return abrirConversa(it.dataset.jid, it.dataset.num || null);
+    const nb = e.target.closest('[data-num]'); if (nb && nb.closest('.wz-nums')) { S.num = nb.dataset.num; if (B7.WaNumeros) B7.WaNumeros.escolher(S.num); pintarFiltros(); pintarLista(); return; }
     const ia = e.target.closest('[data-ia]'); if (ia) { B7.UI.fecharMenus && B7.UI.fecharMenus(); return ajudaIA(ia.dataset.ia); }
     const iad = e.target.closest('[data-ia-desfaz]'); if (iad) { const t = raiz.querySelector('#wz-texto'); if (t && S.iaAntes != null) { t.value = S.iaAntes; t.dispatchEvent(new Event('input')); t.focus(); } S.iaAntes = null; avisoIA(''); return; }
     const aj = e.target.closest('[data-abrir-jid]'); if (aj) return abrirConversa(aj.dataset.abrirJid);
@@ -566,11 +600,11 @@ B7.CentralWA = (function () {
   }
 
   async function acao(a) {
-    const c = S.aberta && S.porJid.get(S.aberta);
-    if (a === 'voltar') { S.aberta = null; raiz.classList.remove('wz-com-chat'); document.body.classList.remove('wz-tela-cheia'); pintarLista(); pintarChat(); pintarLado(); return; }
+    const c = S.aberta && conv(S.aberta);
+    if (a === 'voltar') { S.aberta = null; S.abertaNum = null; raiz.classList.remove('wz-com-chat'); document.body.classList.remove('wz-tela-cheia'); pintarLista(); pintarChat(); pintarLado(); return; }
     if (a === 'lado') { S.lado = !S.lado; raiz.classList.toggle('sem-lado', !S.lado); pintarChat(); pintarMensagens(); pintarLado(); return; }
-    if (a === 'conexao') return B7.WaCentral && B7.WaCentral.abrir();
-    if (a === 'importar') return importar();
+    if (a === 'conexao') return B7.WaCentral && B7.WaCentral.abrir(S.num !== 'todos' ? S.num : null);
+    if (a === 'importar') return importar(S.num !== 'todos' ? S.num : null);
     if (a === 'figs') return abrirFigurinhas();
     if (a === 'fig-nova') return raiz.querySelector('#wz-arq-fig').click();
     if (a === 'drive') return modalDrive();
@@ -580,7 +614,7 @@ B7.CentralWA = (function () {
     if (a === 'anexo-cam') return raiz.querySelector('#wz-arq-cam').click();
     if (a === 'nota') return notaInterna();
     if (!c) return;
-    const marcar = async (campo, valor) => { try { await sb().rpc('wa_conversa_marcar', { p_jid: c.jid, p_campo: campo, p_valor: valor == null ? null : String(valor) }); } catch (e) { B7.UI.toast('Não deu certo.', { tipo: 'erro' }); } };
+    const marcar = async (campo, valor) => { try { await sb().rpc('wa_conversa_marcar', { p_jid: c.jid, p_campo: campo, p_valor: valor == null ? null : String(valor), p_numero: c.numero_id || null }); } catch (e) { B7.UI.toast('Não deu certo.', { tipo: 'erro' }); } };
     if (a === 'fixar') { c.fixada = !c.fixada; await marcar('fixada', c.fixada); }
     if (a === 'arquivar') { c.arquivada = !c.arquivada; await marcar('arquivada', c.arquivada); B7.UI.toast(c.arquivada ? 'Conversa arquivada.' : 'Conversa de volta à lista.'); }
     if (a === 'semespera') { c.esperando_desde = null; c.aguardando_cliente_desde = null; c.vez = 'ninguem'; c.vez_motivo = 'Marcado pela equipe como respondido'; await marcar('sem_espera'); }
@@ -591,7 +625,7 @@ B7.CentralWA = (function () {
         rotulo: (c.tipo === 'grupo' ? 'O nome muda só aqui no B7 (o grupo no WhatsApp continua igual).' : 'Número: ' + fone(c.jid) + '. O nome vale aqui no B7 e para o Otto.') + ' Deixe vazio para voltar ao nome do WhatsApp.',
         placeholder: 'Ex.: Ana — Mercato', valor: c.nome && !/^\+?\d+$/.test(c.nome) && /[\p{L}\p{N}]/u.test(c.nome) ? c.nome : '', confirmar: 'Salvar' });
       if (novo == null) return;
-      const { error } = await sb().rpc('wa_conversa_marcar', { p_jid: c.jid, p_campo: 'nome', p_valor: novo.replace(/\s+/g, ' ').slice(0, 80) });
+      const { error } = await sb().rpc('wa_conversa_marcar', { p_jid: c.jid, p_campo: 'nome', p_valor: novo.replace(/\s+/g, ' ').slice(0, 80), p_numero: c.numero_id || null });
       if (error) { B7.UI.toast('Não deu para renomear.', { tipo: 'erro' }); return; }
       if (novo) { c.nome = novo.replace(/\s+/g, ' ').slice(0, 80); c.nome_fixo = true; S.msgs && S.msgs.forEach(m => { if (m.autor_jid === c.jid && !m.de_mim) m.autor_nome = c.nome; }); }
       else { c.nome_fixo = false; if (c.tipo !== 'grupo') c.nome = num(c.jid); }
@@ -637,7 +671,7 @@ B7.CentralWA = (function () {
   function nomeDoJid(jid) {
     if (jid === 'eu') return 'Você';
     if (jid === 'otto') return 'Otto (assistente)';
-    const c = S.porJid.get(S.aberta);
+    const c = conv(S.aberta);
     if (c && jid === c.jid && !/@g\.us$/.test(c.jid)) return c.nome || '+' + num(jid);
     const daMsg = S.msgs.find(x => x.autor_jid === jid && x.autor_nome);
     if (daMsg) return daMsg.autor_nome;
@@ -696,7 +730,7 @@ B7.CentralWA = (function () {
     const img = z.querySelector('img');
     const mostra = async () => {
       const m = i >= 0 ? fotos[i] : null;
-      const c = m && S.porJid.get(m.jid);
+      const c = m && conv(m.jid, m.numero_id);
       z.querySelector('.wz-zoom-info b').textContent = m ? (m.de_mim ? (m.enviada_por_nome || 'Você') : (m.autor_nome || (c && c.nome) || 'Contato')) : 'Foto';
       z.querySelector('.wz-zoom-info small').textContent = m ? new Date(m.criada_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às') + (fotos.length > 1 ? ' · ' + (i + 1) + ' de ' + fotos.length : '') : '';
       z.querySelector('.wz-zoom-legenda').textContent = m && m.texto ? semCodigos(m.texto) : '';
@@ -811,7 +845,7 @@ B7.CentralWA = (function () {
   async function notaInterna() {
     const texto = await B7.UI.perguntar({ titulo: 'Nota interna', rotulo: 'Fica na conversa só para a equipe. O cliente não recebe.', placeholder: 'Ex.: pediu para trocar o preço do card 1', confirmar: 'Salvar nota' });
     if (!texto || !S.aberta) return;
-    try { await sb().rpc('wa_nota_interna', { p_jid: S.aberta, p_texto: texto }); } catch (e) { B7.UI.toast('Não deu para salvar a nota.', { tipo: 'erro' }); }
+    try { await sb().rpc('wa_nota_interna', { p_jid: S.aberta, p_texto: texto, p_numero: S.abertaNum }); } catch (e) { B7.UI.toast('Não deu para salvar a nota.', { tipo: 'erro' }); }
   }
   const rolarFim = () => { const cx = raiz && raiz.querySelector('#wz-msgs'); if (cx) cx.scrollTop = cx.scrollHeight; };
 
@@ -906,7 +940,7 @@ B7.CentralWA = (function () {
   async function pintarLado() {
     const cx = raiz && raiz.querySelector('#wz-lado'); if (!cx) return;
     raiz.classList.toggle('sem-lado', !S.lado || !S.aberta);
-    const c = S.aberta && S.porJid.get(S.aberta);
+    const c = S.aberta && conv(S.aberta);
     if (!c) { cx.innerHTML = ''; return; }
     const cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
     const grupo = c.tipo === 'grupo';
@@ -1047,19 +1081,19 @@ B7.CentralWA = (function () {
     m.addEventListener('click', async e => {
       const x = e.target.closest('[data-cli]'); if (!x) return;
       m.fechar(); c.cliente_id = x.dataset.cli || null;
-      try { await sb().rpc('wa_conversa_marcar', { p_jid: c.jid, p_campo: 'cliente', p_valor: x.dataset.cli }); B7.UI.toast(c.cliente_id ? 'Conversa ligada ao cliente.' : 'Conversa desligada do cliente.'); } catch (er) { B7.UI.toast('Não deu certo.', { tipo: 'erro' }); }
+      try { await sb().rpc('wa_conversa_marcar', { p_jid: c.jid, p_campo: 'cliente', p_valor: x.dataset.cli, p_numero: c.numero_id || null }); B7.UI.toast(c.cliente_id ? 'Conversa ligada ao cliente.' : 'Conversa desligada do cliente.'); } catch (er) { B7.UI.toast('Não deu certo.', { tipo: 'erro' }); }
       pintarLista(); pintarChat(); pintarMensagens(); pintarLado();
     });
   }
 
   /* ------------------------------------------------------------ histórico (admin) */
-  async function importar() {
+  async function importar(numeroId) {
     const m = B7.UI.modal('<h3>Puxar conversas recentes</h3><div class="sub" id="wz-imp">Buscando no WhatsApp…</div><div class="wz-barra"><i id="wz-imp-b"></i></div><div class="acoes"><button class="b" data-fecha>Fechar</button></div>');
     let pagina = 0, tot = { grupos: 0, conversas: 0, mensagens: 0 };
     try {
       while (pagina != null && m.isConnected) {
         /* 4.52.3: direto na função, com até 2 min por pedaço (o atalho do sistema desiste em 20 s) */
-        const inv = await Promise.race([B7.sb.functions.invoke('wa-evolution', { body: { acao: 'importar', pagina } }),
+        const inv = await Promise.race([B7.sb.functions.invoke('wa-evolution', { body: { acao: 'importar', pagina, numero: numeroId || undefined } }),
           new Promise((_, rej) => setTimeout(() => rej(new Error('O WhatsApp demorou demais. Tente de novo — o que já veio fica guardado.')), 120000))]);
         if (inv.error) { let c = null; try { c = await inv.error.context.json(); } catch (x) {} throw new Error((c && c.erro) || 'Não consegui falar com o WhatsApp do B7.'); }
         const r = inv.data || {};
@@ -1113,7 +1147,7 @@ B7.CentralWA = (function () {
     const t = raiz.querySelector('#wz-texto'), men = raiz.querySelector('#wz-men');
     if (String(pjid).startsWith('rr:')) {
       const r = ((S.wcfg && S.wcfg.respostas) || [])[Number(pjid.slice(3))]; if (!t || !r) return;
-      const c = S.porJid.get(S.aberta) || {}, cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
+      const c = conv(S.aberta) || {}, cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
       const nomeCli = cli ? cli.nome : (c.tipo === 'grupo' ? '' : String(c.nome || '').split(' ')[0]);
       const texto = String(r.texto).replace(/\{cliente\}/g, nomeCli).replace(/\{eu\}/g, String(eu().nome || '').split(' ')[0]).replace(/,\s*!/g, '!').replace(/\s+([,!?])/g, '$1');
       const antes = t.value.slice(0, t.selectionStart).replace(/\/([^\s/]{0,20})$/, '') + texto;
@@ -1229,18 +1263,18 @@ B7.CentralWA = (function () {
     S.canal = B7.DB.canal('wz-' + Date.now(), [{ table: 'wa_conversas' }, { table: 'wa_mensagens' }], p => {
       if (p.table === 'wa_conversas') {
         const n = p.new && p.new.jid ? p.new : null;
-        if (p.eventType === 'DELETE') { S.conversas = S.conversas.filter(c => c.jid !== (p.old && p.old.jid)); }
+        if (p.eventType === 'DELETE') { const o = p.old || {}; S.conversas = S.conversas.filter(c => !(c.jid === o.jid && (!o.numero_id || c.numero_id === o.numero_id))); }
         else if (n) {
-          const i = S.conversas.findIndex(c => c.jid === n.jid);
-          if (n.jid === S.aberta && n.nao_lidas > 0 && document.visibilityState === 'visible') { n.nao_lidas = 0; chamar('lida', { jid: n.jid }).catch(() => {}); }
+          const i = S.conversas.findIndex(c => c.jid === n.jid && c.numero_id === n.numero_id);
+          if (n.jid === S.aberta && n.numero_id === S.abertaNum && n.nao_lidas > 0 && document.visibilityState === 'visible') { n.nao_lidas = 0; chamar('lida', { jid: n.jid, numero: n.numero_id }).catch(() => {}); }
           if (i >= 0) S.conversas[i] = Object.assign(S.conversas[i], n); else S.conversas.push(n);
           S.conversas.sort((a, b) => (b.fixada - a.fixada) || String(b.ultima_em || '').localeCompare(String(a.ultima_em || '')));
         }
-        S.porJid = new Map(S.conversas.map(c => [c.jid, c]));
+        indexar();
         pintarLista(); pintarFiltros(); pintarContagem();
         return;
       }
-      const m = p.new; if (!m || m.jid !== S.aberta) return;
+      const m = p.new; if (!m || m.jid !== S.aberta || (m.numero_id && S.abertaNum && m.numero_id !== S.abertaNum)) return;
       const i = S.msgs.findIndex(x => x.id === m.id);
       if (i >= 0) S.msgs[i] = Object.assign(S.msgs[i], m);
       else {

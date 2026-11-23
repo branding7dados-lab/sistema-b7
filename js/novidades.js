@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.84.0', versao: '4.84.0', em: '2026-11-23T18:00:00-03:00', rota: 'whatsapp',
+    titulo: 'Vários números de WhatsApp no B7',
+    itens: ['Agora o B7 tem um número por equipe: Videomakers, Designers, Coordenação… Cada equipe vê e responde pelo número dela.',
+      'Quem vê mais de um número (o administrador) tem no topo da Central a barra “Todos · Videomakers · Designers” — com a cor de cada número em cada conversa.',
+      'A resposta sai sempre pelo número da conversa. No “Enviar no WhatsApp”, a janela já começa no número da sua equipe.',
+      'Para adicionar um número: Configurações do WhatsApp (⚙️) → Números do WhatsApp → + Adicionar número, e leia o QR Code.'] },
   { id: 'v-4.83.2', versao: '4.83.2', em: '2026-11-18T17:30:00-03:00',
     titulo: 'Topo do celular mais limpo',
     itens: ['No celular, o topo ficou só com a busca, o sino e a sua foto.',

@@ -122,14 +122,16 @@ export async function midiaParaDrive(sb: SupabaseClient, m: any, dados?: { bin: 
     bin = new Uint8Array(await d.data.arrayBuffer()); mime = m.midia_mime || d.data.type || mime;
   }
   if (!bin) return null;
-  const { data: conv } = await sb.from('wa_conversas').select('nome').eq('jid', m.jid).maybeSingle();
+  /* 4.84.0: com vários números, a mesma conversa/mensagem pode existir em mais de um — filtra o número da mensagem */
+  const doNum = (q: any) => m.numero_id ? q.eq('numero_id', m.numero_id) : q;
+  const { data: conv } = await doNum(sb.from('wa_conversas').select('nome')).eq('jid', m.jid).limit(1).maybeSingle();
   const pasta = await pastaDaConversa(sb, tk, m.jid, conv?.nome || String(m.jid).split('@')[0], m.criada_em);
   const ext = EXT[String(mime).split(';')[0]] || (String(m.midia_nome || '').includes('.') ? String(m.midia_nome).split('.').pop() : 'bin');
   const quando = String(m.criada_em || new Date().toISOString()).slice(0, 16).replace('T', ' ').replace(':', 'h');
   const base = m.midia_nome ? String(m.midia_nome) : ({ imagem: 'foto', video: 'video', audio: 'audio', figurinha: 'figurinha' } as Record<string, string>)[m.tipo] || 'arquivo';
   const nome = quando + ' · ' + (m.de_mim ? (m.enviada_por_nome || 'B7') : (m.autor_nome || 'contato')) + ' · ' + base + (/\.[a-z0-9]{2,5}$/i.test(base) ? '' : '.' + ext);
   const driveId = await subir(tk, pasta, nome, String(mime).split(';')[0], bin);
-  await sb.from('wa_mensagens').update({ drive_id: driveId, midia_mime: mime, midia_path: null }).eq('id', m.id);
+  await doNum(sb.from('wa_mensagens').update({ drive_id: driveId, midia_mime: mime, midia_path: null })).eq('id', m.id);
   if (m.midia_path) await sb.storage.from('wa-midia').remove([m.midia_path]);
   return driveId;
 }
@@ -138,7 +140,7 @@ export async function midiaParaDrive(sb: SupabaseClient, m: any, dados?: { bin: 
  *  o Drive) vão para o Drive aos poucos — o relógio do Otto chama a cada 5 min. Sem Drive conectado, não faz nada. */
 export async function levarAntigosProDrive(sb: SupabaseClient, max = 15): Promise<number> {
   if (!(await tokenDrive(sb))) return 0;
-  const { data } = await sb.from('wa_mensagens').select('id, jid, tipo, de_mim, autor_nome, enviada_por_nome, midia_path, midia_mime, midia_nome, criada_em')
+  const { data } = await sb.from('wa_mensagens').select('numero_id, id, jid, tipo, de_mim, autor_nome, enviada_por_nome, midia_path, midia_mime, midia_nome, criada_em')
     .not('midia_path', 'is', null).is('drive_id', null).order('criada_em', { ascending: false }).limit(max);
   let n = 0;
   for (const m of (data || []) as any[]) {
@@ -146,7 +148,7 @@ export async function levarAntigosProDrive(sb: SupabaseClient, max = 15): Promis
       if (await midiaParaDrive(sb, m)) { n++; continue; }
       if (!(await tokenDrive(sb))) break;   /* o Drive caiu no meio: tenta na próxima rodada */
       /* o arquivo não está mais no armazenamento: solta a referência (ao abrir, o B7 busca de novo no WhatsApp) */
-      await sb.from('wa_mensagens').update({ midia_path: null }).eq('id', m.id).eq('midia_path', m.midia_path);
+      await sb.from('wa_mensagens').update({ midia_path: null }).eq('id', m.id).eq('midia_path', m.midia_path).eq('numero_id', m.numero_id);
     } catch (e) { console.log('drive antigos', String(e)); break; }
   }
   return n;
