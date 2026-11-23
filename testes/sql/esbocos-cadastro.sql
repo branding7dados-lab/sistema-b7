@@ -17,6 +17,11 @@ create or replace function public.sou_videomaker() returns boolean language sql 
 $$ select coalesce((select papel = 'videomaker' and estado = 'ativa' from perfis where id = auth.uid()), false) $$;
 create or replace function public.pode_nivel(p_modulo text, p_nivel int) returns boolean language sql stable security definer set search_path = public as
 $$ select coalesce((select papel = 'admin' or (papel <> 'cliente' and (p_modulo <> 'clientes' or nivel_clientes >= p_nivel)) from perfis where id = auth.uid()), false) $$;
+-- como no B7: administrador sempre; os outros precisam da ação liberada E do nível 2 no módulo
+create table public.acoes_negadas (perfil_id uuid, acao text);
+create or replace function public.pode_nivel_acao(p_acao text) returns boolean language sql stable security definer set search_path = public as
+$$ select case when auth.uid() is null then false when public.sou_admin() then true
+     else not exists (select 1 from acoes_negadas n where n.perfil_id = auth.uid() and n.acao = p_acao) and public.pode_nivel('clientes', 2) end $$;
 create or replace function public.tenho_funcao_extra(p_funcao text, p_id uuid default auth.uid()) returns boolean language sql stable as $$ select false $$;
 create or replace function public.notif_hoje() returns date language sql stable as $$ select current_date $$;
 create table public.pacotes_producao (id uuid primary key default gen_random_uuid(), nome text, descricao text default '', itens jsonb not null default '[]',

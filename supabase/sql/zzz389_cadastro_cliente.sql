@@ -52,7 +52,7 @@ returns boolean language sql stable security definer set search_path to 'public'
 as $$ select coalesce(public.sou_equipe_interna() or public.sou_designer() or public.sou_videomaker(), false) $$;
 create or replace function public._cadastro_pode_editar()
 returns boolean language sql stable security definer set search_path to 'public'
-as $$ select coalesce(public.sou_admin() or public.pode_nivel('clientes', 2), false) $$;
+as $$ select coalesce(public.pode_nivel_acao('cliente.editar'), false) $$;   -- a mesma regra da política de UPDATE em clientes
 revoke all on function public._cadastro_pode_ler() from public, anon, authenticated;
 revoke all on function public._cadastro_pode_editar() from public, anon, authenticated;
 
@@ -64,6 +64,10 @@ begin
     new.pacote_ajuste := null;
   end if;
   if new.pacote_id is null then new.pacote_ajuste := null; end if;
+  -- o ajuste entra na conta do Contratado × entregue: lixo aqui derrubaria a Gestão de todo mundo
+  if new.pacote_ajuste is not null and new.pacote_ajuste is distinct from old.pacote_ajuste and not public._pacote_valido(new.pacote_ajuste) then
+    raise exception 'O ajuste do pacote está inválido: use de 1 a 120 conteúdos no mês.';
+  end if;
   return new;
 end $$;
 drop trigger if exists clientes_pacote_ajuste on public.clientes;

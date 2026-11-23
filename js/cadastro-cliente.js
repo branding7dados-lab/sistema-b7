@@ -100,8 +100,9 @@ B7.Cadastro = (function () {
         '<div data-cd-pc-resto hidden>' +
           '<label class="pc-edicao cd-ajustar"><input type="checkbox" id="cd-ajustar"' + (p.ajustado ? ' checked' : '') + '> Ajustar as quantidades só para este cliente</label>' +
           '<div class="mb cd-ajuste" data-cd-ajuste hidden><span class="rot">POR MÊS, PARA ESTE CLIENTE</span><div data-cd-qtds></div><p class="ajuda" data-cd-total></p></div>' +
-          campo('VALE DESDE', 'cd-desde', p.desde || hojeMes1(), { tipo: 'date', obr: true }) +
-          '<div class="gv-ajuda">Os meses antes dessa data não entram no Contratado × entregue.</div>' +
+          /* quem já tinha pacote sem data conta desde sempre: não inventar uma data ao abrir para editar */
+          campo('VALE DESDE', 'cd-desde', p.desde || (p.pacote_id ? '' : hojeMes1()), { tipo: 'date' }) +
+          '<div class="gv-ajuda">Os meses antes dessa data não entram no Contratado × entregue. Vazio: conta desde sempre.</div>' +
         '</div>';
     }
     if (bloco === 'equipe') {
@@ -176,8 +177,7 @@ B7.Cadastro = (function () {
         if (!id) return { dados: { pacote: { pacote_id: null, ajuste: null } }, trocou: !!p0.pacote_id, perdeAjuste: !!p0.ajustado };
         let ajuste = null;
         if (aj.checked) { ajuste = B7.Pacotes.lerQtds(qtds); if (!ajuste.length) return { erro: 'Coloque pelo menos um conteúdo no ajuste', foco: qtds.querySelector('input') }; }
-        if (!v('cd-desde')) return falha('Escolha desde quando o pacote vale', 'cd-desde');
-        return { dados: { pacote: { pacote_id: id, ajuste, desde: v('cd-desde') } }, trocou: id !== p0.pacote_id, perdeAjuste: !!p0.ajustado && id !== p0.pacote_id };
+        return { dados: { pacote: { pacote_id: id, ajuste, desde: v('cd-desde') || null } }, trocou: id !== p0.pacote_id, perdeAjuste: !!p0.ajustado && id !== p0.pacote_id };
       };
     }
     if (bloco === 'equipe') {
@@ -194,7 +194,7 @@ B7.Cadastro = (function () {
     const patch = {};
     if (lido.cliente) ['nome', 'contrato', 'modo'].forEach(k => { if (lido.cliente[k] !== undefined && lido.cliente[k] !== d.cliente[k]) patch[k] = lido.cliente[k]; });
     if (lido.logo) { const nova = await lido.logo.resolver(id, d.cliente.logo_path); if (nova) Object.assign(patch, nova); }
-    if (Object.keys(patch).length) await B7.DB.atualizarCliente(id, patch);
+    if (Object.keys(patch).length) { await B7.DB.atualizarCliente(id, patch); Object.assign(d.cliente, patch); }   /* se o resto falhar, a logo nova já é a atual */
     return B7.DB.salvarCadastro(id, lido.dados || {});
   }
   const avisoErro = e => { const t = String((e && e.message) || '');
@@ -208,14 +208,14 @@ B7.Cadastro = (function () {
 
   /* ================================================================ NOVO CLIENTE (etapas) */
   function novo(aoCriar) {
-    let passo = 0, criado = null, d = VAZIO(), ler = null, cx = { pacotes: [], pessoas: {} }, ocupado = false;
+    let passo = 0, criado = null, d = VAZIO(), ler = null, cx = { pacotes: [], pessoas: {} }, ocupado = false, fechou = false;
     apoio().then(a => { cx = a; if (passo >= 2 && m.isConnected) pintar(); });
     const m = B7.UI.modal(
       '<h3>Novo cliente</h3><div class="sub">Só o nome é obrigatório. O resto você completa agora ou depois, na aba Cadastro do cliente.</div>' +
       '<ol class="cd-passos" data-cd-passos></ol><div class="cd-corpo" data-cd-corpo></div>' +
       '<div class="acoes cd-acoes"><button class="b" data-cd-voltar>Voltar</button><span class="cd-esp"></span>' +
         '<button class="b contorno" data-cd-pular>Pular</button><button class="b pri" data-cd-ok>Continuar</button></div>',
-      { larga: true, extra: 'cd-janela', aoFechar: () => { if (criado) { if (aoCriar) aoCriar(criado); else B7.Rota.recarregar(); } } });
+      { larga: true, extra: 'cd-janela', aoFechar: () => { fechou = true; if (criado) { if (aoCriar) aoCriar(criado); else B7.Rota.recarregar(); } } });
     const q = s => m.querySelector(s);
     function pintar() {
       const [k] = BLOCOS[passo];
@@ -241,6 +241,8 @@ B7.Cadastro = (function () {
           /* o cliente nasce aqui; o que vier depois só completa */
           criado = await B7.Save.acao(() => B7.DB.criarCliente(lido.cliente.nome), 'Cliente criado');
           d.cliente.nome = criado.nome;
+          /* a janela foi fechada enquanto criava: a tela ainda precisa saber do cliente novo */
+          if (fechou) { if (aoCriar) aoCriar(criado); else B7.Rota.recarregar(); return; }
         }
         const r = await gravar(criado.id, lido, d);
         d = r; criado = Object.assign({}, criado, r.cliente);
@@ -250,8 +252,8 @@ B7.Cadastro = (function () {
       finally { ocupado = false; const b = q('[data-cd-ok]'); if (b) b.disabled = false; }
     }
     q('[data-cd-ok]').onclick = seguir;
-    q('[data-cd-voltar]').onclick = () => anda(-1);
-    q('[data-cd-pular]').onclick = () => (passo === BLOCOS.length - 1 ? m.fechar() : anda(1));
+    q('[data-cd-voltar]').onclick = () => { if (!ocupado) anda(-1); };
+    q('[data-cd-pular]').onclick = () => { if (!ocupado) (passo === BLOCOS.length - 1 ? m.fechar() : anda(1)); };
     m.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input:not([type=checkbox]):not([type=color])')) { e.preventDefault(); seguir(); } });
     pintar();
     return m;

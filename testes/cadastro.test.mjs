@@ -163,6 +163,12 @@ const texto = (pg, s) => pg.$eval(s, e => e.innerText.replace(/\s+/g, ' ')).catc
   await pg.selectOption('#cd-eq-videomaker', 'v1'); await pg.selectOption('#cd-eq-designer', ''); await pg.click('[data-cd-salvar]'); await pg.waitForTimeout(500);
   const s3 = salvos().pop();
   ok(s3.equipe.videomaker === 'v1' && s3.equipe.designer === null && /Vic/.test(await texto(pg, '[data-cd-bloco="equipe"]')), 'equipe: define o vídeo e tira o design');
+  /* cliente antigo, com pacote e sem "vale desde": editar o pacote não inventa uma data (ele sumiria dos meses passados) */
+  CAD.pacote.desde = null; await montar(); await pg.waitForSelector('.cd-ficha');
+  await pg.click('[data-cd-editar="pacote"]'); await pg.waitForSelector('#cd-desde');
+  ok(await pg.$eval('#cd-desde', e => e.value) === '', 'pacote sem data: o campo "vale desde" abre vazio');
+  await pg.click('[data-cd-salvar]'); await pg.waitForTimeout(500);
+  ok(salvos().pop().pacote.desde === null, 'e salvar sem mexer mantém "desde sempre"');
   /* quem só vê não edita */
   CAD.pode_editar = false; await montar(); await pg.waitForSelector('.cd-ficha');
   ok(!(await pg.$('[data-cd-editar]')) && !(await pg.$('[data-cd-padrao]')), 'sem permissão de editar: nenhum botão "Editar"');

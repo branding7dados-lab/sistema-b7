@@ -40,6 +40,13 @@ do $$ begin assert (cliente_cadastro('00000000-0000-0000-0000-0000000000c1')->'c
 do $$ begin assert (cliente_cadastro('00000000-0000-0000-0000-0000000000c1')->>'pode_editar')::boolean = false; end $$;
 select pg_temp.recusa($$select cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"marca":{"estilo":"x"}}')$$, '42501');
 
+-- 2b) coordenação com nível 2 edita; com a ação "editar cliente" negada, não (mesma regra do UPDATE em clientes)
+select pg_temp.sou('00000000-0000-0000-0000-0000000000e1');
+do $$ begin assert (cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c2', '{"marca":{"estilo":"ok"}}')->'marca'->>'estilo') = 'ok'; end $$;
+reset role; insert into acoes_negadas values ('00000000-0000-0000-0000-0000000000e1', 'cliente.editar'); set role authenticated;
+select pg_temp.recusa($$select cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c2', '{"marca":{"estilo":"x"}}')$$, '42501');
+do $$ begin assert (cliente_cadastro('00000000-0000-0000-0000-0000000000c2')->>'pode_editar')::boolean = false; end $$;
+
 -- 3) o Financeiro (admin) salva cada bloco; salvar um não mexe no outro
 select pg_temp.sou('00000000-0000-0000-0000-0000000000f1');
 do $$ declare r jsonb; begin
@@ -134,6 +141,9 @@ do $$ declare r jsonb; begin
   assert r->>'nome' = 'Básico' and (r->>'ajustado')::boolean = false, 'linha com outro pacote troca o pacote e limpa o ajuste: ' || r::text;
 end $$;
 
+-- 8b) ajuste inválido gravado direto na tabela (fora da função) é recusado
+select pg_temp.recusa($$update clientes set pacote_ajuste = '[{"tipo":"Card","qtd":"x"}]' where id = '00000000-0000-0000-0000-0000000000c1'$$, 'inválido');
+
 -- 9) pacote arquivado em uso continua valendo; não dá para escolher um arquivado novo; tirar o pacote limpa tudo
 reset role;
 update pacotes_producao set arquivado_em = now() where id in ('00000000-0000-0000-0000-00000000aa01', '00000000-0000-0000-0000-00000000aa02');
@@ -165,7 +175,7 @@ select pg_temp.recusa($$select cliente_cadastro_salvar('00000000-0000-0000-0000-
 select pg_temp.recusa($$select cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"equipe":{"videomaker":"00000000-0000-0000-0000-0000000000cc"}}')$$, 'não pode ser responsável');
 
 -- 11) as tabelas novas: equipe lê, cliente não lê, ninguém escreve direto
-do $$ begin assert (select count(*) from cliente_marca) = 1 and (select count(*) from cliente_responsaveis) = 1; end $$;
+do $$ begin assert (select count(*) from cliente_marca) = 2 and (select count(*) from cliente_responsaveis) = 1; end $$;
 select pg_temp.recusa($$insert into cliente_marca (client_id) values ('00000000-0000-0000-0000-0000000000c2')$$, '42501');
 select pg_temp.recusa($$update cliente_responsaveis set perfil_id = '00000000-0000-0000-0000-0000000000d1'$$, '42501');
 select pg_temp.sou('00000000-0000-0000-0000-0000000000cc');
