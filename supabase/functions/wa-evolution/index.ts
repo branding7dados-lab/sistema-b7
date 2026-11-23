@@ -386,7 +386,23 @@ Deno.serve(comCors(async (req: Request) => {
         if (numero && (numero.length < 10 || numero.length > 15)) return json({ erro: 'Número inválido. Use DDI + DDD + número, ex.: 55 62 99999-0000.' });
         return json(await conectar(numero));
       }
-      case 'desconectar': { const r = await evo('/instance/logout/' + I(), 'DELETE'); return json({ ok: r.ok }); }
+      /* 4.83.5: sessão travada ("Connection Closed", nov/2026) não aceita logout — antes o botão dizia "desconectado" e
+         nada mudava. Agora: tenta o logout e, de qualquer jeito, APAGA a conexão no Evolution. O próximo "Conectar"
+         cria uma nova e mostra o QR Code. */
+      case 'desconectar': {
+        const lo = await evo('/instance/logout/' + I(), 'DELETE', undefined, 15000).catch(() => ({ ok: false, status: 0, dados: null }));
+        const del = await evo('/instance/delete/' + I(), 'DELETE', undefined, 20000).catch(() => ({ ok: false, status: 0, dados: null }));
+        let sumiu = false;
+        for (let i = 0; i < 8 && !sumiu; i++) {
+          const f = await evo('/instance/fetchInstances?instanceName=' + I());
+          sumiu = f.status === 404 || (Array.isArray(f.dados) && !f.dados.length);
+          if (!sumiu) await new Promise(r => setTimeout(r, 1000));
+        }
+        console.log('desconectar', lo.status, del.status, sumiu);
+        if (!sumiu) return json({ erro: 'O Evolution não apagou a conexão (logout ' + lo.status + ', apagar ' + del.status + '). Reinicie o servidor do Evolution e tente de novo.' });
+        await admin().from('wa_assistente').update({ reiniciar_pedido: false, conexao_estado: 'sem_conexao' }).eq('id', 1).then(() => null, () => null);
+        return json({ ok: true });
+      }
       case 'importar': return json(await importar(Math.max(0, Number(c.pagina) || 0)));
       case 'contatos': return json(await atualizarContatos());
       /* 4.56.0: mandar agora as pendências no grupo da equipe */

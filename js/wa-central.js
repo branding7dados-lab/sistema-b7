@@ -126,7 +126,11 @@ B7.WaCentral = (function () {
       if (a === 'desconectar') {
         const ok = await B7.UI.confirmar({ titulo: 'Desconectar o número?', texto: 'O B7 deixa de receber e enviar por este número até conectar de novo pelo QR Code.', confirmar: 'Desconectar', perigo: true });
         if (!ok) return;
-        try { await B7.DB.waEvolution('desconectar'); B7.UI.toast('Número desconectado.'); } catch (x) { B7.UI.toast(x.message, { tipo: 'erro' }); }
+        try {
+          const r = await B7.DB.waEvolution('desconectar');
+          if (r && r.erro) B7.UI.toast(r.erro, { tipo: 'erro' });
+          else B7.UI.toast('Número desconectado. Agora é só conectar de novo pelo QR Code.');
+        } catch (x) { B7.UI.toast(x.message, { tipo: 'erro' }); }
         estado();
       }
     });
