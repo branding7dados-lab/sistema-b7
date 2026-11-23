@@ -14,7 +14,7 @@
 // =====================================================================
 import { comCors } from '../_shared/cors.ts';
 import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, numeros, instanciaDe, type Linha, type Numero } from '../_shared/wa.ts';
-import { podeVerNumero, instanciaNova, EQUIPES } from '../_shared/wa-numeros.ts';
+import { instanciaNova, EQUIPES, podeAcao, ACOES_ADMIN } from '../_shared/wa-numeros.ts';
 import { responderDuvida, testar as testarAssistente, mandarResumo, transcreverGuardada, sugerirResposta, corrigirTexto } from '../_shared/assistente.ts';
 import { falar, ultimoDiag } from '../_shared/otto-extras.ts';
 import { tokenDrive, ler, assinar, linkAssinado, midiaParaDrive, EXT } from '../_shared/drive.ts';
@@ -39,11 +39,11 @@ async function quemChamou(req: Request): Promise<Perfil | null> {
   return { ...p, nome: (p.nome || '').trim() || p.username } as Perfil;
 }
 const ehAdmin = (p: Perfil) => p.papel === 'admin' || p.eh_admin === true;
-async function podeVer(p: Perfil, n: Numero | null) {
+/* banco ainda sem números cadastrados: a regra antiga (admin + videomakers) */
+async function podeVerAntigo(p: Perfil) {
   if (ehAdmin(p)) return true;
-  /* banco ainda sem números cadastrados: a regra antiga (videomakers) */
-  if (!n) { const { data } = await admin().rpc('eh_videomaker_elegivel', { p_id: p.id }); return !!data; }
-  return podeVerNumero({ ...p, eh_admin: false }, n);
+  const { data } = await admin().rpc('eh_videomaker_elegivel', { p_id: p.id });
+  return !!data;
 }
 
 const comPrefixo = (b: string) => !b ? '' : b.startsWith('data:') ? b : 'data:image/png;base64,' + b;
@@ -325,7 +325,8 @@ async function baixarMidia(id: string, n: Numero | null) {
 async function entregarDoDrive(req: Request, u: URL): Promise<Response> {
   const id = u.searchParams.get('m') || '', exp = Number(u.searchParams.get('e') || 0), sig = u.searchParams.get('s') || '';
   if (!id || exp < Date.now() / 1000 || sig !== await assinar(id, exp)) return new Response('Link expirado. Abra o arquivo de novo pelo B7.', { status: 403 });
-  const m = await msgDe(id);
+  /* a mesma mensagem pode estar em dois números: vale a cópia que já foi para o Drive */
+  const { data: m } = await admin().from('wa_mensagens').select('*').eq('id', id).not('drive_id', 'is', null).limit(1).maybeSingle();
   if (!m?.drive_id) return new Response('Arquivo não encontrado.', { status: 404 });
   const tk = await tokenDrive(admin());
   if (!tk) return new Response('O Google Drive do B7 está desconectado.', { status: 503 });
@@ -383,12 +384,16 @@ Deno.serve(comCors(async (req: Request) => {
   let c: Record<string, any> = {};
   try { c = await req.json(); } catch (_e) { /* vazio */ }
   const acao = String(c.acao || 'estado');
-  const soAdmin = ['estado', 'conectar', 'desconectar', 'importar', 'contatos', 'assistente_testar', 'assistente_pendencias', 'numeros', 'numero_salvar', 'numero_desativar'];
-  /* 4.84.0: o número da conversa (vazio = padrão). Banco sem números cadastrados: segue como antes (n = null). */
-  const cadastrados = await numeros.todos();
+  /* 4.84.0: o número da conversa (vazio = padrão). Banco sem números cadastrados: segue como antes (n = null).
+     Erro passageiro lendo os números: 503 — nunca cai no número padrão por engano. */
+  let cadastrados: Numero[] = [];
+  try { cadastrados = await numeros.todos(); } catch (_e) { return json({ erro: 'Não consegui conferir os números do WhatsApp. Tente de novo.' }, 503); }
   const n: Numero | null = cadastrados.length ? await numeros.porId(c.numero ? String(c.numero) : null) : null;
   if (cadastrados.length && !n) return json({ erro: 'Número não encontrado.' }, 404);
-  if (soAdmin.includes(acao) ? !ehAdmin(p) : !(await podeVer(p, n))) return json({ erro: n ? 'Sem permissão para este número.' : 'Sem permissão para o WhatsApp do B7.' }, 403);
+  const pode = cadastrados.length
+    ? podeAcao(acao, { ...p, eh_admin: ehAdmin(p) }, n, await numeros.padrao())
+    : (ACOES_ADMIN.includes(acao) ? ehAdmin(p) : await podeVerAntigo(p));
+  if (!pode) return json({ erro: n ? (n.ativo ? 'Sem permissão para este número.' : 'Este número está desativado.') : 'Sem permissão para o WhatsApp do B7.' }, 403);
   if (!BASE() || !CHAVE()) return json({ configurado: false, erro: 'O WhatsApp do B7 não está configurado.' });
 
   try {
@@ -593,6 +598,8 @@ Deno.serve(comCors(async (req: Request) => {
       }
       /* 4.69.0: ajudas para quem responde na Central (não enviam nada) */
       case 'sugerir_resposta': {
+        /* a sugestão lê a conversa pelo Otto, que só enxerga o número padrão */
+        if (n && !n.padrao) return json({ erro: 'A sugestão da IA ainda só funciona no número dos Videomakers.' });
         const r = await sugerirResposta(admin(), String(c.jid || ''), String(p.nome || ''), String(c.pedido || ''));
         return json(r.erro ? { erro: r.erro } : { ok: true, texto: r.texto });
       }

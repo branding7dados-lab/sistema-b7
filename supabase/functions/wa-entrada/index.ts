@@ -8,7 +8,7 @@
 // Evolution, configurado pela wa-evolution ao ligar o webhook).
 // =====================================================================
 import { admin, gravar, garantirConversa, tokenWebhook, STATUS_ORDEM, evo, INST, numeros, instanciaDe } from '../_shared/wa.ts';
-import { instanciaDoEvento } from '../_shared/wa-numeros.ts';
+import { instanciaDoEvento, numeroDoEvento } from '../_shared/wa-numeros.ts';
 import { iguais } from '../_shared/cors.ts';
 import { aoReceber, relogio } from '../_shared/assistente.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
@@ -62,8 +62,17 @@ Deno.serve(async (req: Request) => {
   /* 4.84.0: de qual número da B7 veio. Instância que não está cadastrada (ou desativada) não grava nada —
      nunca cai no número padrão por engano. */
   /* banco ainda sem a zzz383 (lista vazia): segue como antes, tudo no número de sempre */
-  const cadastrados = await numeros.todos();
-  const num = cadastrados.length ? await numeros.porInstancia(instanciaDoEvento(corpo)) : null;
+  /* erro passageiro lendo os números: 503 — o Evolution manda de novo (nunca grava no número errado) */
+  let cadastrados: unknown[] = [];
+  try { cadastrados = await numeros.todos(); } catch (e) { console.error('wa-entrada números', (e as Error)?.message); return new Response(JSON.stringify({ ok: false }), { status: 503, headers: { 'Content-Type': 'application/json' } }); }
+  const ev = cadastrados.length ? await numeroDoEvento(numeros, instanciaDoEvento(corpo), INST()) : { numero: null };
+  const num = ev.numero;
+  /* o número padrão estava com o nome de instância errado no cadastro (≠ EVOLUTION_INSTANCE): corrige sozinho */
+  if (num && ev.corrigir) {
+    console.error('wa-entrada: número padrão corrigido para a instância ' + ev.corrigir);
+    await admin().from('wa_numeros').update({ instancia: ev.corrigir }).eq('id', num.id).then(() => null, () => null);
+    numeros.limpar();
+  }
   if (cadastrados.length && (!num || !num.ativo)) return ok({ ok: true, ignorado: 'instância desconhecida' });
   const ehPadrao = !num || num.padrao;
   const doNum = (q: any) => num ? q.eq('numero_id', num.id) : q;

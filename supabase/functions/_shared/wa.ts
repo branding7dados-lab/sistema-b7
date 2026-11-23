@@ -5,7 +5,7 @@
 //   • interpretar uma mensagem do WhatsApp e gravar em wa_conversas/wa_mensagens
 // =====================================================================
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { criarResolvedor, waPadraoCom, type Numero } from './wa-numeros.ts';
+import { criarResolvedor, waPadraoCom, semTabela, type Numero } from './wa-numeros.ts';
 export type { Numero } from './wa-numeros.ts';
 
 export const admin = (): SupabaseClient => createClient(
@@ -21,7 +21,9 @@ export const INST = () => Deno.env.get('EVOLUTION_INSTANCE') || 'b7-piloto';
 /* 4.84.0: vários números. INST() continua sendo o número padrão (Otto, relógio); o resto usa o número da conversa. */
 export const numeros = criarResolvedor(async () => {
   const { data, error } = await admin().from('wa_numeros').select('*').order('ordem');
-  return error ? [] : (data || []) as Numero[];
+  /* só a tabela ausente (banco sem a zzz383) vale como "sem números"; erro passageiro sobe (quem chamou responde 503) */
+  if (error) { if (semTabela(error)) return []; throw new Error('wa_numeros: ' + (error.message || error.code)); }
+  return (data || []) as Numero[];
 });
 /** instância do Evolution de um número (já pronta para a URL) */
 export const instanciaDe = (n?: Numero | null) => encodeURIComponent(n?.instancia || INST());

@@ -93,3 +93,33 @@ export function waPadraoCom(sb: any, idPadrao: () => Promise<string | null>) {
   };
   return { conversas: () => tab('wa_conversas'), mensagens: () => tab('wa_mensagens') };
 }
+
+/* ------------------------------------------------ revisão final (4.84.0) */
+/** a tabela wa_numeros ainda não existe (banco sem a zzz383) — só isso conta como "banco antigo";
+    qualquer outro erro (tempo esgotado, 5xx) é passageiro e não pode mandar tudo para o número padrão */
+export function semTabela(erro: any): boolean {
+  return !!erro && ['42P01', 'PGRST205'].includes(String(erro.code || ''));
+}
+
+/** de qual número é um evento do webhook. Número criado há pouco: relê o cadastro antes de ignorar.
+    Instância igual ao segredo EVOLUTION_INSTANCE e fora do cadastro = é o número padrão com o nome
+    errado no banco — usa o padrão e pede para corrigir (corrigir = nome certo). */
+export async function numeroDoEvento(r: ReturnType<typeof criarResolvedor>, inst: string, instEnv: string): Promise<{ numero: Numero | null; corrigir?: string }> {
+  if (!inst) return { numero: null };
+  let n = await r.porInstancia(inst);
+  if (!n) { r.limpar(); n = await r.porInstancia(inst); }
+  if (n) return { numero: n };
+  if (inst === instEnv) { const p = await r.padrao(); if (p) return { numero: p, corrigir: inst }; }
+  return { numero: null };
+}
+
+/** quem pode cada ação da wa-evolution. As do Otto (responder dúvida, sugerir resposta, voz) leem/enviam pelo
+    número padrão, então exigem ver o padrão — não basta ver o número que veio no pedido. */
+export const ACOES_ADMIN = ['estado', 'conectar', 'desconectar', 'importar', 'contatos', 'assistente_testar', 'assistente_pendencias', 'numeros', 'numero_salvar', 'numero_desativar'];
+export const ACOES_OTTO = ['responder_duvida', 'sugerir_resposta', 'voz_amostra'];
+export function podeAcao(acao: string, p: PerfilWa, n: Numero | null, padrao: Numero | null): boolean {
+  if (ACOES_ADMIN.includes(acao)) return !!p?.eh_admin && (!p.estado || p.estado === 'ativa');
+  if (n && !n.ativo) return false;
+  if (ACOES_OTTO.includes(acao)) return !!padrao && podeVerNumero(p, padrao);
+  return !!n && podeVerNumero(p, n);
+}

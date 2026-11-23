@@ -21,12 +21,19 @@
 ## Ordem de publicação (importante)
 1. **Actions → sql → Run workflow** com `supabase/sql/zzz383_wa_varios_numeros.sql`.
 2. **Logo em seguida, merge na main.** As Edge Functions e o site publicam sozinhos. Entre o passo 1 e o 2, o botão antigo "Puxar conversas" não funciona; o resto segue normal.
-3. Confira se o segredo `EVOLUTION_INSTANCE` (Supabase → Edge Functions → Secrets) é `b7-piloto`. Se não for, rode no SQL Editor:
+3. O número padrão começa cadastrado como `b7-piloto`. Se o segredo `EVOLUTION_INSTANCE` (Supabase → Edge Functions → Secrets) tiver outro nome, **o B7 corrige sozinho** na primeira mensagem que chegar e deixa um aviso no log. Para corrigir na mão, rode no SQL Editor:
    `update public.wa_numeros set instancia = '<valor do segredo>' where padrao;`
 4. Configurações do WhatsApp → Números do WhatsApp → **+ Adicionar número** → leia o QR Code com o celular do número novo.
 
+## Segurança e falhas (revisão final)
+- Quando a leitura do cadastro de números falha por um instante, o webhook responde 503 e o Evolution manda de novo. A mensagem nunca cai no número errado.
+- Número criado há poucos segundos: o webhook relê o cadastro antes de ignorar a mensagem.
+- As ações que passam pelo Otto (responder dúvida, sugerir resposta, amostra de voz) exigem ver o número dos Videomakers.
+- Ninguém envia por um número desativado, nem o administrador.
+- Abrir foto ou vídeo de um grupo que está em dois números funciona pelo link do Drive.
+
 ## Limites desta versão
-- No número dos Videomakers, tudo funciona como antes. Nos números novos, **Sugerir resposta** (✨) não lê o histórico da conversa e a **transcrição de áudio** não fica guardada, porque as duas passam pelo Otto.
+- No número dos Videomakers, tudo funciona como antes. Nos números novos, **Sugerir resposta** (✨) avisa que ainda só funciona no número dos Videomakers, e a **transcrição de áudio** não fica guardada, porque as duas passam pelo Otto.
 - Os avisos de "cliente esperando" (push) continuam saindo só do número dos Videomakers, também porque dependem do Otto.
 
 ## Testes
