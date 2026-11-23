@@ -41,6 +41,9 @@ async function abrir(larg = 1360, alt = 900) {
     if (url.pathname === '/rest/v1/pacotes_producao') return json(PACOTES);
     if (url.pathname === '/rest/v1/clientes' && req.method() === 'POST') { criados++; const b = JSON.parse(req.postData()); const c = Array.isArray(b) ? b[0] : b; CAD = vazio(); CAD.cliente.nome = c.nome; pedidos.push(['criar', c]); return json([{ id: 'c1', nome: c.nome, contrato: 'mensal', modo: 'linha' }]); }
     if (url.pathname === '/rest/v1/clientes' && req.method() === 'PATCH') { const b = JSON.parse(req.postData()); Object.assign(CAD.cliente, b); pedidos.push(['patch', b]); return json([Object.assign({ id: 'c1' }, CAD.cliente)]); }
+    const um = /vnd\.pgrst\.object/.test(req.headers().accept || '');
+    if (url.pathname === '/rest/v1/clientes_resumo') { const c = { id: 'c1', nome: CAD.cliente.nome, contrato: 'mensal', modo: 'linha', servico: 'ativo', logo_url: null }; return json(um ? c : [c]); }
+    if (url.pathname === '/rest/v1/clientes' && um) return json({ servico: 'ativo' });
     if (url.pathname.startsWith('/rest/v1/')) return rota.fulfill({ status: 200, contentType: 'application/json', headers: { 'content-range': '0-0/0' }, body: '[]' });
     return rota.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
   });
@@ -168,6 +171,17 @@ const texto = (pg, s) => pg.$eval(s, e => e.innerText.replace(/\s+/g, ' ')).catc
   await pg.evaluate(() => { let el = document.getElementById('t-ficha'); return B7.Cadastro.ficha(el, 'c1', { gravacaoFixa: { atual: null, html: () => '<input id="t-fixa">', ligar: () => () => ({ mudou: false }), resumo: () => 'Sem dia fixo', salvar: async () => null } }); });
   await pg.waitForSelector('[data-cd-bloco="fixa"]');
   ok(/Sem dia fixo/.test(await texto(pg, '[data-cd-bloco="fixa"]')) && (await pg.$$('[data-cd-bloco]')).length === 6, 'gravação fixa entra como 6º bloco');
+  await ctx.close(); }
+
+/* ------------------------------------------------------------ na página do cliente de verdade */
+{ CAD = vazio(); const { ctx, pg } = await abrir();
+  await pg.evaluate(() => { location.hash = '#/cliente/c1/cadastro'; });
+  await pg.waitForSelector('#cli-cadastro .cd-ficha', { timeout: 8000 }).catch(() => null);
+  ok((await pg.$$('#cli-cadastro [data-cd-bloco]')).length === 6, 'a aba Cadastro abre na página do cliente, com os 5 blocos e a gravação fixa');
+  await print(pg, 'cadastro-pagina');
+  await pg.evaluate(() => { location.hash = '#/cliente/c1'; }); await pg.waitForTimeout(1200);
+  await pg.evaluate(() => B7.Dashboard.modalEditarCliente('c1')); await pg.waitForSelector('#cli-cadastro .cd-ficha', { timeout: 8000 }).catch(() => null);
+  ok(/\/cadastro$/.test(await pg.evaluate(() => location.hash)) && !(await pg.$('#ec-nome')), '"Editar cliente" leva para a aba Cadastro (a janela antiga saiu)');
   await ctx.close(); }
 
 /* ------------------------------------------------------------ celular */
