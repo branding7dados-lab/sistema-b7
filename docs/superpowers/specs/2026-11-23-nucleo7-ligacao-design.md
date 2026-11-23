@@ -300,7 +300,15 @@ O **nome** do cliente não é trazido (é por ele que se casa). Campo do Núcleo
   projeto deles (Playwright), sem número de telefone real.
 - **No ar:** o Yury entra no Núcleo 7, clica em Sistema B7 e cai logado; uma pessoa só do B7 cai direto.
 
-# Entrega 3 (esboço): Central dentro do B7
-- Quem tem mais de um sistema vê a Central no B7 (os mesmos sistemas liberados no Núcleo 7) e volta para o
-  Núcleo 7 sem digitar senha (bilhete no sentido contrário).
-- Quem só tem o B7 não vê a Central.
+# Entrega 3: Central dentro do B7 (4.91)
+- **Quem vê:** a equipe do B7 que tem **mais de um sistema** da casa no Núcleo 7, pela mesma regra da Central de lá
+  (`_shared/sistemas-n7.ts`, cópia de `sistemaLiberado`). Quem tem só o B7 não vê nada; cliente do portal nem
+  pergunta.
+- **Como o B7 sabe:** a função `n7-clientes` (ação `meus_sistemas`) acha a conta do Núcleo 7 pelo e-mail que a pessoa
+  tem em `perfis_email` (cada um lê o seu) e devolve só os nomes dos sistemas. Guardado na sessão do navegador por
+  10 minutos. Sem e-mail, sem conta lá ou com o Núcleo 7 fora do ar: não mostra nada.
+- **Onde:** "Central" no pé da barra lateral (acima de "Visualizar como…") e "Central dos sistemas" no menu da conta
+  (que também é o do celular). Leva para `https://adm.nucleosete.com.br/central` (segredo opcional `N7_CENTRAL_URL`)
+  na mesma aba.
+- **Voltar sem senha:** quem entrou pela Central continua logado no Núcleo 7 naquele navegador. Quem entrou direto no
+  B7 faz login no Núcleo 7 (lá já é o mesmo e-mail).

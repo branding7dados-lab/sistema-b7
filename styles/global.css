@@ -2384,3 +2384,15 @@ html.b7-suave::view-transition-new(root){animation:b7SuaveEntra .16s ease-out bo
 html.b7-sem-entrada #painel-dashboard .entra,
 html.b7-sem-entrada #painel-dashboard .entra > *,
 html.b7-sem-entrada #painel-dashboard .aparece{animation:none !important;}
+
+/* 4.91.0: "Central" dos sistemas da casa, no pé da barra lateral (só para quem tem mais de um) */
+.bt-central-n7{display:flex;align-items:center;gap:10px;width:100%;margin:0 0 8px;padding:9px 10px;border-radius:12px;text-decoration:none;
+  color:rgba(255,255,255,.82);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);transition:var(--t);}
+.bt-central-n7:hover{background:rgba(255,255,255,.12);color:#fff;}
+.bt-central-n7:focus-visible{outline:2px solid rgba(255,255,255,.7);outline-offset:2px;}
+.bt-central-n7 svg{flex:0 0 18px;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;}
+.bt-central-n7 span{display:flex;flex-direction:column;min-width:0;line-height:1.2;}
+.bt-central-n7 b{font-size:13px;font-weight:700;}
+.bt-central-n7 small{font-size:11px;color:rgba(255,255,255,.5);}
+body.recolhida .bt-central-n7{justify-content:center;padding:9px 0;}
+body.recolhida .bt-central-n7 span{display:none;}

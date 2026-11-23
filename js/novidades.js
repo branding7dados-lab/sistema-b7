@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.91.0', versao: '4.91.0', em: '2026-11-25T14:00:00-03:00',
+    titulo: 'Central dos sistemas dentro do B7',
+    itens: ['Quem trabalha em mais de um sistema da casa (Núcleo 7, Disparos, Connect Sev, TURBIC) vê "Central" no pé da barra lateral e no menu da conta, para ir para os outros sem sair do navegador.',
+      'Quem tem só o B7 não vê a Central. A conta é achada pelo e-mail em Pessoas e acessos.'] },
   { id: 'v-4.90.0', versao: '4.90.0', em: '2026-11-25T10:00:00-03:00',
     titulo: 'Entrar pelo Núcleo 7',
     itens: ['Quem é da equipe pode entrar no B7 pela Central do Núcleo 7, sem digitar a senha de novo. A verificação em 2 etapas do B7 continua valendo.',

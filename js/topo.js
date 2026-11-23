@@ -426,6 +426,8 @@ B7.Topo = (function () {
           'Conversas' + ((B7.Conversas.naoLidas && B7.Conversas.naoLidas()) ? ' · ' + B7.Conversas.naoLidas() : ''), 'mensagens com a equipe', ' tp-so-celular') : '') +
         (B7.Novidades && B7.Novidades.pendentes && B7.Novidades.pendentes() ? item('data-conta="novidades"', '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6-4.6-1.9 4.6-1.9z"/></svg>', 'laranja',
           'Novidades · ' + B7.Novidades.pendentes(), 'o que mudou no B7', ' tp-so-celular') : '') +
+        /* 4.91.0: quem tem mais de um sistema da casa volta para a Central do Núcleo 7 */
+        (!cliente && B7.CentralN7 && B7.CentralN7.temCentral() ? item('data-conta="central"', B7.CentralN7.ICONE, 'laranja', 'Central dos sistemas', 'ir para os outros sistemas da casa') : '') +
         item('data-conta="perfil"', IC.perfil, 'violeta', 'Meu perfil', 'foto, nome, senha e notificações') +
         (!cliente && B7.Perm && B7.Perm.podeRota('config') ? item('data-conta="config"', IC.config, 'azul', 'Preferências e configurações', 'tema, tela inicial e ajustes do aparelho') : '') +
         (B7.Auth && B7.Auth.superadmin && B7.Auth.superadmin() ? item('data-conta="super"', IC.coroa, 'roxo', B7.Auth.superadmin() === 'supremo' ? 'Super admin · programador' : 'Super admin', 'administradores, aprovações, segurança e o sistema todo') : '') +
@@ -461,7 +463,8 @@ B7.Topo = (function () {
       abertura: () => B7.reverAbertura(),
       sair: () => B7.Auth.sair(),
       conversas: () => B7.Conversas && B7.Conversas.abrir(),
-      novidades: () => B7.Novidades && B7.Novidades.abrir()
+      novidades: () => B7.Novidades && B7.Novidades.abrir(),
+      central: () => { const u = B7.CentralN7 && B7.CentralN7.url(); if (u) location.href = u; }
     };
     raiz.querySelectorAll('[data-conta]').forEach(b => b.onclick = () => { const k = b.dataset.conta; fechar(); acao[k] && acao[k](); });
     /* pílula do tema: desliza até a opção escolhida */

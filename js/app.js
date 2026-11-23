@@ -1004,6 +1004,8 @@ B7.Rota = (function () {
     if (B7.ligarTopoInterno) B7.ligarTopoInterno();
     if (B7.Topo) B7.Topo.render();
     if (B7.moverTrilha) setTimeout(() => B7.moverTrilha(), 0);
+    /* 4.91.0: "Central" no pé da barra para quem tem mais de um sistema da casa */
+    if (B7.CentralN7) setTimeout(() => { B7.CentralN7.carregar().then(() => { if (B7.Topo) B7.Topo.render(); }, () => {}); }, 0);
     return true;
   }
   B7.montarShellInterno = montarShellInterno;
