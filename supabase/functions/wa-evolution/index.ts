@@ -13,8 +13,9 @@
 // O webhook (mensagens chegando → wa-entrada) é ligado sozinho ao conectar.
 // =====================================================================
 import { comCors } from '../_shared/cors.ts';
-import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, numeros, instanciaDe, type Linha, type Numero } from '../_shared/wa.ts';
-import { instanciaNova, EQUIPES, podeAcao, ACOES_ADMIN } from '../_shared/wa-numeros.ts';
+import { admin, evo, BASE, CHAVE, INST, tokenWebhook, gravar, garantirConversa, interpretar, previaDe, numeros, instanciaDe, numerosDaEquipe, type Linha, type Numero } from '../_shared/wa.ts';
+import { instanciaNova, EQUIPES, podeAcao, podeVerNumero, ACOES_ADMIN } from '../_shared/wa-numeros.ts';
+import { membrosDe, telefoneDe, b7AdminDe, dadosGrupo, participanteParaEnvio, resultadoMembros, type Membro } from '../_shared/wa-grupo.ts';
 import { responderDuvida, testar as testarAssistente, mandarResumo, transcreverGuardada, sugerirResposta, corrigirTexto } from '../_shared/assistente.ts';
 import { falar, ultimoDiag } from '../_shared/otto-extras.ts';
 import { tokenDrive, ler, assinar, linkAssinado, midiaParaDrive, EXT } from '../_shared/drive.ts';
@@ -48,7 +49,7 @@ async function podeVerAntigo(p: Perfil) {
 
 const comPrefixo = (b: string) => !b ? '' : b.startsWith('data:') ? b : 'data:image/png;base64,' + b;
 
-const EVENTOS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'MESSAGES_DELETE', 'SEND_MESSAGE', 'GROUPS_UPSERT', 'GROUP_UPDATE', 'CHATS_UPSERT', 'CONNECTION_UPDATE'];
+const EVENTOS = ['MESSAGES_UPSERT', 'MESSAGES_UPDATE', 'MESSAGES_DELETE', 'SEND_MESSAGE', 'GROUPS_UPSERT', 'GROUP_UPDATE', 'GROUP_PARTICIPANTS_UPDATE', 'CHATS_UPSERT', 'CONNECTION_UPDATE'];
 async function ligarWebhook(n: Numero | null) {
   const url = Deno.env.get('SUPABASE_URL') + '/functions/v1/wa-entrada';
   return evo('/webhook/set/' + I(n), 'POST', { webhook: { enabled: true, url, headers: { 'x-b7-token': await tokenWebhook() }, byEvents: false, base64: false, events: EVENTOS } });
@@ -247,7 +248,80 @@ async function atualizarContatos(n: Numero | null) {
       } catch (_e) { /* segue */ }
     }));
   }
-  return { ok: true, contatos: qtd, fotos };
+  /* 4.85.0: membros de todos os grupos do número (para "grupos em comum" e o selo da equipe) */
+  let gruposN = 0;
+  try {
+    const g = await evo('/group/fetchAllGroups/' + I(n) + '?getParticipants=true', 'GET', undefined, 120000);
+    if (g.ok && Array.isArray(g.dados)) for (const x of g.dados) { if (x?.id && /@g\.us$/.test(x.id)) { try { await gravarGrupo(n, String(x.id), x); gruposN++; } catch (_e) { /* segue */ } } }
+  } catch (_e) { /* segue sem os membros */ }
+  return { ok: true, contatos: qtd, fotos, grupos: gruposN };
+}
+
+/* ------------------------------------------------ 4.85.0: dados do grupo */
+/** guarda o que o WhatsApp contou do grupo: campos em wa_conversas e a lista de membros (troca a lista inteira) */
+async function gravarGrupo(n: Numero | null, jid: string, info: any): Promise<Membro[]> {
+  const sb = admin(); const d = dadosGrupo(info); const ms = membrosDe(info); const agora = new Date().toISOString();
+  let { data: cv } = await doNum(sb.from('wa_conversas').select('jid, nome_fixo'), n).eq('jid', jid).maybeSingle();
+  if (!cv) { await garantirConversa(sb, jid, null, d.nome, info?.pictureUrl || null, n); cv = { jid, nome_fixo: false }; }
+  const patch: Linha = { descricao: d.descricao, criado_wa: d.criado_wa, dono_jid: d.dono_jid, so_admins_enviam: d.so_admins_enviam,
+    so_admins_editam: d.so_admins_editam, membros_qtd: ms.length || d.membros_qtd, membros_em: agora };
+  if (d.nome && !cv.nome_fixo) patch.nome = d.nome;
+  if (info?.pictureUrl) patch.foto_url = String(info.pictureUrl);
+  await doNum(sb.from('wa_conversas').update(patch), n).eq('jid', jid);
+  if (n?.id && ms.length) {
+    await sb.from('wa_grupo_membros').delete().eq('numero_id', n.id).eq('grupo_jid', jid);
+    await sb.from('wa_grupo_membros').insert(ms.map(m => ({ numero_id: n.id, grupo_jid: jid, membro_jid: m.jid, telefone: m.telefone, admin: m.admin, atualizado_em: agora })));
+  }
+  return ms;
+}
+async function infoGrupo(n: Numero | null, jid: string) {
+  const r = await evo('/group/findGroupInfos/' + I(n) + '?groupJid=' + encodeURIComponent(jid), 'GET', undefined, 20000);
+  if (!r.ok || !r.dados) return null;
+  return r.dados;
+}
+/** dados do grupo para a tela: membros com nome, foto e os selos (equipe do Otto, número da B7) */
+async function dadosDoGrupo(n: Numero | null, jid: string) {
+  const info = await infoGrupo(n, jid);
+  if (!info) return { erro: n && n.estado && n.estado !== 'open' ? 'O número ' + n.nome + ' está desconectado.' : 'O WhatsApp não mandou os dados do grupo agora.' };
+  const ms = await gravarGrupo(n, jid, info);
+  const sb = admin();
+  const { data: cts } = ms.length ? await sb.from('wa_contatos').select('jid, nome, foto_url').in('jid', ms.map(m => m.jid)) : { data: [] as any[] };
+  const ct = new Map((cts || []).map((x: any) => [x.jid, x]));
+  const equipe = await numerosDaEquipe(sb);
+  const nossos = new Set((await numeros.todos()).map(x => String(x.numero || '').replace(/\D/g, '')).filter(Boolean));
+  const d = dadosGrupo(info);
+  return {
+    grupo: { ...d, foto_url: info?.pictureUrl || null },
+    membros: ms.map(m => { const c: any = ct.get(m.jid) || {};
+      return { ...m, nome: c.nome || null, foto: c.foto_url || null, equipe: !!(m.telefone && equipe.has(m.telefone.slice(-8))), b7: !!(m.telefone && nossos.has(m.telefone)) }; }),
+    b7_admin: b7AdminDe(ms, n?.numero || null), numero_estado: n?.estado || null
+  };
+}
+async function perfilDoContato(p: Perfil, n: Numero | null, jid: string) {
+  const sb = admin();
+  const { data: ct } = await sb.from('wa_contatos').select('nome, numero, foto_url').eq('jid', jid).maybeSingle();
+  const tel = telefoneDe(jid) || (ct?.numero ? String(ct.numero).replace(/\D/g, '') : null);
+  let pf: any = null;
+  try { const r = await evo('/chat/fetchProfile/' + I(n), 'POST', { number: tel || jid }, 15000); if (r.ok) pf = r.dados; } catch (_e) { /* segue com o guardado */ }
+  const recado = typeof pf?.status === 'string' ? pf.status : (pf?.status?.status || null);
+  const site = Array.isArray(pf?.website) ? pf.website[0] : (pf?.website || null);
+  const foto = pf?.picture || pf?.profilePictureUrl || ct?.foto_url || null;
+  if (foto && foto !== ct?.foto_url && !/@g\.us$/.test(jid)) await sb.from('wa_contatos').upsert({ jid, foto_url: foto, atualizado_em: new Date().toISOString() }).then(() => null, () => null);
+  /* grupos em comum nos números que QUEM PEDIU vê */
+  const vis = (await numeros.todos()).filter(x => podeVerNumero({ ...p, eh_admin: ehAdmin(p) }, x)).map(x => x.id);
+  let grupos: any[] = [];
+  if (vis.length) {
+    const ors = ['membro_jid.eq.' + jid].concat(tel ? ['telefone.eq.' + tel] : []).join(',');
+    const { data: gm } = await sb.from('wa_grupo_membros').select('numero_id, grupo_jid').in('numero_id', vis).or(ors).limit(200);
+    const chaves = [...new Map((gm || []).map((g: any) => [g.numero_id + '|' + g.grupo_jid, g])).values()];
+    if (chaves.length) {
+      const { data: cv } = await sb.from('wa_conversas').select('numero_id, jid, nome, foto_url').in('jid', chaves.map((g: any) => g.grupo_jid)).in('numero_id', vis);
+      const porChave = new Map((cv || []).map((c: any) => [c.numero_id + '|' + c.jid, c]));
+      grupos = chaves.map((g: any) => { const c: any = porChave.get(g.numero_id + '|' + g.grupo_jid) || {}; return { numero_id: g.numero_id, grupo_jid: g.grupo_jid, nome: c.nome || g.grupo_jid, foto_url: c.foto_url || null }; })
+        .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt'));
+    }
+  }
+  return { perfil: { nome: pf?.name || ct?.nome || null, recado, foto, comercial: !!pf?.isBusiness, descricao: pf?.description || null, email: pf?.email || null, site, telefone: tel }, grupos };
 }
 
 /* sem número (link do Drive, que só leva o id): a primeira cópia serve — o arquivo é o mesmo */
@@ -467,6 +541,78 @@ Deno.serve(comCors(async (req: Request) => {
         const { error } = await admin().from('wa_numeros').update({ ativo: false, estado: 'sem_conexao' }).eq('id', alvo.id);
         numeros.limpar();
         return json(error ? { erro: 'Não consegui desativar: ' + error.message } : { ok: true });
+      }
+      /* 4.85.0: dados do grupo e perfil do contato (quem vê o número); mexer no grupo (só administrador) */
+      case 'grupo_dados': {
+        if (!/@g\.us$/.test(String(c.jid || ''))) return json({ erro: 'Isto não é um grupo.' });
+        return json(await dadosDoGrupo(n, String(c.jid)));
+      }
+      case 'contato_perfil': {
+        const jid = String(c.jid || '');
+        if (!jid || /@g\.us$/.test(jid)) return json({ erro: 'Contato inválido.' });
+        return json(await perfilDoContato(p, n, jid));
+      }
+      case 'grupo_membros': {
+        const jid = String(c.jid || ''), ac = String(c.acao || '');
+        if (!/@g\.us$/.test(jid)) return json({ erro: 'Isto não é um grupo.' });
+        if (!['add', 'remove', 'promote', 'demote'].includes(ac)) return json({ erro: 'Ação inválida.' });
+        const quem = (Array.isArray(c.participantes) ? c.participantes : []).map((x: unknown) => participanteParaEnvio(String(x))).filter(Boolean) as string[];
+        if (!quem.length || quem.length > 50) return json({ erro: 'Informe o número com DDI e DDD (ex.: 55 62 99999-0000).' });
+        const r = await evo('/group/updateParticipant/' + I(n) + '?groupJid=' + encodeURIComponent(jid), 'POST', { action: ac, participants: quem }, 30000);
+        if (!r.ok) return json({ erro: r.status === 403 || r.status === 401 ? 'O número da B7 não é admin deste grupo.' : 'O WhatsApp não aceitou (' + r.status + ').' });
+        const res = resultadoMembros(r.dados, quem);
+        await dadosDoGrupo(n, jid).catch(() => null);
+        return json({ feito: res.ok, falhou: res.falhou });
+      }
+      case 'grupo_editar': {
+        const jid = String(c.jid || '');
+        if (!/@g\.us$/.test(jid)) return json({ erro: 'Isto não é um grupo.' });
+        if (c.nome != null) {
+          const nome = String(c.nome).replace(/\s+/g, ' ').trim();
+          if (!nome || nome.length > 100) return json({ erro: 'O nome do grupo precisa ter de 1 a 100 letras.' });
+          const r = await evo('/group/updateGroupSubject/' + I(n) + '?groupJid=' + encodeURIComponent(jid), 'POST', { subject: nome }, 20000);
+          if (!r.ok) return json({ erro: 'O WhatsApp não deixou trocar o nome (' + r.status + '). O número da B7 é admin do grupo?' });
+          await doNum(admin().from('wa_conversas').update({ nome }), n).eq('jid', jid).eq('nome_fixo', false);
+        }
+        if (c.descricao != null) {
+          const descricao = String(c.descricao).slice(0, 2048);
+          const r = await evo('/group/updateGroupDescription/' + I(n) + '?groupJid=' + encodeURIComponent(jid), 'POST', { description: descricao }, 20000);
+          if (!r.ok) return json({ erro: 'O WhatsApp não deixou trocar a descrição (' + r.status + ').' });
+          await doNum(admin().from('wa_conversas').update({ descricao }), n).eq('jid', jid);
+        }
+        return json({ ok: true });
+      }
+      case 'grupo_foto': {
+        const jid = String(c.jid || '');
+        if (!/@g\.us$/.test(jid) || !String(c.path || '').startsWith('envio/')) return json({ erro: 'Imagem inválida.' });
+        const url = await urlAssinada(String(c.path), 900);
+        if (!url) return json({ erro: 'Não achei a imagem enviada.' });
+        const r = await evo('/group/updateGroupPicture/' + I(n) + '?groupJid=' + encodeURIComponent(jid), 'POST', { image: url }, 60000);
+        if (!r.ok) return json({ erro: 'O WhatsApp não aceitou a foto (' + r.status + ').' });
+        await dadosDoGrupo(n, jid).catch(() => null);
+        return json({ ok: true });
+      }
+      case 'grupo_convite': {
+        const jid = String(c.jid || '');
+        if (!/@g\.us$/.test(jid)) return json({ erro: 'Isto não é um grupo.' });
+        if (c.revogar) { const rv = await evo('/group/revokeInviteCode/' + I(n) + '?groupJid=' + encodeURIComponent(jid), 'POST', {}, 20000); if (!rv.ok) return json({ erro: 'O WhatsApp não deixou trocar o link (' + rv.status + ').' }); }
+        const r = await evo('/group/inviteCode/' + I(n) + '?groupJid=' + encodeURIComponent(jid), 'GET', undefined, 20000);
+        const link = r.dados?.inviteUrl || (r.dados?.inviteCode ? 'https://chat.whatsapp.com/' + r.dados.inviteCode : null);
+        return json(link ? { link } : { erro: 'O WhatsApp não mandou o link (' + r.status + '). O número da B7 é admin do grupo?' });
+      }
+      case 'grupo_regra': {
+        const jid = String(c.jid || '');
+        if (!/@g\.us$/.test(jid)) return json({ erro: 'Isto não é um grupo.' });
+        const mudar: [string, string][] = [];
+        if (typeof c.so_admins_enviam === 'boolean') mudar.push([c.so_admins_enviam ? 'announcement' : 'not_announcement', 'so_admins_enviam']);
+        if (typeof c.so_admins_editam === 'boolean') mudar.push([c.so_admins_editam ? 'locked' : 'unlocked', 'so_admins_editam']);
+        if (!mudar.length) return json({ erro: 'Nada para mudar.' });
+        for (const [action, campo] of mudar) {
+          const r = await evo('/group/updateSetting/' + I(n) + '?groupJid=' + encodeURIComponent(jid), 'POST', { action }, 20000);
+          if (!r.ok) return json({ erro: 'O WhatsApp não deixou mudar a regra (' + r.status + ').' });
+          await doNum(admin().from('wa_conversas').update({ [campo]: c[campo] }), n).eq('jid', jid);
+        }
+        return json({ ok: true });
       }
       /* 4.56.0: participantes do grupo, para marcar com @ */
       case 'participantes': {

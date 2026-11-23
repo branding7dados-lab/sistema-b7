@@ -175,7 +175,7 @@ export function previaDe(l: Linha): string {
 /** grava (ou atualiza) uma mensagem e a conversa dela. Devolve a linha gravada. */
 /** números (8 últimos dígitos) da equipe cadastrada na tela do Otto — cache de 1 min */
 let equipeCache: { em: number; nums: Set<string> } | null = null;
-async function numerosDaEquipe(sb: SupabaseClient): Promise<Set<string>> {
+export async function numerosDaEquipe(sb: SupabaseClient): Promise<Set<string>> {
   if (equipeCache && Date.now() - equipeCache.em < 60_000) return equipeCache.nums;
   const { data } = await sb.from('wa_assistente').select('equipe').eq('id', 1).maybeSingle();
   /* 4.80.0: o número principal e os "outros números" de cada pessoa (ex.: celular pessoal) */

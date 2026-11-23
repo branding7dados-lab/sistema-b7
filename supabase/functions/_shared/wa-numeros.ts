@@ -115,7 +115,9 @@ export async function numeroDoEvento(r: ReturnType<typeof criarResolvedor>, inst
 
 /** quem pode cada ação da wa-evolution. As do Otto (responder dúvida, sugerir resposta, voz) leem/enviam pelo
     número padrão, então exigem ver o padrão — não basta ver o número que veio no pedido. */
-export const ACOES_ADMIN = ['estado', 'conectar', 'desconectar', 'importar', 'contatos', 'assistente_testar', 'assistente_pendencias', 'numeros', 'numero_salvar', 'numero_desativar'];
+export const ACOES_ADMIN = ['estado', 'conectar', 'desconectar', 'importar', 'contatos', 'assistente_testar', 'assistente_pendencias', 'numeros', 'numero_salvar', 'numero_desativar',
+  /* 4.85.0: mexer no grupo do WhatsApp — só o administrador do B7 */
+  'grupo_membros', 'grupo_editar', 'grupo_foto', 'grupo_convite', 'grupo_regra'];
 export const ACOES_OTTO = ['responder_duvida', 'sugerir_resposta', 'voz_amostra'];
 export function podeAcao(acao: string, p: PerfilWa, n: Numero | null, padrao: Numero | null): boolean {
   if (ACOES_ADMIN.includes(acao)) return !!p?.eh_admin && (!p.estado || p.estado === 'ativa');
