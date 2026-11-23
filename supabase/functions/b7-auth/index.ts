@@ -267,6 +267,9 @@ async function fotoAcesso(sb: any, perfilId: string) {
              niveis: niveis || {}, secundarias: Object.fromEntries((sec || []).map((s: { funcao: string; nivel_max: string }) => [s.funcao, s.nivel_max])) };
   } catch (_e) { return null; }
 }
+/* 4.86.0: ações de Pessoas e acessos — o Financeiro (administrador sem esta área) não chega nelas */
+const ACOES_PESSOAS = ['criar_usuario', 'alterar_conta', 'excluir_conta', 'redefinir_senha', 'entrar_como', 'salvar_preset', 'avatar_de',
+  'remover_admin', 'recuperar_admin', 'seg_resetar', 'seg_politica'];
 const PAPEIS_COM_DESIGNER_EXTRA = ['admin', 'coordenador'];
 function normalizarFuncoesExtra(bruto: unknown, papelFinal: string): { lista: string[]; erro?: string } {
   if (bruto === undefined || bruto === null) return { lista: [] };
@@ -295,7 +298,7 @@ async function quemChamou(req: Request) {
   const { data, error } = await sb.auth.getUser(token);
   if (error || !data.user) return null;
   const { data: perfil } = await sb.from('perfis')
-    .select('id, username, nome, papel, estado').eq('id', data.user.id).maybeSingle();
+    .select('id, username, nome, papel, estado, financeiro').eq('id', data.user.id).maybeSingle();
   if (!perfil || perfil.estado !== 'ativa') return null;
   return perfil;
 }
@@ -356,7 +359,7 @@ async function alertaAparelho(sb: any, perfilId: string, req: Request) {
 async function mudaAcesso(sb: any, corpo: any): Promise<boolean> {
   const id = String(corpo.perfil_id || '');
   const [{ data: p }, { data: ex }, { data: sec }] = await Promise.all([
-    sb.from('perfis').select('papel, estado, eh_admin, funcao, funcao_personalizada').eq('id', id).maybeSingle(),
+    sb.from('perfis').select('papel, estado, eh_admin, financeiro, funcao, funcao_personalizada').eq('id', id).maybeSingle(),
     sb.from('perfil_modulos').select('modulo, efeito, nivel').eq('perfil_id', id),
     sb.from('perfil_funcoes_secundarias').select('funcao, nivel_max').eq('perfil_id', id)]);
   if (!p) return true;
@@ -365,6 +368,7 @@ async function mudaAcesso(sb: any, corpo: any): Promise<boolean> {
   if (corpo.tipo === 'cliente' && p.papel !== 'cliente') return true;
   if (corpo.tipo === 'interno' && p.papel === 'cliente') return true;
   if (corpo.eh_admin !== undefined && !!corpo.eh_admin !== !!p.eh_admin) return true;
+  if (corpo.financeiro !== undefined && !!corpo.financeiro !== !!p.financeiro) return true;
   if (corpo.funcao !== undefined && (corpo.funcao || null) !== ((p.funcao_personalizada || p.funcao) || null)) return true;
   const mapa = (o: Record<string, unknown>) => Object.keys(o || {}).sort().map((k) => k + ':' + o[k]).join();
   if (corpo.modulos !== undefined && corpo.modulos && typeof corpo.modulos === 'object' && !Array.isArray(corpo.modulos)) {
@@ -999,6 +1003,10 @@ Deno.serve(comCors(async (req) => {
     if (autor.papel !== 'admin') {
       return json({ erro: 'Ação restrita ao administrador.' }, 403);
     }
+    /* 4.86.0: o Financeiro é administrador, mas Pessoas e acessos fica só com o administrador pleno (decisão do Yury) */
+    if (autor.financeiro && ACOES_PESSOAS.includes(acao)) {
+      return json({ erro: 'Pessoas e acessos é só do administrador.' }, 403);
+    }
 
     // =================================================================
     // ENTRAR COMO — o administrador assume a conta de alguém da equipe
@@ -1271,7 +1279,8 @@ Deno.serve(comCors(async (req) => {
       if (ident) {
         /* o gatilho do banco deriva papel e o espelho de função extra */
         const { error: eId } = await sb.from('perfis')
-          .update({ eh_admin: ident.ehAdmin, funcao: ident.funcao, funcao_personalizada: ident.funcao ? fnCriar.personalizada : null }).eq('id', criado.id);
+          .update({ eh_admin: ident.ehAdmin, funcao: ident.funcao, funcao_personalizada: ident.funcao ? fnCriar.personalizada : null,
+            financeiro: !!(ident.ehAdmin && corpo.financeiro) }).eq('id', criado.id);
         if (eId) return json({ erro: 'Conta criada, mas não foi possível gravar a função: ' + eId.message }, 500);
         if (!ident.ehAdmin) await gravarExcecoes(sb, criado.id, excecoes.lista, autor.id);
         if (!ident.ehAdmin && secCriar.lista.length) await gravarSecundarias(sb, criado.id, secCriar.lista, autor.id);
@@ -1340,6 +1349,8 @@ Deno.serve(comCors(async (req) => {
         if (identNova.erro) return json({ erro: identNova.erro }, 400);
         delete patch.papel;
         patch.eh_admin = identNova.ehAdmin; patch.funcao = identNova.funcao;
+        /* 4.86.0: Financeiro = administrador sem WhatsApp e sem Pessoas e acessos */
+        if (corpo.financeiro !== undefined || !identNova.ehAdmin) patch.financeiro = !!(identNova.ehAdmin && corpo.financeiro);
         patch.funcao_personalizada = identNova.funcao ? fnNova.personalizada : null;
         if (corpo.secundarias !== undefined) {
           secNovas = await normalizarSecundarias(sb, corpo.secundarias);
