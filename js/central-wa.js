@@ -362,13 +362,16 @@ B7.CentralWA = (function () {
     const grupo = ehGrupo(S.aberta);
     let html = S.fim ? '<div class="wz-inicio">🔒 Conversa do WhatsApp do B7 · só a equipe deste número vê aqui</div>' : '<div class="wz-mais-antigas">Carregando mensagens anteriores…</div>';
     let ultDia = '';
+    /* 4.85.0: cada dia num bloco — a data "gruda" no topo só enquanto o dia dela está na tela (antes, duas datas
+       ficavam grudadas uma por cima da outra: "19 DE NOVEMBRO" embaixo de "HOJE") */
     S.msgs.forEach((m, i) => {
       const d = dia(m.criada_em);
-      if (d !== ultDia) { html += '<div class="wz-dia"><span>' + esc(d) + '</span></div>'; ultDia = d; }
+      if (d !== ultDia) { html += (ultDia ? '</div>' : '') + '<div class="wz-dg"><div class="wz-dia"><span>' + esc(d) + '</span></div>'; ultDia = d; }
       const ant = S.msgs[i - 1];
       const seguida = ant && ant.de_mim === m.de_mim && ant.autor_jid === m.autor_jid && !ant.nota && !m.nota && dia(ant.criada_em) === d;
       html += bolha(m, grupo, seguida);
     });
+    if (ultDia) html += '</div>';
     cx.innerHTML = html;
     cx.querySelectorAll('[data-carregar]').forEach(el => { if (el.dataset.auto) carregarMidia(el); });
     repintarAudios();

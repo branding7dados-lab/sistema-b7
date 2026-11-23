@@ -30,6 +30,9 @@ const enviados = [];
 let DEMORA = 0;
 const MSGS = [{ numero_id: 'n-des', id: 'q1', jid: '120@g.us', de_mim: false, autor_jid: '221633885266163@lid', autor_nome: '221633885266163', tipo: 'texto', texto: 'Foto do kit', criada_em: iso(20) },
   { numero_id: 'n-des', id: 'm1', jid: '120@g.us', de_mim: true, tipo: 'texto', texto: '@221633885266163 achei que já havia enviado aqui', citada_id: 'q1', criada_em: iso(9), status: 'SERVER_ACK' }];
+/* conversa da Bia: 2 dias de mensagens, para a data grudada no topo */
+for (let k = 0; k < 40; k++) MSGS.push({ numero_id: 'n-des', id: 'b' + k, jid: '5562999990000@s.whatsapp.net', de_mim: k % 2 === 0, tipo: 'texto', texto: 'Mensagem ' + k + ' — um texto para ocupar espaço na conversa',
+  criada_em: new Date(agora - (k < 20 ? 3 * 1440 + 60 - k : 30 - (k - 20)) * 60000).toISOString(), status: 'SERVER_ACK' });
 const CONTATOS = [{ jid: '221633885266163@lid', nome: 'Luana Felix Perdão' }];
 const falhas = []; const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if (!c) falhas.push(m); };
 
@@ -176,6 +179,26 @@ const itens = pg => pg.$$eval('.wz-it', l => l.map(e => ({ nome: e.querySelector
   await pg.click('.wz-it[data-jid="5562999990000@s.whatsapp.net"]'); await pg.waitForTimeout(1600);
   ok(!(await pg.$('.wz-info')), 'trocar de conversa fecha o painel e a resposta velha não reaparece');
   DEMORA = 0;
+  await ctx.close(); }
+
+{ /* 4.85.0: data grudada no topo — uma por vez, nunca uma por cima da outra */
+  NUMS = [VID, DES];
+  const { ctx, pg } = await abrirCentral({ width: 1360, height: 860 });
+  await pg.click('.wz-it[data-jid="5562999990000@s.whatsapp.net"]'); await pg.waitForTimeout(900);
+  const dias = await pg.$$eval('#wz-msgs .wz-dg > .wz-dia', l => l.length);
+  ok(dias === 2, 'cada dia num bloco com a sua data (' + dias + ')');
+  let pior = 0;
+  for (const f of [0.15, 0.35, 0.5, 0.65, 0.85]) {
+    const n = await pg.$eval('#wz-msgs', (cx, f) => {
+      cx.scrollTop = (cx.scrollHeight - cx.clientHeight) * f;
+      const topo = cx.getBoundingClientRect().top;
+      const r = [...cx.querySelectorAll('.wz-dia span')].map(s => s.getBoundingClientRect()).filter(b => b.bottom > topo && b.top < topo + 60);
+      let sobre = 0; for (let i = 0; i < r.length; i++) for (let j = i + 1; j < r.length; j++) if (r[i].top < r[j].bottom && r[j].top < r[i].bottom) sobre++;
+      return sobre;
+    }, f);
+    pior = Math.max(pior, n);
+  }
+  ok(pior === 0, 'rolando a conversa, nenhuma data fica por cima de outra');
   await ctx.close(); }
 
 { /* designer vê os dados do grupo, sem os botões de mexer */

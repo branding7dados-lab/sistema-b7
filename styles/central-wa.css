@@ -598,3 +598,6 @@ html[data-theme="dark"] .wz-mc{color:#53bdeb;}
 .wz-info-sug button{display:flex;justify-content:space-between;gap:10px;border:0;background:var(--suave);padding:8px 10px;border-radius:8px;font:inherit;cursor:pointer;color:var(--ink);}
 .wz-info-sug small{color:var(--ink-3);}
 .wz-info .wz-ic.p,.wz-info .b.p{flex:none;}
+
+/* 4.85.0: um bloco por dia — a data fica grudada no topo só durante o seu dia (não empilha uma data sobre a outra) */
+.wz-dg{display:flex;flex-direction:column;gap:3px;}
