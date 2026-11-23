@@ -155,11 +155,11 @@ begin
     select y.client_id, count(distinct y.m) meses from (
       select d.client_id, date_trunc('month', d.finalizado_em at time zone 'America/Sao_Paulo') m from public.design_deliverables d
        where d.deleted_at is null and d.prazo is not null and (d.finalizado_em at time zone 'America/Sao_Paulo')::date > d.prazo
-         and d.finalizado_em >= date_trunc('month', hoje) - interval '3 months' and d.finalizado_em < date_trunc('month', hoje)
+         and d.finalizado_em >= ((date_trunc('month', hoje) - interval '3 months')::timestamp at time zone 'America/Sao_Paulo') and d.finalizado_em < (date_trunc('month', hoje)::timestamp at time zone 'America/Sao_Paulo')
       union all
       select v.client_id, date_trunc('month', v.entregue_em at time zone 'America/Sao_Paulo') from public.demandas_edicao v
        where v.deleted_at is null and v.editing_status = 'entregue' and v.prazo is not null and (v.entregue_em at time zone 'America/Sao_Paulo')::date > v.prazo
-         and v.entregue_em >= date_trunc('month', hoje) - interval '3 months' and v.entregue_em < date_trunc('month', hoje)
+         and v.entregue_em >= ((date_trunc('month', hoje) - interval '3 months')::timestamp at time zone 'America/Sao_Paulo') and v.entregue_em < (date_trunc('month', hoje)::timestamp at time zone 'America/Sao_Paulo')
     ) y group by y.client_id),
   contr as (select * from public._contratado(ant)),
   sem as (
@@ -189,18 +189,19 @@ grant execute on function public.gestao_riscos() to authenticated;
 -- ------------------------------------------------------------ prazos e retrabalho
 create or replace function public.gestao_prazos(p_meses int default 6)
 returns jsonb language plpgsql stable security definer set search_path to 'public' as $$
-declare hoje date := public.notif_hoje(); n int := greatest(1, least(coalesce(p_meses, 6), 12)); ini date;
+declare hoje date := public.notif_hoje(); n int := greatest(1, least(coalesce(p_meses, 6), 12)); ini date; ini_ts timestamptz;
 begin
   if not public.sou_admin() then raise exception 'Só a administração abre a Gestão.' using errcode = '42501'; end if;
   ini := (date_trunc('month', hoje) - make_interval(months => n - 1))::date;
+  ini_ts := ini::timestamp at time zone 'America/Sao_Paulo';   -- começo do mês no horário de Brasília
   return (with
   meses as (select to_char(m, 'YYYY-MM') mes from generate_series(ini, date_trunc('month', hoje), interval '1 month') m),
   ent as (   -- cada entrega: de quem, de qual cliente, quando foi pedida e entregue, prazo e versões
     select d.designer_id pid, d.client_id, d.created_at criado, d.finalizado_em entregue, d.prazo, greatest(coalesce(d.versao_atual, 1), 1) versoes
-      from public.design_deliverables d where d.deleted_at is null and d.status = 'finalizado' and d.finalizado_em >= ini
+      from public.design_deliverables d where d.deleted_at is null and d.status = 'finalizado' and d.finalizado_em >= ini_ts
     union all
     select v.videomaker_id, v.client_id, v.created_at, v.entregue_em, v.prazo, null
-      from public.demandas_edicao v where v.deleted_at is null and v.editing_status = 'entregue' and v.entregue_em >= ini),
+      from public.demandas_edicao v where v.deleted_at is null and v.editing_status = 'entregue' and v.entregue_em >= ini_ts),
   ent2 as (select e.*, to_char(e.entregue at time zone 'America/Sao_Paulo', 'YYYY-MM') mes,
              (e.prazo is not null) com_prazo, (e.prazo is not null and (e.entregue at time zone 'America/Sao_Paulo')::date <= e.prazo) no_prazo from ent e),
   abertas as (
@@ -213,7 +214,7 @@ begin
   apr as (
     select a.client_id, to_char(a.enviado_em at time zone 'America/Sao_Paulo', 'YYYY-MM') mes, count(*) enviadas,
            count(*) filter (where a.situacao in ('ajustes','recusado')) ajustes
-      from public.aprovacoes a where a.deleted_at is null and a.situacao not in ('substituido','cancelado') and a.enviado_em >= ini group by 1, 2),
+      from public.aprovacoes a where a.deleted_at is null and a.situacao not in ('substituido','cancelado') and a.enviado_em >= ini_ts group by 1, 2),
   pm as (
     select e.pid, e.mes, count(*) entregas, round(100.0 * count(*) filter (where e.no_prazo) / nullif(count(*) filter (where e.com_prazo), 0))::int no_prazo_pct,
            round(avg(extract(epoch from (e.entregue - e.criado)) / 86400.0)::numeric, 1) dias, round(avg(e.versoes)::numeric, 1) versoes
