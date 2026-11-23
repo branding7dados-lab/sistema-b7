@@ -48,13 +48,18 @@ B7.AssistenteWA = (function () {
     raiz = painel.querySelector('#asw');
     if (!adm) { raiz.innerHTML = '<div class="asw-vazio"><b>Só o administrador configura o assistente.</b></div>'; return; }
     const desde7 = new Date(Date.now() - 7 * 864e5).toISOString();
+    /* 4.85.3: grupos só do número padrão (o do Otto) — sem número cadastrado, como antes */
+    if (B7.WaNumeros) { try { await B7.WaNumeros.carregar(); } catch (e) { /* segue */ } }
+    const pad = B7.WaNumeros && B7.WaNumeros.padrao();
+    const doPadrao = q => pad ? q.eq('numero_id', pad.id) : q;
     const [c, ap, dv, rg, gr, tg, pf, mm, cl] = await Promise.all([
       sb().from('wa_assistente').select('*').eq('id', 1).maybeSingle(),
       sb().from('wa_assistente_aprendizados').select('*').order('criado_em', { ascending: false }).limit(200),
       sb().from('wa_assistente_duvidas').select('id,jid,grupo_nome,autor,pergunta,pergunta_equipe,criada_em').is('respondida_em', null).order('criada_em', { ascending: false }).limit(40),
       sb().from('wa_assistente_registro').select('*').gte('em', desde7).order('em', { ascending: false }).limit(300),
-      sb().from('wa_conversas').select('jid,nome,cliente_id,foto_url').eq('tipo', 'grupo').not('cliente_id', 'is', null).order('nome'),
-      sb().from('wa_conversas').select('jid,nome').eq('tipo', 'grupo').order('nome').limit(500),
+      /* 4.85.3: o Otto só está no número padrão — os grupos dele, sem repetir os de outros números */
+      doPadrao(sb().from('wa_conversas').select('jid,nome,cliente_id,foto_url').eq('tipo', 'grupo').not('cliente_id', 'is', null)).order('nome'),
+      doPadrao(sb().from('wa_conversas').select('jid,nome').eq('tipo', 'grupo')).order('nome').limit(500),
       sb().from('perfis').select('id,nome').eq('estado', 'ativa').neq('papel', 'cliente').order('nome'),
       sb().from('wa_otto_memoria').select('id,texto,sobre,criado_por,criada_em,cliente_id,origem').eq('ativo', true).order('criada_em', { ascending: false }).limit(200),
       sb().from('clientes').select('id,nome').is('deleted_at', null).order('nome').limit(500)

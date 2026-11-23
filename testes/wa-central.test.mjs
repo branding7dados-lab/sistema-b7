@@ -246,7 +246,16 @@ const itens = pg => pg.$$eval('.wz-it', l => l.map(e => ({ nome: e.querySelector
   ok(!(await pg.$('.wz-info-menu [data-info="remove"]')), 'designer: menu do membro sem Remover');
   await ctx.close(); }
 
+{ /* 4.85.3: Configurações → Grupos e clientes — o mesmo grupo em dois números aparece uma vez só */
+  NUMS = [VID, DES];
+  const { ctx, pg } = await abrirCentral({ width: 1360, height: 860 }, '#/whatsapp/config?aba=grupos');
+  await pg.waitForTimeout(800);
+  const n = await pg.$$eval('[data-g="120@g.us"]', l => l.length);
+  ok(n === 1, 'grupo em dois números aparece uma vez só (' + n + ')');
+  await ctx.close(); }
+
 { /* quem não é administrador: só as configurações pessoais; as da equipe (Números, Otto, grupos…) não aparecem */
+  enviados.length = 0;
   const { ctx, pg } = await abrirCentral({ width: 1360, height: 860 }, '#/whatsapp/config?aba=conexao', 'designer');
   if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/config-designer.png', import.meta.url)) });
   const abas = await pg.$$eval('.asw-nav [data-aba]', l => l.map(b => b.dataset.aba));

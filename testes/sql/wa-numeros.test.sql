@@ -127,3 +127,16 @@ end $$;
 reset role;
 do $$ begin assert (select count(*) from information_schema.columns where table_name = 'wa_conversas' and column_name in ('descricao','criado_wa','dono_jid','so_admins_enviam','so_admins_editam','membros_qtd','membros_em')) = 7, 'colunas do grupo'; end $$;
 \echo 'membros e grupos em comum OK'
+
+-- 4.85.3: o grupo é do cliente em qualquer número — ligar numa cópia liga todas
+insert into clientes (id, nome) values ('00000000-0000-0000-0000-0000000000c1', 'Cliente Alfa');
+set role authenticated;
+do $$ begin perform set_config('teste.uid', '00000000-0000-0000-0000-00000000000a', false); end $$;
+do $$ begin
+  perform wa_conversa_marcar('1@g.us', 'cliente', '00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000d1');
+  assert (select count(*) from wa_conversas where jid = '1@g.us' and cliente_id = '00000000-0000-0000-0000-0000000000c1') = 2, 'ligar no Design liga também no número dos vídeos';
+  perform wa_conversa_marcar('1@g.us', 'cliente', '', wa_numero_padrao());
+  assert (select count(*) from wa_conversas where jid = '1@g.us' and cliente_id is not null) = 0, 'desligar também vale para todas as cópias';
+end $$;
+reset role;
+\echo 'cliente em todos os números OK'
