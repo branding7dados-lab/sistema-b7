@@ -890,15 +890,15 @@ B7.AJUDA_DADOS = [
       []
      ],
      [
-      "Para criar, clique em \"Novo cliente\". A janela tem 5 etapas: \"Cliente\", \"Marca\", \"Pacote\", \"Equipe\" e \"Observações\". Só o nome é obrigatório. Escreva o nome e clique em \"Criar e continuar\": o cliente já fica criado. Nas outras etapas, preencha e clique em \"Salvar e continuar\", ou em \"Pular\" para deixar para depois.",
+      "Para criar, clique em \"Novo cliente\". A janela tem 5 etapas: \"Cliente\", \"Marca\", \"Serviços contratados\", \"Equipe\" e \"Observações\". Só o nome é obrigatório. Escreva o nome e clique em \"Criar e continuar\": o cliente já fica criado. Nas outras etapas, preencha e clique em \"Salvar e continuar\", ou em \"Pular\" para deixar para depois.",
       []
      ],
      [
-      "Na etapa \"Cliente\", em \"COMO TRABALHAMOS COM ESTE CLIENTE\", marque tudo o que vale: \"Linha editorial\", \"Pauta semanal\" e/ou \"Roteiros e trends\". Pode marcar mais de uma. Se não marcar nenhuma, fica só \"Linha editorial\".",
+      "Na etapa \"Cliente\", em \"COMO TRABALHAMOS COM ESTE CLIENTE\", marque tudo o que vale: \"Linha editorial\" e/ou \"Roteiros e trends\". Se não marcar nenhuma, fica só \"Linha editorial\". Em \"CONTRATO\", escolha \"Avulso\" (um projeto pontual) ou a duração: \"1 mês\", \"3 meses\", \"6 meses\" ou \"12 meses ou mais\".",
       []
      ],
      [
-      "Na etapa \"Pacote\", escolha o pacote do cliente (os pacotes são criados em Gestão → \"Pacotes\"). Se ele negociou quantidades diferentes, marque \"Ajustar as quantidades só para este cliente\" e mude os números. Em \"VALE DESDE\", escolha a data em que o pacote começa a contar. O pacote é a entrega mínima do mês e é com ele que a Gestão compara em \"Contratado × entregue\".",
+      "Na etapa \"Serviços contratados\", escolha o que o cliente contratou (os pacotes de serviços são criados em Gestão → \"Serviços contratados\"). Se ele negociou quantidades diferentes, marque \"Ajustar as quantidades só para este cliente\" e mude os números. Em \"VALE DESDE\", escolha a data em que o contrato começa a contar. O que foi contratado é a entrega mínima do mês e é com ele que a Gestão compara em \"Contratado × entregue\".",
       []
      ],
      [
@@ -906,11 +906,11 @@ B7.AJUDA_DADOS = [
       []
      ],
      [
-      "Para mudar qualquer dado, abra a aba \"Cadastro\" na página do cliente (o \"Editar cliente\" do \"⋯\" leva para ela). Cada bloco (\"Cliente\", \"Marca\", \"Pacote\", \"Equipe\", \"Observações\") tem o seu botão \"Editar\" (ou \"Completar\", quando está vazio). Altere e clique em \"Salvar\".",
+      "Para mudar qualquer dado, abra a aba \"Cadastro\" na página do cliente (o \"Editar cliente\" do \"⋯\" leva para ela). Cada bloco (\"Cliente\", \"Marca\", \"Serviços contratados\", \"Equipe\", \"Observações\") tem o seu botão \"Editar\" (ou \"Completar\", quando está vazio). Altere e clique em \"Salvar\".",
       []
      ],
      [
-      "No bloco \"Marca\", guarde a logo, as cores (até 8, com o código de cada uma), as fontes e o link do material da marca. Na ficha, toque numa cor para copiar o código. Se trocar o pacote de um cliente que tinha as quantidades ajustadas, o sistema avisa que o ajuste será descartado; \"Voltar ao padrão\" desfaz o ajuste. O grupo do WhatsApp do cliente não fica no cadastro: ligue o grupo ao cliente na Central do WhatsApp, em \"Ligar a um cliente…\".",
+      "No bloco \"Marca\", guarde a logo, as cores (até 8, com o código de cada uma), as fontes e o link do material da marca. Na ficha, toque numa cor para copiar o código. Se trocar os serviços contratados de um cliente que tinha as quantidades ajustadas, o sistema avisa que o ajuste será descartado; \"Voltar ao padrão\" desfaz o ajuste. O grupo do WhatsApp do cliente não fica no cadastro: ligue o grupo ao cliente na Central do WhatsApp, em \"Ligar a um cliente…\".",
       []
      ],
      [
@@ -928,7 +928,7 @@ B7.AJUDA_DADOS = [
     ],
     "dicas": [
      [
-      "Os três modos de trabalho **somam**. Um cliente pode ter \"Linha editorial\", \"Pauta semanal\" e \"Roteiros e trends\" ao mesmo tempo. O cabeçalho do cliente mostra uma etiqueta para cada modo que não seja só linha editorial.",
+      "Os modos de trabalho **somam**. Um cliente pode ter \"Linha editorial\" e \"Roteiros e trends\" ao mesmo tempo. \"Pauta semanal\" saiu das opções do cadastro; só aparece para o cliente que já usava, para dar para desmarcar. O cabeçalho do cliente mostra uma etiqueta para cada modo que não seja só linha editorial.",
       []
      ],
      [

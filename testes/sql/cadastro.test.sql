@@ -69,6 +69,20 @@ do $$ declare r jsonb; begin
   assert r->'interno'->>'cidade' = 'Salvador - BA' and r->'interno'->>'cnpj' = '12345678000190', 'só a chave que veio muda';
 end $$;
 
+-- 3b) duração do contrato (zzz390): 1, 3, 6 ou 12; avulso apaga a duração
+do $$ declare r jsonb; begin
+  assert cliente_cadastro('00000000-0000-0000-0000-0000000000c1')->'interno'->'contrato_meses' = 'null'::jsonb, 'começa sem duração';
+  r := cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"interno":{"contrato_meses":6}}');
+  assert (r->'interno'->>'contrato_meses')::int = 6 and r->'interno'->>'cidade' = 'Salvador - BA', r::text;
+  r := cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"interno":{"cidade":"Salvador - BA"}}');
+  assert (r->'interno'->>'contrato_meses')::int = 6, 'salvar outro campo não mexe na duração';
+end $$;
+select pg_temp.recusa($$select cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"interno":{"contrato_meses":5}}')$$, '1, 3, 6 ou 12');
+update clientes set contrato = 'avulso' where id = '00000000-0000-0000-0000-0000000000c1';
+do $$ begin assert cliente_cadastro('00000000-0000-0000-0000-0000000000c1')->'interno'->'contrato_meses' = 'null'::jsonb, 'virar avulso apaga a duração'; end $$;
+update clientes set contrato = 'mensal' where id = '00000000-0000-0000-0000-0000000000c1';
+do $$ begin assert (cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"interno":{"contrato_meses":null}}')->'interno'->'contrato_meses') = 'null'::jsonb; end $$;
+
 -- 4) validações (nada é gravado quando recusa)
 select pg_temp.recusa($$select cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"interno":{"cidade":"NÃO GRAVAR","cnpj":"1234567800019"}}')$$, '14 números');
 do $$ begin assert (cliente_cadastro('00000000-0000-0000-0000-0000000000c1')->'interno'->>'cidade') = 'Salvador - BA'; end $$;

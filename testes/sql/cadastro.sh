@@ -15,5 +15,7 @@ awk '/^create or replace function public.linha_aplicar_pacote/,/^end \$\$;/' sup
 chmod a+r "$DIR/f.sql"; P -f "$DIR/f.sql"
 P -f supabase/sql/zzz389_cadastro_cliente.sql >/dev/null
 P -f supabase/sql/zzz389_cadastro_cliente.sql >/dev/null   # idempotente
+P -f supabase/sql/zzz390_contrato_duracao.sql >/dev/null
+P -f supabase/sql/zzz390_contrato_duracao.sql >/dev/null   # idempotente
 P -f testes/sql/cadastro.test.sql
-echo "OK: zzz389 passou (aplicada 2×)"
+echo "OK: zzz389 e zzz390 passaram (aplicadas 2×)"

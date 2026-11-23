@@ -55,8 +55,8 @@ B7.Pacotes = (function () {
     catch (e) { alvo.innerHTML = '<p class="cfg-g-nota">Não foi possível carregar os pacotes. ' + esc((e && e.message) || '') + '</p>'; return; }
     if (!alvo.isConnected) return;
     const ed = podeEditar();
-    alvo.innerHTML = '<section class="cfg-g"><h2 class="cfg-g-t">Pacotes</h2>' +
-      '<p class="cfg-g-nota">' + (op.gestao ? 'O que a B7 vende: cada pacote diz o que o cliente recebe por mês — é a entrega mínima dele. O pacote de cada cliente é escolhido no cadastro do cliente, e lá dá para ajustar as quantidades só para ele.'
+    alvo.innerHTML = '<section class="cfg-g"><h2 class="cfg-g-t">' + (op.gestao ? 'Serviços contratados' : 'Pacotes') + '</h2>' +
+      '<p class="cfg-g-nota">' + (op.gestao ? 'O que a B7 vende: cada pacote de serviços diz o que o cliente recebe por mês — é a entrega mínima dele. Os serviços de cada cliente são escolhidos no cadastro dele, e lá dá para ajustar as quantidades só para ele.'
         : 'O que cada cliente contrata por mês. Ao criar uma linha editorial com um pacote, os conteúdos já nascem com o tipo e a data espalhada pelo mês. O pacote de cada cliente fica no cadastro dele.') + '</p>' +
       '<div class="cfg-lista">' +
         (lista.length ? lista.map(p => '<div class="cfg-l"><span class="cfg-l-tx"><b>' + esc(p.nome) + '</b><small>' + esc(resumo(p)) +
