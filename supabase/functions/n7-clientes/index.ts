@@ -72,6 +72,21 @@ Deno.serve(comCors(async (req) => {
       return json({ tipo: r.tipo, n7: resumo(r.cliente), campos, ligado: cad.interno?.n7_cliente_id || null });
     }
 
+    /* 4.90.0: a equipe do Núcleo 7 (nome e e-mail), para ligar as contas do B7 pelo nome.
+       Só o administrador pleno (Pessoas e acessos é dele). Nada além de nome, e-mail e se está ativo. */
+    if (acao === 'equipe') {
+      const { data: pleno } = await eu.rpc('sou_admin_pleno');
+      if (pleno !== true) return json({ erro: 'Ligar as contas é do administrador.' }, 403);
+      const base = (Deno.env.get('N7_URL') || '').replace(/\/$/, ''), chave = Deno.env.get('N7_SERVICE_KEY') || '';
+      if (!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(base) || !chave) throw new Error(SEM_CANAL);
+      const r = await fetch(base + '/rest/v1/app_users?select=name,email,is_active&order=name.asc', { headers: { apikey: chave, Authorization: 'Bearer ' + chave } });
+      if (!r.ok) { console.error('n7-clientes: equipe respondeu', r.status); throw new Error('O Núcleo 7 não respondeu agora (' + r.status + '). Tente de novo em instantes.'); }
+      const linhas = await r.json();
+      const equipe = (Array.isArray(linhas) ? linhas : []).map((l: any) => ({ nome: String(l?.name || '').trim().slice(0, 160), email: String(l?.email || '').trim().toLowerCase().slice(0, 160), ativo: l?.is_active !== false }))
+        .filter((x: any) => x.nome && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.email));
+      return json({ equipe });
+    }
+
     if (acao === 'procurar') {
       if (!pode.um) return json({ erro: 'Seu acesso não deixa editar o cadastro deste cliente.' }, 403);
       const lista = await lerN7();

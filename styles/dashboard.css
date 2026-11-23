@@ -2494,3 +2494,16 @@ button.pa-cel:disabled{opacity:.5;cursor:wait;}
   .np-n7::before{content:"No Núcleo 7: ";color:var(--ink-4);}
   .np-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
+
+/* 4.90.0: Pessoas e acessos → "Ligar com o Núcleo 7" */
+.ln7-janela [hidden]{display:none !important;}
+.ln7-tab{border:1px solid var(--borda);border-radius:16px;overflow:hidden;max-height:min(56vh,520px);overflow-y:auto;}
+.ln7-l{display:grid;grid-template-columns:minmax(140px,1fr) minmax(0,1.4fr) 150px;gap:12px;align-items:center;padding:10px 14px;border-top:1px solid var(--borda);}
+.ln7-l:first-child{border-top:0;}
+.ln7-q b{display:block;font-size:14px;color:var(--ink);}
+.ln7-q small{display:block;font-size:12px;color:var(--ink-4);}
+.ln7-st{font-size:12px;color:var(--ink-4);}
+.ln7-st.novo{color:var(--acento);font-weight:700;}
+@media (max-width:640px){
+  .ln7-l{grid-template-columns:minmax(0,1fr);gap:6px;}
+}

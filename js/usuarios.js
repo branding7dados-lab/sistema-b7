@@ -790,6 +790,7 @@ B7.Usuarios = (function () {
         B7.DB.chamarAuth({ acao: 'listar_usuarios' }),
         B7.DB.listarClientes().catch(() => []),
         B7.DB.rpc('acesso_pedidos_listar', {}).catch(() => []),
+        carregarEmails(),
         B7.Equipe ? B7.Equipe.carregar().catch(() => null) : null
       ]);
     } catch (e) {
@@ -908,6 +909,7 @@ B7.Usuarios = (function () {
         '<div class="lu6-acoes">' +
           '<button class="b contorno lu3-funcoes" id="lu-hist" title="Quem mudou o acesso de quem">' + IC_HIST + '<span>Histórico</span></button>' +
           '<button class="b contorno lu3-funcoes" id="lu-funcoes">' + IC_ACESSO + '<span>Funções</span></button>' +
+          (B7.N7Puxar ? '<button class="b contorno" id="ligar-n7" title="Pôr nas contas do B7 o mesmo e-mail do Núcleo 7">Ligar com o Núcleo 7</button>' : '') +
           '<button class="b pri lu3-novo" id="novo-usuario"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Novo usuário</span></button>' +
         '</div>' +
       '</div>' +
@@ -930,6 +932,7 @@ B7.Usuarios = (function () {
     '</div>';
 
     document.getElementById('novo-usuario').onclick = () => modalNovo(clientes);
+    { const ln = document.getElementById('ligar-n7'); if (ln) ln.onclick = () => ligarNucleo7(usuarios); }
     const btFuncoes = document.getElementById('lu-funcoes'); if (btFuncoes) btFuncoes.onclick = () => modalFuncoes(usuarios);
     const btHist = document.getElementById('lu-hist'); if (btHist) btHist.onclick = () => modalHistorico(null, usuarios);
     pintarAvisos(usuarios, pedidos || [], u => abrirAcao(u, 'editar'), diasSem, presenca);
@@ -1198,6 +1201,43 @@ B7.Usuarios = (function () {
   /* =================================================================
      EDITAR ACESSO
      ================================================================= */
+  /* 4.90.0: e-mail da equipe (é por ele que a entrada pelo Núcleo 7 acha a conta) */
+  let EMAILS = {};
+  const carregarEmails = () => B7.DB.rpc('perfis_emails', {}).then(r => { EMAILS = r || {}; return EMAILS; }, () => EMAILS);
+  const normNome = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  async function ligarNucleo7(usuarios) {
+    const m = B7.UI.modal('<h3>Ligar com o Núcleo 7</h3><div class="sub">Quem é da equipe entra no B7 pela Central do Núcleo 7. Para isso, a conta daqui precisa do mesmo e-mail de lá. Confira a sugestão de cada pessoa (achada pelo nome) e salve.</div>' +
+      '<div class="ln7-corpo" data-ln7>' + B7.UI.skeleton('lista', { n: 4 }) + '</div>' +
+      '<div class="acoes"><button class="b" data-fecha>Fechar</button><button class="b pri" data-ln7-ok hidden>Salvar</button></div>', { larga: true, extra: 'ln7-janela' });
+    const cx = m.querySelector('[data-ln7]'), ok = m.querySelector('[data-ln7-ok]');
+    let equipe;
+    try { [equipe] = await Promise.all([B7.DB.n7Clientes('equipe', {}).then(r => r.equipe || []), carregarEmails()]); }
+    catch (e) { cx.innerHTML = '<div class="cb-aviso erro">' + esc(e.message || 'Não foi possível falar com o Núcleo 7.') + '</div>'; return; }
+    if (!m.isConnected) return;
+    const porNome = {};
+    equipe.filter(x => x.ativo).forEach(x => { const k = normNome(x.nome); (porNome[k] = porNome[k] || []).push(x); });
+    const daCasa = usuarios.filter(u => u.papel !== 'cliente' && u.estado === 'ativa').sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
+    const linhas = daCasa.map(u => { const atual = EMAILS[u.id] || '', c = porNome[normNome(u.nome)] || [];
+      return { u, atual, sugestao: c.length === 1 ? c[0].email : '', varios: c.length > 1 ? c.map(x => x.email) : null }; });
+    const usados = new Set(Object.values(EMAILS));
+    cx.innerHTML = '<div class="ln7-tab">' + linhas.map((l, i) => {
+      const valor = l.atual || l.sugestao, novo = !l.atual && l.sugestao && !usados.has(l.sugestao);
+      return '<label class="ln7-l"><span class="ln7-q"><b>' + esc(l.u.nome) + '</b><small>@' + esc(l.u.username) + '</small></span>' +
+        '<input class="campo fina" type="email" data-ln7-i="' + i + '" value="' + esc(valor) + '" placeholder="e-mail no Núcleo 7"' + (l.varios ? ' list="ln7-v' + i + '"' : '') + '>' +
+        (l.varios ? '<datalist id="ln7-v' + i + '">' + l.varios.map(e => '<option value="' + esc(e) + '">').join('') + '</datalist>' : '') +
+        '<span class="ln7-st' + (novo ? ' novo' : '') + '">' + (l.atual ? (l.sugestao && l.sugestao !== l.atual ? 'diferente do Núcleo 7' : 'ligado') : novo ? 'sugerido pelo nome' : l.varios ? 'mais de um com esse nome' : 'não achei no Núcleo 7') + '</span></label>'; }).join('') + '</div>';
+    ok.hidden = false;
+    ok.onclick = async () => {
+      ok.disabled = true;
+      const mud = linhas.map((l, i) => ({ l, v: cx.querySelector('[data-ln7-i="' + i + '"]').value.trim().toLowerCase() })).filter(x => x.v !== (x.l.atual || ''));
+      const falhas = [];
+      for (const x of mud) { try { await B7.DB.rpc('perfil_email_definir', { p_perfil: x.l.u.id, p_email: x.v }); } catch (e) { falhas.push(x.l.u.nome + ': ' + (e.message || 'erro')); } }
+      await carregarEmails();
+      if (falhas.length) { ok.disabled = false; B7.UI.toast('Não salvei: ' + falhas.join(' · '), { tipo: 'erro' }); return; }
+      m.fechar(); B7.UI.toast(mud.length ? (mud.length === 1 ? '1 e-mail salvo' : mud.length + ' e-mails salvos') : 'Nada mudou');
+    };
+  }
+
   function modalEditar(u, clientes, vinculos, funcoesExtraAtuais) {
     const ligadas = vinculos.filter(v => v.perfil_id === u.id).map(v => ({ client_id: v.client_id, papel: v.papel || (u.pode_aprovar ? 'gestor' : 'equipe') }));
     const extrasAtuais = funcoesExtraAtuais || [];
@@ -1208,6 +1248,9 @@ B7.Usuarios = (function () {
       '<section class="ng-bloco"><h4>' + ICU.id + 'Quem é</h4>' +
         '<div class="mb ng-ult"><label class="rot" for="ed-nome">NOME</label>' +
           '<input class="campo" id="ed-nome" value="' + esc(u.nome) + '"></div>' +
+        /* 4.90.0: o mesmo e-mail do Núcleo 7 — é por ele que a entrada pela Central acha a conta */
+        '<div class="mb ng-ult" data-ed-email><label class="rot" for="ed-email">E-MAIL <span class="leve">— o mesmo do Núcleo 7; com ele a pessoa entra pela Central de lá e também no login daqui</span></label>' +
+          '<input class="campo" id="ed-email" type="email" maxlength="160" autocomplete="off" value="' + esc(EMAILS[u.id] || '') + '" placeholder="nome@branding7.com.br"></div>' +
       '</section>' +
 
       acessoTipoHTML('ed', u.papel === 'cliente' ? 'cliente' : 'interno') +
@@ -1224,7 +1267,8 @@ B7.Usuarios = (function () {
     const idt0 = identidadeDe(u);
     const acesso = ligarAcesso(m, 'ed', { tipo: idt0.tipo, ehAdmin: idt0.ehAdmin, financeiro: idt0.financeiro, funcao: idt0.funcao, excecoes: ACESSO.excecoes[u.id] || {},
         secundarias: ACESSO.secundarias[u.id] || {}, cargos: (extrasAtuais || []).slice() },
-      tipo => { blocoCliente.style.display = tipo === 'cliente' ? '' : 'none'; });
+      tipo => { blocoCliente.style.display = tipo === 'cliente' ? '' : 'none'; const ce = m.querySelector('[data-ed-email]'); if (ce) ce.style.display = tipo === 'cliente' ? 'none' : ''; });
+    { const ce = m.querySelector('[data-ed-email]'); if (ce && idt0.tipo === 'cliente') ce.style.display = 'none'; }
 
     /* cargos adicionais atuais (lidos do banco) */
     B7.sb.from('perfis').select('funcoes_adicionais').eq('id', u.id).maybeSingle().then(({ data }) => {
@@ -1250,6 +1294,8 @@ B7.Usuarios = (function () {
         }, Object.assign({}, idn, { cargos: undefined })));
         if (!ehCli) {
           await B7.DB.rpc('perfil_definir_cargos', { p_id: u.id, p_cargos: idn.cargos || [] });
+          const novoEmail = m.querySelector('#ed-email').value.trim().toLowerCase();
+          if (novoEmail !== (EMAILS[u.id] || '')) { await B7.DB.rpc('perfil_email_definir', { p_perfil: u.id, p_email: novoEmail }); await carregarEmails(); }
         }
         m.fechar();
         B7.UI.toast('Acesso atualizado');
