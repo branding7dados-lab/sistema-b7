@@ -120,6 +120,20 @@ const itens = pg => pg.$$eval('.wz-it', l => l.map(e => ({ nome: e.querySelector
   ok(enviados.some(e => e.acao === 'estado' && e.numero === 'n-coo'), 'a conexão confere o estado DO número novo');
   await ctx.close(); }
 
+{ NUMS = [VID, DES]; enviados.length = 0;
+  const { ctx, pg } = await abrirCentral({ width: 1360, height: 860 });
+  await pg.evaluate(() => B7.WhatsApp.enviar({ tipo: 'aprovacao', clienteNome: 'Alfa', titulo: 'Post', link: 'https://x' }));
+  await pg.waitForSelector('#wae-n', { timeout: 5000 }).catch(() => null);
+  const ops = await pg.$$eval('#wae-c option', l => l.map(o => o.value).filter(Boolean)).catch(() => []);
+  ok(!!(await pg.$('#wae-n')) && (await pg.$eval('#wae-n', e => e.value)) === 'n-vid' && ops.length === 1, 'Enviar no WhatsApp: admin começa no padrão, só com as conversas dele');
+  await pg.selectOption('#wae-n', 'n-des');
+  const ops2 = await pg.$$eval('#wae-c option', l => l.map(o => o.value).filter(Boolean));
+  ok(ops2.length === 2, 'trocar para Designers mostra as conversas do Designers');
+  await pg.selectOption('#wae-c', '120@g.us'); await pg.click('#wae-ok'); await pg.waitForTimeout(800);
+  const e = enviados.find(x => x.acao === 'enviar_texto');
+  ok(e && e.numero === 'n-des', 'o envio sai pelo número escolhido');
+  await ctx.close(); }
+
 await nav.close(); servidor.close();
 if (falhas.length) { console.error('\n' + falhas.length + ' falha(s):\n- ' + falhas.join('\n- ')); process.exit(1); }
 console.log('Central com vários números: ok');
