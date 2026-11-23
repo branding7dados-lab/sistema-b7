@@ -27,6 +27,17 @@ const conv = (numero_id, jid, nome, min, nao_lidas = 0) => ({ numero_id, jid, no
 let NUMS = [VID, DES];
 const CONVS = [conv('n-vid', '120@g.us', 'Cliente Alfa · Vídeo', 5, 2), conv('n-des', '120@g.us', 'Cliente Alfa · Design', 8, 1), conv('n-des', '5562999990000@s.whatsapp.net', 'Bia Cliente', 30)];
 const enviados = [];
+let DEMORA = 0;
+const MSGS = [{ numero_id: 'n-des', id: 'q1', jid: '120@g.us', de_mim: false, autor_jid: '221633885266163@lid', autor_nome: '221633885266163', tipo: 'texto', texto: 'Foto do kit', criada_em: iso(20) },
+  { numero_id: 'n-des', id: 'm1', jid: '120@g.us', de_mim: true, tipo: 'texto', texto: '@221633885266163 achei que já havia enviado aqui', citada_id: 'q1', criada_em: iso(9), status: 'SERVER_ACK' }];
+/* conversa da Bia: 2 dias de mensagens, para a data grudada no topo */
+for (let k = 0; k < 40; k++) MSGS.push({ numero_id: 'n-des', id: 'b' + k, jid: '5562999990000@s.whatsapp.net', de_mim: k % 2 === 0, tipo: 'texto', texto: 'Mensagem ' + k + ' — um texto para ocupar espaço na conversa',
+  criada_em: new Date(agora - (k < 20 ? 3 * 1440 + 60 - k : 30 - (k - 20)) * 60000).toISOString(), status: 'SERVER_ACK' });
+/* revisão: texto com caracteres de controle (não pode virar código) e link com @dígitos */
+MSGS.push({ numero_id: 'n-des', id: 'x1', jid: '120@g.us', de_mim: false, autor_jid: '556211110000@s.whatsapp.net', autor_nome: 'Ana', tipo: 'texto',
+  texto: '\u0001 https://x/onmouseover=alert(document.domain)// \u0003oi\u0002', criada_em: iso(8) },
+  { numero_id: 'n-des', id: 'x2', jid: '120@g.us', de_mim: false, autor_jid: '556211110000@s.whatsapp.net', autor_nome: 'Ana', tipo: 'texto', texto: 'veja https://x.com/@12345678 ok *negrito @221633885266163*', criada_em: iso(7) });
+const CONTATOS = [{ jid: '221633885266163@lid', nome: 'Luana Felix Perdão' }];
 const falhas = []; const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if (!c) falhas.push(m); };
 
 const nav = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
@@ -41,6 +52,13 @@ async function abrirCentral(viewport, rota = '#/whatsapp', papel = 'admin') {
       if (corpo.acao === 'numeros') r = { lista: NUMS.map(n => ({ ...n, estado: n.id === 'n-vid' ? 'open' : 'sem_conexao' })) };
       if (corpo.acao === 'estado') r = { configurado: true, existe: true, estado: corpo.numero === 'n-vid' || !corpo.numero ? 'open' : 'sem_conexao' };
       if (corpo.acao === 'conectar') r = { qr: 'data:image/png;base64,iVBORw0KGgo=', codigo: null };
+      if (corpo.acao === 'grupo_dados') { await new Promise(r => setTimeout(r, DEMORA)); r = { grupo: { nome: 'Cliente Alfa (WhatsApp)', descricao: 'Grupo oficial do cliente', criado_wa: '2025-03-12T12:00:00Z', so_admins_enviam: false, so_admins_editam: true, membros_qtd: 3 },
+        membros: [{ jid: '556211110000@s.whatsapp.net', telefone: '556211110000', admin: 'superadmin', nome: 'Ana Souza', b7: false, equipe: false },
+          { jid: '777@lid', telefone: '556222220000', admin: null, nome: 'Pedro Equipe', b7: false, equipe: true },
+          { jid: '556233330000@s.whatsapp.net', telefone: '556233330000', admin: 'admin', nome: null, b7: true, equipe: false }], b7_admin: true }; }
+      if (corpo.acao === 'contato_perfil') r = { perfil: { nome: 'Ana Souza', recado: 'Disponível', telefone: '556211110000', comercial: true, descricao: 'Padaria', email: 'ana@exemplo.com' }, grupos: [{ numero_id: 'n-des', grupo_jid: '120@g.us', nome: 'Cliente Alfa · Design' }] };
+      if (corpo.acao === 'grupo_convite') { await new Promise(r => setTimeout(r, DEMORA)); r = { link: 'https://chat.whatsapp.com/AAA' }; }
+      if (corpo.acao === 'grupo_membros') r = corpo.operacao ? { feito: corpo.participantes, falhou: [] } : { erro: 'Ação inválida.' };
       if (corpo.acao === 'numero_salvar') { const n = { id: 'n-coo', instancia: 'b7-coordenacao', padrao: false, ativo: true, ordem: 2, ...corpo }; delete n.acao; NUMS = NUMS.concat(n); r = { numero: n }; }
       return rota.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(r) });
     }
@@ -50,7 +68,7 @@ async function abrirCentral(viewport, rota = '#/whatsapp', papel = 'admin') {
     }
     if (url.pathname.startsWith('/rest/v1/')) {
       const t = url.pathname.split('/rest/v1/')[1].split('?')[0];
-      const dados = t === 'wa_numeros' ? NUMS : t === 'wa_config' ? [{ id: 1, respostas: [], auto_arquivar_dias: 0, fotos_auto: true }] : t === 'wa_conversas' ? CONVS.filter(c => NUMS.some(n => n.id === c.numero_id)) : [];
+      const dados = t === 'wa_numeros' ? NUMS : t === 'wa_config' ? [{ id: 1, respostas: [], auto_arquivar_dias: 0, fotos_auto: true }] : t === 'wa_mensagens' ? MSGS.filter(m => !url.search.includes('jid=eq.') || url.search.includes('jid=eq.' + encodeURIComponent(m.jid)) || url.search.includes('jid=eq.' + m.jid)) : t === 'wa_contatos' ? CONTATOS : t === 'wa_conversas' ? CONVS.filter(c => NUMS.some(n => n.id === c.numero_id)) : [];
       const um = (req.headers()['accept'] || '').includes('vnd.pgrst.object');
       return rota.fulfill({ status: 200, contentType: 'application/json', headers: { 'content-range': '0-0/' + dados.length }, body: JSON.stringify(um ? (dados[0] || null) : dados) });
     }
@@ -133,6 +151,86 @@ const itens = pg => pg.$$eval('.wz-it', l => l.map(e => ({ nome: e.querySelector
   await pg.selectOption('#wae-c', '120@g.us'); await pg.click('#wae-ok'); await pg.waitForTimeout(800);
   const e = enviados.find(x => x.acao === 'enviar_texto');
   ok(e && e.numero === 'n-des', 'o envio sai pelo número escolhido');
+  await ctx.close(); }
+
+{ /* 4.85.0: menção e citação como no WhatsApp; dados do grupo e perfil */
+  NUMS = [VID, DES]; enviados.length = 0;
+  const { ctx, pg } = await abrirCentral({ width: 1360, height: 860 });
+  await pg.click('.wz-it[data-num="n-des"][data-jid="120@g.us"]'); await pg.waitForTimeout(900);
+  const mc = await pg.$eval('.wz-mc', e => ({ t: e.textContent, p: e.dataset.perfil })).catch(() => null);
+  ok(mc && mc.t === '@Luana Felix Perdão' && mc.p === '221633885266163@lid', 'menção vira "@Nome" destacado (' + JSON.stringify(mc) + ')');
+  const qa = await pg.$eval('.wz-q b', e => e.textContent).catch(() => '');
+  ok(qa === 'Luana Felix Perdão', 'citação mostra o nome, não o código (' + qa + ')');
+  const inj = await pg.$$eval('#wz-msgs [onmouseover], #wz-msgs [onerror]:not(img)', l => l.length);
+  ok(inj === 0, 'texto com caracteres de controle não vira atributo de código');
+  const lk = await pg.$$eval('#wz-msgs a[href*="x.com"]', l => l.map(a => a.getAttribute('href')));
+  ok(lk.length === 1 && lk[0] === 'https://x.com/@12345678', 'link com @dígitos continua inteiro (' + lk.join(' ') + ')');
+  const negr = await pg.$$eval('#wz-msgs b .wz-mc', l => l.map(e => e.textContent));
+  ok(negr.includes('@Luana Felix Perdão'), 'menção dentro de *negrito* funciona');
+  if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/mencao.png', import.meta.url)) });
+  await pg.click('.wz-cab-nome'); await pg.waitForSelector('.wz-info-m', { timeout: 5000 }).catch(() => null);
+  const info = await pg.$eval('.wz-info', e => e.innerText).catch(() => '');
+  ok(/Dados do grupo/.test(info) && /Grupo oficial do cliente/.test(info) && /3 membros/.test(info), 'topo do grupo abre os dados');
+  ok(/Equipe B7/.test(info) && /Número da B7/.test(info) && /Admin/.test(info), 'membros com os selos');
+  ok(!!(await pg.$('.wz-info [data-info="add"]')) && !!(await pg.$('.wz-info [data-regra="so_admins_enviam"]:not([disabled])')), 'admin vê + Adicionar e as regras ligadas');
+  if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/dados-grupo.png', import.meta.url)) });
+  await pg.click('.wz-info-m[data-m="556211110000@s.whatsapp.net"] [data-info="menu"]');
+  await pg.click('.wz-info-menu [data-info="remove"]'); await pg.waitForSelector('.fundo-modal', { timeout: 3000 });
+  await pg.click('.fundo-modal .acoes .b:last-child'); await pg.waitForTimeout(600);
+  const rm = enviados.find(e => e.acao === 'grupo_membros');
+  ok(rm && rm.operacao === 'remove' && rm.numero === 'n-des' && rm.jid === '120@g.us' && JSON.stringify(rm.participantes) === '["556211110000"]', 'remover confirma e manda grupo_membros (remove) pelo número da conversa');
+  await pg.click('.wz-info-m[data-m="556211110000@s.whatsapp.net"] [data-info="perfil"]'); await pg.waitForTimeout(500);
+  const pf = await pg.$eval('.wz-info', e => e.innerText).catch(() => '');
+  ok(/Perfil do contato/.test(pf) && /Disponível/.test(pf) && /Padaria/.test(pf) && /Cliente Alfa · Design/.test(pf), 'perfil com recado, empresa e grupos em comum');
+  if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/perfil.png', import.meta.url)) });
+  await pg.click('.wz-info [data-info="fechar"]');
+  /* revisão: ação de admin que demora não pinta o resultado no painel que estiver aberto depois */
+  await pg.click('.wz-cab-nome'); await pg.waitForSelector('.wz-info [data-info="link"]:not([disabled])', { timeout: 5000 }).catch(() => null);
+  DEMORA = 1200;
+  await pg.click('.wz-info [data-info="link"]'); await pg.waitForTimeout(150);
+  /* antes da resposta: vai para o mesmo grupo no número dos vídeos e abre os dados dele */
+  await pg.click('.wz-it[data-num="n-vid"][data-jid="120@g.us"]'); await pg.waitForTimeout(300);
+  DEMORA = 0;
+  await pg.click('.wz-cab-nome'); await pg.waitForTimeout(1800);
+  const depois = await pg.$eval('.wz-info', e => e.innerText).catch(() => '');
+  ok(/Dados do grupo/.test(depois) && !/chat\.whatsapp\.com/.test(depois), 'link pedido no grupo A não aparece no painel do grupo B');
+  await pg.click('.wz-info [data-info="fechar"]');
+  await pg.click('.wz-it[data-num="n-des"][data-jid="120@g.us"]'); await pg.waitForTimeout(600);
+  /* resposta atrasada não pinta o painel em outra conversa */
+  DEMORA = 1200;
+  await pg.click('.wz-cab-nome'); await pg.waitForTimeout(150);
+  await pg.click('.wz-it[data-jid="5562999990000@s.whatsapp.net"]'); await pg.waitForTimeout(1600);
+  ok(!(await pg.$('.wz-info')), 'trocar de conversa fecha o painel e a resposta velha não reaparece');
+  DEMORA = 0;
+  await ctx.close(); }
+
+{ /* 4.85.0: data grudada no topo — uma por vez, nunca uma por cima da outra */
+  NUMS = [VID, DES];
+  const { ctx, pg } = await abrirCentral({ width: 1360, height: 860 });
+  await pg.click('.wz-it[data-jid="5562999990000@s.whatsapp.net"]'); await pg.waitForTimeout(900);
+  const dias = await pg.$$eval('#wz-msgs .wz-dg > .wz-dia', l => l.length);
+  ok(dias === 2, 'cada dia num bloco com a sua data (' + dias + ')');
+  let pior = 0;
+  for (const f of [0.15, 0.35, 0.5, 0.65, 0.85]) {
+    const n = await pg.$eval('#wz-msgs', (cx, f) => {
+      cx.scrollTop = (cx.scrollHeight - cx.clientHeight) * f;
+      const topo = cx.getBoundingClientRect().top;
+      const r = [...cx.querySelectorAll('.wz-dia span')].map(s => s.getBoundingClientRect()).filter(b => b.bottom > topo && b.top < topo + 60);
+      let sobre = 0; for (let i = 0; i < r.length; i++) for (let j = i + 1; j < r.length; j++) if (r[i].top < r[j].bottom && r[j].top < r[i].bottom) sobre++;
+      return sobre;
+    }, f);
+    pior = Math.max(pior, n);
+  }
+  ok(pior === 0, 'rolando a conversa, nenhuma data fica por cima de outra');
+  await ctx.close(); }
+
+{ /* designer vê os dados do grupo, sem os botões de mexer */
+  const { ctx, pg } = await abrirCentral({ width: 1360, height: 860 }, '#/whatsapp', 'designer');
+  await pg.click('.wz-it[data-num="n-des"][data-jid="120@g.us"]'); await pg.waitForTimeout(700);
+  await pg.click('.wz-cab-nome'); await pg.waitForSelector('.wz-info-m', { timeout: 5000 }).catch(() => null);
+  ok(!!(await pg.$('.wz-info-m')) && !(await pg.$('.wz-info [data-info="add"]')) && !(await pg.$('.wz-info [data-regra]')), 'designer vê os membros sem + Adicionar nem regras');
+  await pg.click('.wz-info-m [data-info="menu"]');
+  ok(!(await pg.$('.wz-info-menu [data-info="remove"]')), 'designer: menu do membro sem Remover');
   await ctx.close(); }
 
 { /* quem não é administrador: só as configurações pessoais; as da equipe (Números, Otto, grupos…) não aparecem */

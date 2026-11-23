@@ -9,6 +9,7 @@
 // =====================================================================
 import { admin, gravar, garantirConversa, tokenWebhook, STATUS_ORDEM, evo, INST, numeros, instanciaDe } from '../_shared/wa.ts';
 import { instanciaDoEvento, numeroDoEvento } from '../_shared/wa-numeros.ts';
+import { eventoParticipantes } from '../_shared/wa-grupo.ts';
 import { iguais } from '../_shared/cors.ts';
 import { aoReceber, relogio } from '../_shared/assistente.ts';
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
@@ -110,6 +111,21 @@ Deno.serve(async (req: Request) => {
     } else if (evento === 'groups.upsert' || evento === 'group.update' || evento === 'groups.update') {
       const lista = Array.isArray(dados) ? dados : [dados];
       for (const g of lista) if (g?.id && /@g\.us$/.test(g.id)) await garantirConversa(sb, g.id, null, g.subject || null, g.pictureUrl || null, num);
+    } else if (evento === 'group.participants.update' || evento === 'group-participants.update' || evento === 'groups.participants.update') {
+      /* 4.85.0: alguém entrou, saiu, virou ou deixou de ser admin — mantém a lista guardada do grupo */
+      const ev = eventoParticipantes(Array.isArray(dados) ? dados[0] : dados);
+      if (ev && num) {
+        const agora = new Date().toISOString();
+        if (ev.acao === 'remove') {
+          for (const m of ev.membros) await sb.from('wa_grupo_membros').delete().eq('numero_id', num.id).eq('grupo_jid', ev.grupo).eq('membro_jid', m.jid);
+        } else {
+          const admin = ev.acao === 'promote' ? 'admin' : null;
+          await sb.from('wa_grupo_membros').upsert(ev.membros.map(m => ({ numero_id: num.id, grupo_jid: ev.grupo, membro_jid: m.jid, telefone: m.telefone, admin, atualizado_em: agora })),
+            { onConflict: 'numero_id,grupo_jid,membro_jid' });
+        }
+        const { count } = await sb.from('wa_grupo_membros').select('membro_jid', { count: 'exact', head: true }).eq('numero_id', num.id).eq('grupo_jid', ev.grupo);
+        if (count != null) await sb.from('wa_conversas').update({ membros_qtd: count }).eq('numero_id', num.id).eq('jid', ev.grupo);
+      }
     } else if (evento === 'chats.upsert') {
       const lista = Array.isArray(dados) ? dados : [dados];
       for (const c of lista) {

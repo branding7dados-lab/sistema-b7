@@ -19,5 +19,7 @@ P -c "insert into wa_conversas (jid, tipo, nome, nao_lidas) values ('1@g.us','gr
       insert into wa_mensagens (id, jid, texto) values ('ANTIGA', '1@g.us', 'oi');"
 P -f supabase/sql/zzz383_wa_varios_numeros.sql >/dev/null
 P -f supabase/sql/zzz383_wa_varios_numeros.sql >/dev/null   # idempotente
+P -f supabase/sql/zzz385_wa_grupo_membros.sql >/dev/null
+P -f supabase/sql/zzz385_wa_grupo_membros.sql >/dev/null   # idempotente
 P -f testes/sql/wa-numeros.test.sql
 echo "OK: zzz383 passou (aplicada 2×)"

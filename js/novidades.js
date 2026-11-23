@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.85.0', versao: '4.85.0', em: '2026-11-23T19:00:00-03:00', rota: 'whatsapp',
+    titulo: 'Dados do grupo e perfil do contato',
+    itens: ['Na conversa, toque na foto ou no nome lá em cima: abre os dados do grupo (descrição e membros, com quem é admin e quem é da equipe) ou o perfil do contato (recado, empresa e grupos em comum).',
+      'Toque no nome de quem escreveu no grupo — ou numa menção @ — para ver o perfil da pessoa.',
+      'Menções agora aparecem com o nome destacado, como no WhatsApp, e a citação mostra o nome em vez de um número.',
+      'O administrador também adiciona e remove membros, troca nome, descrição e foto do grupo, pega o link de convite e muda as regras — tudo sem sair do B7.'] },
   { id: 'v-4.84.0', versao: '4.84.0', em: '2026-11-23T18:00:00-03:00', rota: 'whatsapp',
     titulo: 'Vários números de WhatsApp no B7',
     itens: ['Agora o B7 tem um número por equipe: Videomakers, Designers, Coordenação… Cada equipe vê e responde pelo número dela.',
