@@ -150,7 +150,10 @@ B7.WaInfo = (function () {
   }
 
   /* ------------------------------------------------------------ ações do grupo (só admin) */
+  /* revisão: toda ação guarda o painel que a pediu (t); se a pessoa trocou de painel, a resposta não pinta em outro */
+  const mesmo = t => t === vez && estado && estado.tipo === 'grupo';
   async function membros(acao, quem, nomes) {
+    const t = vez;
     let r;
     try { r = await ctx.chamar('grupo_membros', { jid: estado.jid, numero: estado.num || undefined, operacao: acao, participantes: quem }); }
     catch (e) { return B7.UI.toast(e.message, { tipo: 'erro' }); }
@@ -158,7 +161,7 @@ B7.WaInfo = (function () {
     const f = r.falhou || [];
     if (f.length) B7.UI.toast(f.map(x => (nomes[x.quem] || fmtTel(String(x.quem).split('@')[0])) + ': ' + x.motivo).join(' · '), { tipo: 'erro', tempo: 9000 });
     else B7.UI.toast({ add: 'Adicionado ao grupo.', remove: 'Removido do grupo.', promote: 'Agora é admin.', demote: 'Não é mais admin.' }[acao]);
-    atualizarGrupo(vez);
+    if (mesmo(t)) atualizarGrupo(t);
   }
   async function adicionar() {
     const m = B7.UI.modal('<h3>Adicionar ao grupo</h3><div class="sub">Número com DDI e DDD, ou procure nos contatos do WhatsApp.</div>' +
@@ -185,17 +188,19 @@ B7.WaInfo = (function () {
     };
   }
   async function editarTexto(campo) {
-    const g = estado.grupo;
+    const t = vez, g = estado.grupo;
     const v = await B7.UI.perguntar({ titulo: campo === 'nome' ? 'Nome do grupo no WhatsApp' : 'Descrição do grupo', rotulo: campo === 'nome' ? 'Todos os membros veem a troca.' : 'Aparece para todos os membros.', valor: (campo === 'nome' ? g.nome : g.descricao) || '', confirmar: 'Salvar' });
-    if (v == null) return;
+    if (v == null || !mesmo(t)) return;
     const val = String(v).trim();
     if (campo === 'nome' && !val) return B7.UI.toast('O nome não pode ficar vazio.');
     try { const r = await ctx.chamar('grupo_editar', { jid: estado.jid, numero: estado.num || undefined, [campo]: val }); if (r.erro) throw new Error(r.erro); }
     catch (e) { return B7.UI.toast(e.message, { tipo: 'erro' }); }
-    estado.grupo[campo] = val; pintarGrupo(); B7.UI.toast(campo === 'nome' ? 'Nome trocado no WhatsApp.' : 'Descrição trocada.');
+    B7.UI.toast(campo === 'nome' ? 'Nome trocado no WhatsApp.' : 'Descrição trocada.');
+    if (mesmo(t)) { estado.grupo[campo] = val; pintarGrupo(); }
   }
   async function trocarFoto(f) {
     if (!f) return;
+    const t = vez;
     if (!/^image\/(jpeg|png|webp)$/.test(f.type) || f.size > 5 * 1024 * 1024) return B7.UI.toast('Use uma imagem JPG, PNG ou WebP de até 5 MB.', { tipo: 'erro' });
     status('enviando a foto…');
     try {
@@ -205,24 +210,25 @@ B7.WaInfo = (function () {
       if (up.error) throw new Error('Não consegui subir a imagem.');
       const r = await ctx.chamar('grupo_foto', { jid: estado.jid, numero: estado.num || undefined, path });
       if (r.erro) throw new Error(r.erro);
-      B7.UI.toast('Foto do grupo trocada.'); atualizarGrupo(vez);
-    } catch (e) { status(''); B7.UI.toast(e.message, { tipo: 'erro' }); }
+      B7.UI.toast('Foto do grupo trocada.'); if (mesmo(t)) atualizarGrupo(t);
+    } catch (e) { if (mesmo(t)) status(''); B7.UI.toast(e.message, { tipo: 'erro' }); }
   }
   async function link(revogar) {
+    const t = vez;
     if (revogar && !(await B7.UI.confirmar({ titulo: 'Trocar o link de convite?', texto: 'O link atual para de funcionar na hora. Quem ainda não entrou vai precisar do link novo.', confirmar: 'Trocar o link', perigo: true }))) return;
     if (!revogar && estado.link) { try { await navigator.clipboard.writeText(estado.link); B7.UI.toast('Link copiado.'); } catch (e) { B7.UI.toast(estado.link); } return; }
-    try { const r = await ctx.chamar('grupo_convite', { jid: estado.jid, numero: estado.num || undefined, revogar: !!revogar }); if (r.erro) throw new Error(r.erro); estado.link = r.link; pintarGrupo(); if (revogar) B7.UI.toast('Link trocado. O antigo não funciona mais.'); }
+    try { const r = await ctx.chamar('grupo_convite', { jid: estado.jid, numero: estado.num || undefined, revogar: !!revogar }); if (r.erro) throw new Error(r.erro); if (revogar) B7.UI.toast('Link trocado. O antigo não funciona mais.'); if (mesmo(t)) { estado.link = r.link; pintarGrupo(); } }
     catch (e) { B7.UI.toast(e.message, { tipo: 'erro' }); }
   }
   async function mudarRegra(inp) {
-    const k = inp.dataset.regra, v = inp.checked;
+    const t = vez, k = inp.dataset.regra, v = inp.checked;
     const txt = { so_admins_enviam: v ? 'Só os admins vão poder mandar mensagem no grupo — inclusive o cliente fica sem poder escrever.' : 'Todos os membros voltam a poder mandar mensagem.',
       so_admins_editam: v ? 'Só os admins vão poder trocar nome, foto e descrição.' : 'Todos os membros vão poder trocar nome, foto e descrição.' }[k];
     if (!(await B7.UI.confirmar({ titulo: 'Mudar a regra do grupo?', texto: txt, confirmar: 'Mudar', perigo: v }))) { inp.checked = !v; return; }
     inp.disabled = true;
-    try { const r = await ctx.chamar('grupo_regra', { jid: estado.jid, numero: estado.num || undefined, [k]: v }); if (r.erro) throw new Error(r.erro); estado.grupo[k] = v; B7.UI.toast('Regra do grupo mudada.'); }
+    try { const r = await ctx.chamar('grupo_regra', { jid: estado.jid, numero: estado.num || undefined, [k]: v }); if (r.erro) throw new Error(r.erro); if (mesmo(t)) estado.grupo[k] = v; B7.UI.toast('Regra do grupo mudada.'); }
     catch (e) { inp.checked = !v; B7.UI.toast(e.message, { tipo: 'erro' }); }
-    pintarGrupo();
+    if (mesmo(t)) pintarGrupo();
   }
 
   /* ------------------------------------------------------------ perfil do contato */

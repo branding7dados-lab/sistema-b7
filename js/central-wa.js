@@ -91,12 +91,19 @@ B7.CentralWA = (function () {
   const nomeOuCodigo = d => nomeCodigo(d) || (/^\d{14,}$/.test(d) ? 'Contato' : '+' + d);
   /* nome de quem escreveu: o guardado, ou — se for só o código do WhatsApp — o nome conhecido da pessoa */
   const nomeMsg = m => m.autor_nome && !/^\+?\d{8,}$/.test(m.autor_nome) ? m.autor_nome : nomeOuCodigo(num(m.autor_jid) || String(m.autor_nome || '').replace('+', ''));
+  /* revisão 4.85.0: links e menções viram "fichas" numeradas (\u0001N\u0002) ANTES de escapar e formatar, e o HTML delas
+     é montado à parte. Os caracteres de controle do texto que chegou são tirados antes — ninguém consegue forjar uma
+     ficha (antes, "\u0001 https://… \u0003" no texto virava atributo de código). Menção dentro de link não existe. */
   function textoRico(t) {
-    let h = esc(String(t || '')).replace(/@(\d{8,})/g, (x, d) => '\u0001' + esc(jidCodigo(d)) + '\u0003' + esc(nomeOuCodigo(d)) + '\u0002');
-    h = h.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
-    h = h.replace(/(^|[\s>])\*([^*\n]+)\*(?=[\s<.,!?]|$)/g, '$1<b>$2</b>').replace(/(^|[\s>])_([^_\n]+)_(?=[\s<.,!?]|$)/g, '$1<i>$2</i>')
-      .replace(/(^|[\s>])~([^~\n]+)~(?=[\s<.,!?]|$)/g, '$1<s>$2</s>');
-    h = h.replace(/\u0001([^\u0003]*)\u0003([^\u0002]*)\u0002/g, '<span class="wz-mc" data-perfil="$1" role="button" tabindex="0">@$2</span>');
+    const fichas = [];
+    const ficha = html => '\u0001' + (fichas.push(html) - 1) + '\u0002';
+    let s = String(t || '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+    s = s.replace(/https?:\/\/[^\s<]+/g, u => ficha('<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(u) + '</a>'));
+    s = s.replace(/@(\d{8,})/g, (x, d) => ficha('<span class="wz-mc" data-perfil="' + esc(jidCodigo(d)) + '" role="button" tabindex="0">@' + esc(nomeOuCodigo(d)) + '</span>'));
+    let h = esc(s);
+    h = h.replace(/(^|[\s>\u0002])\*([^*\n]+)\*(?=[\s<.,!?\u0001]|$)/g, '$1<b>$2</b>').replace(/(^|[\s>\u0002])_([^_\n]+)_(?=[\s<.,!?\u0001]|$)/g, '$1<i>$2</i>')
+      .replace(/(^|[\s>\u0002])~([^~\n]+)~(?=[\s<.,!?\u0001]|$)/g, '$1<s>$2</s>');
+    h = h.replace(/\u0001(\d+)\u0002/g, (x, i) => fichas[+i] || '');
     return h.replace(/\n/g, '<br>');
   }
   /* toda ação vai pelo número da conversa aberta (ou o escolhido na barra) */
@@ -171,7 +178,8 @@ B7.CentralWA = (function () {
     let ult = 0; try { ult = Number(localStorage.getItem('b7.wz.contatos2') || 0); } catch (e) {}
     if (Date.now() - ult < 6 * 3600e3) return;
     try { localStorage.setItem('b7.wz.contatos2', String(Date.now())); } catch (e) {}
-    Promise.all((S.nums.length ? S.nums : [null]).map(n => chamar('contatos', { numero: n ? n.id : undefined }))).then(async () => { await Promise.all([carregarContatos(), carregarConversas()]); pintarLista(); }).catch(() => {});
+    /* 4.85.0: depois dos contatos, os membros de todos os grupos (chamada à parte, por número) */
+    Promise.all((S.nums.length ? S.nums : [null]).map(n => chamar('contatos', { numero: n ? n.id : undefined }).then(() => chamar('grupos_sync', { numero: n ? n.id : undefined }).catch(() => null)))).then(async () => { await Promise.all([carregarContatos(), carregarConversas()]); pintarLista(); }).catch(() => {});
   }
   async function carregarConversas() {
     /* 4.53.6: os nomes dos contatos chegam depois — não seguram a abertura da tela */

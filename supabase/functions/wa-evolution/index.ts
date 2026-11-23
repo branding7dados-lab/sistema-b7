@@ -248,13 +248,22 @@ async function atualizarContatos(n: Numero | null) {
       } catch (_e) { /* segue */ }
     }));
   }
-  /* 4.85.0: membros de todos os grupos do número (para "grupos em comum" e o selo da equipe) */
-  let gruposN = 0;
-  try {
-    const g = await evo('/group/fetchAllGroups/' + I(n) + '?getParticipants=true', 'GET', undefined, 120000);
-    if (g.ok && Array.isArray(g.dados)) for (const x of g.dados) { if (x?.id && /@g\.us$/.test(x.id)) { try { await gravarGrupo(n, String(x.id), x); gruposN++; } catch (_e) { /* segue */ } } }
-  } catch (_e) { /* segue sem os membros */ }
-  return { ok: true, contatos: qtd, fotos, grupos: gruposN };
+  return { ok: true, contatos: qtd, fotos };
+}
+
+/* 4.85.0 (revisão): membros de todos os grupos do número — "grupos em comum" e o selo da equipe. Chamada à parte
+   (a Central chama logo depois de "contatos"), em lotes paralelos, e para antes do limite de tempo da função. */
+async function sincronizarGrupos(n: Numero | null) {
+  const t0 = Date.now();
+  const g = await evo('/group/fetchAllGroups/' + I(n) + '?getParticipants=true', 'GET', undefined, 90000);
+  if (!g.ok || !Array.isArray(g.dados)) return { erro: 'O WhatsApp não mandou a lista de grupos (' + g.status + ').' };
+  const lista = g.dados.filter((x: any) => x?.id && /@g\.us$/.test(String(x.id)));
+  let feitos = 0;
+  for (let i = 0; i < lista.length; i += 8) {
+    if (Date.now() - t0 > 120000) break;
+    await Promise.all(lista.slice(i, i + 8).map(async (x: any) => { try { await gravarGrupo(n, String(x.id), x); feitos++; } catch (_e) { /* segue */ } }));
+  }
+  return { ok: true, grupos: lista.length, feitos };
 }
 
 /* ------------------------------------------------ 4.85.0: dados do grupo */
@@ -499,6 +508,7 @@ Deno.serve(comCors(async (req: Request) => {
       }
       case 'importar': return json(await importar(n, Math.max(0, Number(c.pagina) || 0)));
       case 'contatos': return json(await atualizarContatos(n));
+      case 'grupos_sync': return json(await sincronizarGrupos(n));
       /* 4.56.0: mandar agora as pendências no grupo da equipe */
       case 'assistente_pendencias': return json(await mandarResumo(admin(), null, true));
       /* 4.84.0: cadastro de números (Configurações do WhatsApp → Números) */

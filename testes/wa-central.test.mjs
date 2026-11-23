@@ -33,6 +33,10 @@ const MSGS = [{ numero_id: 'n-des', id: 'q1', jid: '120@g.us', de_mim: false, au
 /* conversa da Bia: 2 dias de mensagens, para a data grudada no topo */
 for (let k = 0; k < 40; k++) MSGS.push({ numero_id: 'n-des', id: 'b' + k, jid: '5562999990000@s.whatsapp.net', de_mim: k % 2 === 0, tipo: 'texto', texto: 'Mensagem ' + k + ' — um texto para ocupar espaço na conversa',
   criada_em: new Date(agora - (k < 20 ? 3 * 1440 + 60 - k : 30 - (k - 20)) * 60000).toISOString(), status: 'SERVER_ACK' });
+/* revisão: texto com caracteres de controle (não pode virar código) e link com @dígitos */
+MSGS.push({ numero_id: 'n-des', id: 'x1', jid: '120@g.us', de_mim: false, autor_jid: '556211110000@s.whatsapp.net', autor_nome: 'Ana', tipo: 'texto',
+  texto: '\u0001 https://x/onmouseover=alert(document.domain)// \u0003oi\u0002', criada_em: iso(8) },
+  { numero_id: 'n-des', id: 'x2', jid: '120@g.us', de_mim: false, autor_jid: '556211110000@s.whatsapp.net', autor_nome: 'Ana', tipo: 'texto', texto: 'veja https://x.com/@12345678 ok *negrito @221633885266163*', criada_em: iso(7) });
 const CONTATOS = [{ jid: '221633885266163@lid', nome: 'Luana Felix Perdão' }];
 const falhas = []; const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if (!c) falhas.push(m); };
 
@@ -53,6 +57,7 @@ async function abrirCentral(viewport, rota = '#/whatsapp', papel = 'admin') {
           { jid: '777@lid', telefone: '556222220000', admin: null, nome: 'Pedro Equipe', b7: false, equipe: true },
           { jid: '556233330000@s.whatsapp.net', telefone: '556233330000', admin: 'admin', nome: null, b7: true, equipe: false }], b7_admin: true }; }
       if (corpo.acao === 'contato_perfil') r = { perfil: { nome: 'Ana Souza', recado: 'Disponível', telefone: '556211110000', comercial: true, descricao: 'Padaria', email: 'ana@exemplo.com' }, grupos: [{ numero_id: 'n-des', grupo_jid: '120@g.us', nome: 'Cliente Alfa · Design' }] };
+      if (corpo.acao === 'grupo_convite') { await new Promise(r => setTimeout(r, DEMORA)); r = { link: 'https://chat.whatsapp.com/AAA' }; }
       if (corpo.acao === 'grupo_membros') r = corpo.operacao ? { feito: corpo.participantes, falhou: [] } : { erro: 'Ação inválida.' };
       if (corpo.acao === 'numero_salvar') { const n = { id: 'n-coo', instancia: 'b7-coordenacao', padrao: false, ativo: true, ordem: 2, ...corpo }; delete n.acao; NUMS = NUMS.concat(n); r = { numero: n }; }
       return rota.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(r) });
@@ -156,6 +161,12 @@ const itens = pg => pg.$$eval('.wz-it', l => l.map(e => ({ nome: e.querySelector
   ok(mc && mc.t === '@Luana Felix Perdão' && mc.p === '221633885266163@lid', 'menção vira "@Nome" destacado (' + JSON.stringify(mc) + ')');
   const qa = await pg.$eval('.wz-q b', e => e.textContent).catch(() => '');
   ok(qa === 'Luana Felix Perdão', 'citação mostra o nome, não o código (' + qa + ')');
+  const inj = await pg.$$eval('#wz-msgs [onmouseover], #wz-msgs [onerror]:not(img)', l => l.length);
+  ok(inj === 0, 'texto com caracteres de controle não vira atributo de código');
+  const lk = await pg.$$eval('#wz-msgs a[href*="x.com"]', l => l.map(a => a.getAttribute('href')));
+  ok(lk.length === 1 && lk[0] === 'https://x.com/@12345678', 'link com @dígitos continua inteiro (' + lk.join(' ') + ')');
+  const negr = await pg.$$eval('#wz-msgs b .wz-mc', l => l.map(e => e.textContent));
+  ok(negr.includes('@Luana Felix Perdão'), 'menção dentro de *negrito* funciona');
   if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/mencao.png', import.meta.url)) });
   await pg.click('.wz-cab-nome'); await pg.waitForSelector('.wz-info-m', { timeout: 5000 }).catch(() => null);
   const info = await pg.$eval('.wz-info', e => e.innerText).catch(() => '');
@@ -173,6 +184,18 @@ const itens = pg => pg.$$eval('.wz-it', l => l.map(e => ({ nome: e.querySelector
   ok(/Perfil do contato/.test(pf) && /Disponível/.test(pf) && /Padaria/.test(pf) && /Cliente Alfa · Design/.test(pf), 'perfil com recado, empresa e grupos em comum');
   if (process.env.PRINT) await pg.screenshot({ path: fileURLToPath(new URL('prints-wa/perfil.png', import.meta.url)) });
   await pg.click('.wz-info [data-info="fechar"]');
+  /* revisão: ação de admin que demora não pinta o resultado no painel que estiver aberto depois */
+  await pg.click('.wz-cab-nome'); await pg.waitForSelector('.wz-info [data-info="link"]:not([disabled])', { timeout: 5000 }).catch(() => null);
+  DEMORA = 1200;
+  await pg.click('.wz-info [data-info="link"]'); await pg.waitForTimeout(150);
+  /* antes da resposta: vai para o mesmo grupo no número dos vídeos e abre os dados dele */
+  await pg.click('.wz-it[data-num="n-vid"][data-jid="120@g.us"]'); await pg.waitForTimeout(300);
+  DEMORA = 0;
+  await pg.click('.wz-cab-nome'); await pg.waitForTimeout(1800);
+  const depois = await pg.$eval('.wz-info', e => e.innerText).catch(() => '');
+  ok(/Dados do grupo/.test(depois) && !/chat\.whatsapp\.com/.test(depois), 'link pedido no grupo A não aparece no painel do grupo B');
+  await pg.click('.wz-info [data-info="fechar"]');
+  await pg.click('.wz-it[data-num="n-des"][data-jid="120@g.us"]'); await pg.waitForTimeout(600);
   /* resposta atrasada não pinta o painel em outra conversa */
   DEMORA = 1200;
   await pg.click('.wz-cab-nome'); await pg.waitForTimeout(150);
