@@ -113,7 +113,7 @@ B7.Cadastro = (function () {
     }
     if (bloco === 'pacote') {
       const p = d.pacote, lista = (cx.pacotes || []).slice();
-      if (p.pacote_id && !lista.some(x => x.id === p.pacote_id)) lista.unshift({ id: p.pacote_id, nome: (p.nome || 'Pacote') + (p.arquivado ? ' (arquivado)' : ''), itens: p.padrao || [] });
+      if (p.pacote_id && !lista.some(x => x.id === p.pacote_id)) lista.unshift({ id: p.pacote_id, nome: (p.nome || 'Serviços') + (p.arquivado ? ' (arquivado)' : ''), itens: p.padrao || [] });
       return '<div class="mb"><label class="rot" for="cd-pacote">SERVIÇOS CONTRATADOS</label>' +
           '<select class="campo" id="cd-pacote"><option value="">Nada definido por enquanto</option>' +
             lista.map(x => '<option value="' + esc(x.id) + '"' + (x.id === p.pacote_id ? ' selected' : '') + '>' + esc(x.nome) + ' — ' + B7.Pacotes.total(x) + ' no mês</option>').join('') + '</select>' +

@@ -27,7 +27,7 @@ window.B7 = window.B7 || {};
 B7.NOVIDADES_VERSOES = [
   { id: 'v-4.88.2', versao: '4.88.2', em: '2026-11-24T19:00:00-03:00', rota: 'clientes',
     titulo: 'Cadastro: serviços contratados e duração do contrato',
-    itens: ['"Pacote" agora se chama "Serviços contratados", no cadastro do cliente e na Gestão.',
+    itens: ['"Pacote" agora se chama "Serviços contratados": no cadastro do cliente, na Gestão, nas Configurações e na nova linha editorial.',
       'Contrato: escolha Avulso ou a duração — 1 mês, 3 meses, 6 meses, 12 meses ou mais. O "mensal" saiu.',
       'Como trabalhamos com o cliente: ficam Linha editorial e Roteiros e trends.',
       'Observações do cadastro não pedem mais o tom de voz: ele fica na linha editorial.'] },

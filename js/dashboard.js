@@ -2300,7 +2300,7 @@ B7.Dashboard = (function () {
       ['aparelho', 'Este aparelho', 'versao', 'cinza', 'Versão, atualização e limpeza', 'voce', secAparelho],
       ['pessoas', 'Pessoas e acessos', 'usuarios', 'azul', 'Contas, senhas, funções e módulos', 'adm', ehAdm && pode('usuarios') && B7.Usuarios ? hospede('usuarios') : '', true],
       ['funcoes', 'Funções e permissões', 'escudo', 'violeta', 'O que cada função e cada pessoa pode fazer', 'adm', ehAdm && pode('usuarios') && B7.Usuarios && B7.Usuarios.montarMatriz ? hospede('matriz') : '', true],
-      ['pacotes', 'Pacotes de produção', 'pacote', 'verde', 'O que cada cliente contrata por mês', 'adm',
+      ['pacotes', 'Serviços contratados', 'pacote', 'verde', 'O que cada cliente contrata por mês', 'adm',
         B7.Pacotes && B7.Perm && B7.Perm.podeNivel('linhas', 'ver') ? '<div data-pacotes></div>' : '', true],
       ['equipe', 'Equipe', 'usuarios', 'azul', 'Recado, segurança, carga e o que a equipe vê', 'adm', secEquipe, true],
       ['agenda-equipe', 'Ausências e aniversários', 'calendario', 'rosa', 'Férias, folgas e os aniversários da equipe', 'adm',

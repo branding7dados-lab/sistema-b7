@@ -898,7 +898,7 @@ B7.AJUDA_DADOS = [
       []
      ],
      [
-      "Na etapa \"Serviços contratados\", escolha o que o cliente contratou (os pacotes de serviços são criados em Gestão → \"Serviços contratados\"). Se ele negociou quantidades diferentes, marque \"Ajustar as quantidades só para este cliente\" e mude os números. Em \"VALE DESDE\", escolha a data em que o contrato começa a contar. O que foi contratado é a entrega mínima do mês e é com ele que a Gestão compara em \"Contratado × entregue\".",
+      "Na etapa \"Serviços contratados\", escolha o que o cliente contratou (os serviços são criados em Gestão → \"Serviços contratados\"). Se ele negociou quantidades diferentes, marque \"Ajustar as quantidades só para este cliente\" e mude os números. Em \"VALE DESDE\", escolha a data em que o contrato começa a contar. O que foi contratado é a entrega mínima do mês e é com ele que a Gestão compara em \"Contratado × entregue\".",
       []
      ],
      [
