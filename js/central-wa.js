@@ -86,11 +86,17 @@ B7.CentralWA = (function () {
     return n && !/^\+?\d+$/.test(n) ? n : null;
   };
   const semCodigos = t => String(t || '').replace(/@(\d{8,})/g, (x, d) => { const n = nomeCodigo(d); return n ? '@' + n : x; });
+  /* 4.85.0: menção "@código" vira "@Nome" destacado, como no WhatsApp; clicar abre o perfil da pessoa */
+  const jidCodigo = d => (S.contatos && S.contatos.has(d + '@lid')) || (S.msgs || []).some(x => x.autor_jid === d + '@lid') ? d + '@lid' : d + '@s.whatsapp.net';
+  const nomeOuCodigo = d => nomeCodigo(d) || (/^\d{14,}$/.test(d) ? 'Contato' : '+' + d);
+  /* nome de quem escreveu: o guardado, ou — se for só o código do WhatsApp — o nome conhecido da pessoa */
+  const nomeMsg = m => m.autor_nome && !/^\+?\d{8,}$/.test(m.autor_nome) ? m.autor_nome : nomeOuCodigo(num(m.autor_jid) || String(m.autor_nome || '').replace('+', ''));
   function textoRico(t) {
-    let h = esc(semCodigos(t));
+    let h = esc(String(t || '')).replace(/@(\d{8,})/g, (x, d) => '\u0001' + esc(jidCodigo(d)) + '\u0003' + esc(nomeOuCodigo(d)) + '\u0002');
     h = h.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
     h = h.replace(/(^|[\s>])\*([^*\n]+)\*(?=[\s<.,!?]|$)/g, '$1<b>$2</b>').replace(/(^|[\s>])_([^_\n]+)_(?=[\s<.,!?]|$)/g, '$1<i>$2</i>')
       .replace(/(^|[\s>])~([^~\n]+)~(?=[\s<.,!?]|$)/g, '$1<s>$2</s>');
+    h = h.replace(/\u0001([^\u0003]*)\u0003([^\u0002]*)\u0002/g, '<span class="wz-mc" data-perfil="$1" role="button" tabindex="0">@$2</span>');
     return h.replace(/\n/g, '<br>');
   }
   /* toda ação vai pelo número da conversa aberta (ou o escolhido na barra) */
@@ -146,6 +152,7 @@ B7.CentralWA = (function () {
   function sair() {
     if (S.canal) { B7.DB.fecharCanal(S.canal); S.canal = null; }
     pararGravacao(true);
+    if (B7.WaInfo) B7.WaInfo.fechar();
     S.aberta = null; S.abertaNum = null; document.body.classList.remove('wz-tela-cheia');
   }
 
@@ -247,6 +254,7 @@ B7.CentralWA = (function () {
     /* sem número: o da conversa aberta, o escolhido na barra, ou a primeira conversa com esse jid */
     let c = numId ? conv(jid, numId) : (conv(jid) || (S.num !== 'todos' ? conv(jid, S.num) : null) || S.conversas.find(x => x.jid === jid));
     if (!c) return;
+    if (B7.WaInfo) B7.WaInfo.fechar();   /* 4.85.0: o painel de dados é da conversa que estava aberta */
     S.abertaNum = c.numero_id || null;
     S.aberta = jid; S.msgs = []; S.fim = false; S.citar = null; S.grudado = true;
     raiz.classList.add('wz-com-chat'); document.body.classList.add('wz-tela-cheia');
@@ -302,8 +310,10 @@ B7.CentralWA = (function () {
     }
     const cli = c.cliente_id && S.clientes.find(x => x.id === c.cliente_id);
     cx.innerHTML =
-      '<header class="wz-cab"><button class="wz-ic wz-volta" data-wz="voltar" aria-label="Voltar">' + I.volta + '</button>' + avatar(c, 'p') +
-        '<div class="wz-cab-tx"><b class="wz-cab-nome" data-wz="renomear" title="Clique para renomear">' + esc(c.nome || num(c.jid)) + '</b><small>' + (c.tipo === 'grupo' ? 'Grupo' : esc(fone(c.jid))) + (cli ? ' · cliente ' + esc(cli.nome) : '') +
+      '<header class="wz-cab"><button class="wz-ic wz-volta" data-wz="voltar" aria-label="Voltar">' + I.volta + '</button>' +
+        /* 4.85.0: foto e nome abrem os dados do grupo / o perfil (renomear fica no menu ⋯) */
+        '<button class="wz-cab-av" data-wz="info" aria-label="' + (c.tipo === 'grupo' ? 'Dados do grupo' : 'Perfil do contato') + '">' + avatar(c, 'p') + '</button>' +
+        '<div class="wz-cab-tx"><b class="wz-cab-nome" data-wz="info" role="button" tabindex="0" title="' + (c.tipo === 'grupo' ? 'Ver os dados do grupo' : 'Ver o perfil') + '">' + esc(c.nome || num(c.jid)) + '</b><small>' + (c.tipo === 'grupo' ? 'Grupo' : esc(fone(c.jid))) + (cli ? ' · cliente ' + esc(cli.nome) : '') +
           (varios() && numDe(c) ? ' · <span class="wz-via">via ' + B7.WaNumeros.ponto(numDe(c)) + ' ' + esc(numDe(c).nome) + '</span>' : '') + '</small></div>' +
         '<div class="wz-cab-acoes"><button class="wz-ic wz-so-pc' + (S.lado ? ' on' : '') + '" data-wz="lado" title="Painel do cliente">' + I.lado + '</button>' +
           '<div class="menu"><button class="wz-ic" data-menu aria-label="Opções da conversa">' + I.mais + '</button><div class="lista">' +
@@ -350,7 +360,7 @@ B7.CentralWA = (function () {
   function pintarMensagens() {
     const cx = raiz && raiz.querySelector('#wz-msgs'); if (!cx) return;
     const grupo = ehGrupo(S.aberta);
-    let html = S.fim ? '<div class="wz-inicio">🔒 Conversa do WhatsApp do B7 · só a equipe de vídeo vê aqui</div>' : '<div class="wz-mais-antigas">Carregando mensagens anteriores…</div>';
+    let html = S.fim ? '<div class="wz-inicio">🔒 Conversa do WhatsApp do B7 · só a equipe deste número vê aqui</div>' : '<div class="wz-mais-antigas">Carregando mensagens anteriores…</div>';
     let ultDia = '';
     S.msgs.forEach((m, i) => {
       const d = dia(m.criada_em);
@@ -378,7 +388,7 @@ B7.CentralWA = (function () {
   }
   /* 4.81.1: fotinha de quem fala no grupo (foto do WhatsApp; sem foto, as iniciais na cor da pessoa) */
   function fotoAutor(m, cls) {
-    const nome = m.autor_nome || num(m.autor_jid), foto = S.fotos && S.fotos.get(m.autor_jid);
+    const nome = nomeMsg(m), foto = S.fotos && S.fotos.get(m.autor_jid);
     return '<span class="wz-fa ' + (cls || '') + '" style="--c:' + corDe(m.autor_nome || m.autor_jid) + '" title="' + esc(nome) + '">' + (foto ? '<img src="' + esc(foto) + '" alt="" loading="lazy" onerror="this.remove()">' : '') + '<b>' + esc(ini(nome)) + '</b></span>';
   }
   function fotoConversa(jid) {
@@ -393,14 +403,18 @@ B7.CentralWA = (function () {
     else {
       if (m.citada_id) {
         const q = S.msgs.find(x => x.id === m.citada_id);
-        const qa = q ? (q.de_mim ? 'Você' : (q.autor_nome || '')) : (m.citada_autor ? (/^\d{14,}$/.test(m.citada_autor) ? 'Contato' : '+' + m.citada_autor) : '');
+        /* 4.85.0: nome guardado que é só o código do WhatsApp ("221633885266163") vira o nome da pessoa (ou "Contato") */
+        const semNum = n => n && /^\+?\d{8,}$/.test(n) ? nomeOuCodigo(String(n).replace('+', '')) : n;
+        const qa = q ? (q.de_mim ? 'Você' : (semNum(q.autor_nome) || (q.autor_jid ? nomeOuCodigo(num(q.autor_jid)) : ''))) : (m.citada_autor ? nomeOuCodigo(String(m.citada_autor)) : '');
         corpo += '<span class="wz-q" data-ir-msg="' + esc(m.citada_id) + '"><b style="--c:' + corDe(qa) + '">' + esc(qa || 'Mensagem') + '</b>' + esc(semCodigos((q && (q.texto || q.midia_nome)) || m.citada_previa || '')) + '</span>';
       }
       corpo += midia(m);
       if (m.texto && m.tipo === 'audio') corpo += blocoTransc(m.texto);
       else if (m.texto && m.tipo !== 'localizacao' && m.tipo !== 'contato' && m.tipo !== 'enquete') corpo += '<span class="wz-txt">' + textoRico(m.texto) + '</span>';
     }
-    const autor = !m.de_mim && grupo && !seguida ? '<span class="wz-autor" style="--c:' + corDe(m.autor_nome || m.autor_jid) + '">' + esc(m.autor_nome || num(m.autor_jid)) + '</span>' : '';
+    /* 4.85.0: nome que é só o código do WhatsApp vira o nome da pessoa; clicar no nome abre o perfil */
+    const nomeAutor = nomeMsg(m);
+    const autor = !m.de_mim && grupo && !seguida ? '<span class="wz-autor" style="--c:' + corDe(m.autor_nome || m.autor_jid) + '" data-perfil="' + esc(m.autor_jid || '') + '" role="button" tabindex="0">' + esc(nomeAutor) + '</span>' : '';
     const quem = m.de_mim && m.enviada_por_nome ? '<span class="wz-quem">' + esc(m.enviada_por_nome.split(' ')[0]) + '</span>' : '';
     /* 4.66.3: a bolinha de reações abre quem reagiu (e deixa tirar a sua) */
     const reac = m.reacoes && Object.keys(m.reacoes).length ? '<button type="button" class="wz-reac' + (Object.values(m.reacoes).some(l => l.includes('eu')) ? ' minha' : '') + '" data-acao-msg="reacoes" title="Ver quem reagiu">' + Object.entries(m.reacoes).map(([e, l]) => e + (l.length > 1 ? ' ' + l.length : '')).join(' ') + '</button>' : '';
@@ -552,7 +566,13 @@ B7.CentralWA = (function () {
     acao(alvo.dataset.wz);
   }, true);
 
+  /* 4.85.0: o que o painel de dados do grupo / perfil (js/wa-info.js) usa da Central */
+  const ctxInfo = () => ({ raiz: () => raiz, conv: (jid, n) => conv(jid, n === undefined ? S.abertaNum : n), abrirConversa, chamar, clientes: () => S.clientes,
+    souAdmin, numero: id => (B7.WaNumeros && id ? B7.WaNumeros.porId(id) : null), varios });
   function cliqueGeral(e) {
+    if (e.target.closest('.wz-info')) return;   /* cliques dentro do painel são dele */
+    const pf = e.target.closest('[data-perfil]');
+    if (pf && pf.dataset.perfil && B7.WaInfo) { e.preventDefault(); return B7.WaInfo.abrirContato(pf.dataset.perfil, S.abertaNum, ctxInfo()); }
     const it = e.target.closest('.wz-it'); if (it) return abrirConversa(it.dataset.jid, it.dataset.num || null);
     const nb = e.target.closest('[data-num]'); if (nb && nb.closest('.wz-nums')) { S.num = nb.dataset.num; if (B7.WaNumeros) B7.WaNumeros.escolher(S.num); pintarFiltros(); pintarLista(); return; }
     const ia = e.target.closest('[data-ia]'); if (ia) { B7.UI.fecharMenus && B7.UI.fecharMenus(); return ajudaIA(ia.dataset.ia); }
@@ -601,7 +621,8 @@ B7.CentralWA = (function () {
 
   async function acao(a) {
     const c = S.aberta && conv(S.aberta);
-    if (a === 'voltar') { S.aberta = null; S.abertaNum = null; raiz.classList.remove('wz-com-chat'); document.body.classList.remove('wz-tela-cheia'); pintarLista(); pintarChat(); pintarLado(); return; }
+    if (a === 'info' && c && B7.WaInfo) return c.tipo === 'grupo' ? B7.WaInfo.abrirGrupo(c, ctxInfo()) : B7.WaInfo.abrirContato(c.jid, c.numero_id || null, ctxInfo());
+    if (a === 'voltar') { if (B7.WaInfo) B7.WaInfo.fechar(); S.aberta = null; S.abertaNum = null; raiz.classList.remove('wz-com-chat'); document.body.classList.remove('wz-tela-cheia'); pintarLista(); pintarChat(); pintarLado(); return; }
     if (a === 'lado') { S.lado = !S.lado; raiz.classList.toggle('sem-lado', !S.lado); pintarChat(); pintarMensagens(); pintarLado(); return; }
     if (a === 'conexao') return B7.WaCentral && B7.WaCentral.abrir(S.num !== 'todos' ? S.num : null);
     if (a === 'importar') return importar(S.num !== 'todos' ? S.num : null);
@@ -959,7 +980,7 @@ B7.CentralWA = (function () {
     /* 4.80.1: o Otto leu a conversa — mostra o que falta, nas palavras dele */
     const vezAtual = c.vez && ((c.vez === 'cliente') === !!c.esperando_desde) && ((c.vez === 'equipe') === !!c.aguardando_cliente_desde);
     if (vezAtual && c.vez_motivo) subEspera = (c.vez === 'ninguem' ? 'Assunto encerrado: ' : '') + c.vez_motivo;
-    const quemUlt = ult ? (ult.do_assistente ? 'Otto' : ult.de_mim ? (ult.enviada_por_nome ? ult.enviada_por_nome.split(' ')[0] : 'Você') : (ult.autor_nome || c.nome || 'Contato').split(' ')[0]) : '';
+    const quemUlt = ult ? (ult.do_assistente ? 'Otto' : ult.de_mim ? (ult.enviada_por_nome ? ult.enviada_por_nome.split(' ')[0] : 'Você') : (ult.autor_jid || ult.autor_nome ? nomeMsg(ult) : (c.nome || 'Contato')).split(' ')[0]) : '';
     const resumoUlt = ult ? (ult.texto ? semCodigos(ult.texto) : ({ imagem: '📷 Foto', video: '🎬 Vídeo', audio: '🎤 Áudio', figurinha: '💟 Figurinha', documento: '📄 ' + (ult.midia_nome || 'Documento') })[ult.tipo] || 'Mensagem') : '';
     const fotos = msgs.filter(m => (m.tipo === 'imagem' || m.tipo === 'video') && m.miniatura).slice(-6).reverse();
     const ic = (d) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';

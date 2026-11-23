@@ -553,7 +553,8 @@ Deno.serve(comCors(async (req: Request) => {
         return json(await perfilDoContato(p, n, jid));
       }
       case 'grupo_membros': {
-        const jid = String(c.jid || ''), ac = String(c.acao || '');
+        /* {operacao}: o campo acao já é o nome da ação da função */
+        const jid = String(c.jid || ''), ac = String(c.operacao || '');
         if (!/@g\.us$/.test(jid)) return json({ erro: 'Isto não é um grupo.' });
         if (!['add', 'remove', 'promote', 'demote'].includes(ac)) return json({ erro: 'Ação inválida.' });
         const quem = (Array.isArray(c.participantes) ? c.participantes : []).map((x: unknown) => participanteParaEnvio(String(x))).filter(Boolean) as string[];
