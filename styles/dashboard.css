@@ -2443,3 +2443,54 @@ button.pa-cel:disabled{opacity:.5;cursor:wait;}
 .cd-opcao input:checked + span{border-color:var(--acento);background:var(--acento-suave);}
 .cd-opcao input:checked + span b{color:var(--acento);}
 .cd-opcao input:focus-visible + span{outline:2px solid var(--acento);outline-offset:2px;}
+
+/* ===================================================================
+   4.89.0 — PUXAR DO NÚCLEO 7 (js/n7-puxar.js)
+   =================================================================== */
+.cl2-acoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.cd-resumo .cd-n7{flex:none;}
+.np-janela [hidden]{display:none !important;}
+.np-corpo{min-height:120px;}
+.np-nota{font-size:13.5px;line-height:1.5;color:var(--ink-3);margin:0 0 12px;}
+.np-nota.leve{font-size:12.5px;color:var(--ink-4);margin-top:12px;}
+.np-nota.erro{color:var(--erro);}
+.np-lig{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;border-radius:14px;background:var(--suave);font-size:13.5px;color:var(--ink-2);}
+.np-lig b{color:var(--ink);}
+.np-sit{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:var(--card);border:1px solid var(--borda);font-size:11px;font-weight:700;color:var(--ink-3);vertical-align:middle;}
+.np-cands{display:grid;gap:8px;margin-top:10px;}
+.np-cand{display:block;width:100%;text-align:left;padding:12px 14px;border:1.5px solid var(--borda);border-radius:14px;background:var(--card);font:inherit;color:var(--ink);cursor:pointer;transition:var(--t);}
+.np-cand:hover,.np-cand:focus-visible{border-color:var(--acento);background:var(--acento-suave);outline:none;}
+.np-cand b{display:block;font-size:14px;}
+.np-cand small{display:block;font-size:12px;color:var(--ink-3);margin-top:2px;}
+.np-tab{border:1px solid var(--borda);border-radius:16px;overflow:hidden;}
+.np-l{display:grid;grid-template-columns:36px minmax(120px,1fr) minmax(0,1.3fr) minmax(0,1.3fr);gap:10px;align-items:start;padding:10px 14px;border-top:1px solid var(--borda);font-size:13.5px;cursor:pointer;}
+.np-l:first-child{border-top:0;}
+.np-l.np-cab{cursor:default;background:var(--suave);font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4);padding-top:8px;padding-bottom:8px;}
+.np-l input{width:18px;height:18px;margin:1px 0 0;accent-color:var(--acento);}
+.np-l:hover:not(.np-cab){background:color-mix(in srgb,var(--acento) 4%,transparent);}
+.np-campo{font-weight:700;color:var(--ink);}
+.np-campo small{display:block;font-size:11px;font-weight:700;color:var(--ambar, #b7791f);margin-top:2px;}
+.np-b7{color:var(--ink-3);overflow-wrap:anywhere;}
+.np-n7{color:var(--ink);overflow-wrap:anywhere;}
+.np-vazio{color:var(--ink-4);font-style:italic;}
+.np-logo{display:block;max-width:90px;max-height:44px;border-radius:8px;object-fit:contain;background:var(--suave);}
+.np-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:16px;}
+.np-kpis span{padding:12px;border-radius:14px;background:var(--suave);font-size:12px;color:var(--ink-3);line-height:1.3;}
+.np-kpis b{display:block;font-family:'B7 Titulo';font-size:24px;font-weight:800;color:var(--ink);margin-bottom:3px;font-variant-numeric:tabular-nums;}
+.np-grupo{margin-top:14px;}
+.np-grupo h4{font-size:13.5px;font-weight:800;margin:0 0 8px;color:var(--ink);}
+.np-grupo h4 small{font-weight:600;color:var(--ink-4);margin-left:4px;}
+.np-grupo ul{list-style:none;margin:0;padding:0;border:1px solid var(--borda);border-radius:14px;max-height:240px;overflow-y:auto;}
+.np-grupo li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 14px;border-top:1px solid var(--borda);font-size:13.5px;}
+.np-grupo li:first-child{border-top:0;}
+.np-grupo li small{display:block;font-size:12px;color:var(--ink-4);margin-top:1px;}
+.np-fim b{display:block;font-size:16px;color:var(--ink);margin-bottom:10px;}
+.np-falhas{margin:0;padding-left:18px;font-size:13px;color:var(--ink-2);}
+@media (max-width:640px){
+  .np-l{grid-template-columns:30px minmax(0,1fr);}
+  .np-l.np-cab{display:none;}
+  .np-b7,.np-n7{grid-column:2;}
+  .np-b7::before{content:"No B7: ";color:var(--ink-4);}
+  .np-n7::before{content:"No Núcleo 7: ";color:var(--ink-4);}
+  .np-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
+}

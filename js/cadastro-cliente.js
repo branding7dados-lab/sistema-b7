@@ -394,7 +394,9 @@ B7.Cadastro = (function () {
       return '<header class="cd-resumo"><div class="cd-resumo-tx"><b>' + (pend.length ? 'Cadastro com ' + feitos.length + ' de ' + BLOCOS.length + ' partes preenchidas' : 'Cadastro completo') + '</b>' +
         '<small>' + (pend.length ? 'Falta ' + pend.map(b => b[1].toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' e $1') + '.' : 'Tudo o que a equipe precisa está aqui.') + '</small></div>' +
         '<ol class="cd-prog" aria-label="Partes do cadastro">' + BLOCOS.map(([k, r]) => '<li class="' + (temAlgo(k, d) ? 'ok' : '') + '">' +
-          (pode && !temAlgo(k, d) ? '<button type="button" data-cd-editar="' + k + '" title="Completar ' + esc(r) + '">' + esc(r) + '</button>' : '<span>' + esc(r) + '</span>') + '</li>').join('') + '</ol></header>';
+          (pode && !temAlgo(k, d) ? '<button type="button" data-cd-editar="' + k + '" title="Completar ' + esc(r) + '">' + esc(r) + '</button>' : '<span>' + esc(r) + '</span>') + '</li>').join('') + '</ol>' +
+        /* 4.89.0: o que já está preenchido no Núcleo 7 vem para cá */
+        (pode && B7.N7Puxar ? '<button type="button" class="b fina contorno cd-n7" data-cd-n7>Puxar do Núcleo 7</button>' : '') + '</header>';
     }
     function pintar() {
       /* editando: o bloco ocupa a largura toda, no topo; os outros continuam nas duas colunas */
@@ -406,6 +408,12 @@ B7.Cadastro = (function () {
         const sec = alvo.querySelector('.cd-b.editando'); if (sec && sec.scrollIntoView) sec.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
       alvo.querySelectorAll('[data-cd-copiar]').forEach(b => b.onclick = async () => {
         try { await navigator.clipboard.writeText(b.dataset.cdCopiar); B7.UI.toast(b.dataset.cdCopiar + ' copiado'); } catch (e) { B7.UI.toast('Não deu para copiar', { tipo: 'erro' }); } });
+      const n7 = alvo.querySelector('[data-cd-n7]');
+      if (n7) n7.onclick = () => B7.N7Puxar.um(id, d.cliente.nome, novo => {
+        const mudouTopo = novo && novo.cliente && novo.cliente.logo_url !== d.cliente.logo_url;
+        if (novo) d = novo; aberto = null;
+        if (mudouTopo && op.aoMudarCliente) return op.aoMudarCliente();
+        pintar(); });
       const pad = alvo.querySelector('[data-cd-padrao]');
       if (pad) pad.onclick = async () => {
         if (!(await B7.UI.confirmar({ titulo: 'Voltar ao padrão?', texto: 'As quantidades ajustadas deste cliente serão descartadas.', rotulo: 'Voltar ao padrão' }))) return;

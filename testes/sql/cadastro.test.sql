@@ -83,6 +83,29 @@ do $$ begin assert cliente_cadastro('00000000-0000-0000-0000-0000000000c1')->'in
 update clientes set contrato = 'mensal' where id = '00000000-0000-0000-0000-0000000000c1';
 do $$ begin assert (cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"interno":{"contrato_meses":null}}')->'interno'->'contrato_meses') = 'null'::jsonb; end $$;
 
+-- 3c) Núcleo 7 (zzz391): quem pode puxar, vínculo um para um, logo só quando o cliente está sem
+do $$ declare r jsonb; begin
+  assert cliente_cadastro_pode_puxar() = '{"um": true, "todos": true}'::jsonb, 'Financeiro (admin) puxa um e todos';
+  r := cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"interno":{"n7_cliente_id":"n7-alfa"}}');
+  assert r->'interno'->>'n7_cliente_id' = 'n7-alfa' and r->'interno'->>'cidade' = 'Salvador - BA', 'guarda o vínculo sem mexer no resto: ' || r::text;
+  assert cliente_cadastro('00000000-0000-0000-0000-0000000000c2')->'interno'->'n7_cliente_id' = 'null'::jsonb, 'quem não tem vínculo devolve null';
+  r := cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"logo_n7":"https://n7/logo.png","interno":{}}');
+  assert r->'cliente'->>'logo_url' = 'https://n7/logo.png', 'sem logo: a do Núcleo 7 entra';
+  r := cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"logo_n7":"https://n7/outra.png"}');
+  assert r->'cliente'->>'logo_url' = 'https://n7/logo.png', 'com logo: a do Núcleo 7 não troca';
+end $$;
+select pg_temp.recusa($$select cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c2', '{"interno":{"n7_cliente_id":"n7-alfa"}}')$$, 'já está ligado a "Alfa"');
+select pg_temp.recusa($$select cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c2', '{"logo_n7":"http://inseguro/x.png"}')$$, 'endereço inválido');
+select pg_temp.recusa($$select cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c2', '{"logo_n7":"javascript:alert(1)"}')$$, 'endereço inválido');
+do $$ begin assert (cliente_cadastro('00000000-0000-0000-0000-0000000000c2')->'interno'->'n7_cliente_id') = 'null'::jsonb, 'recusado não grava nada'; end $$;
+select pg_temp.sou('00000000-0000-0000-0000-0000000000e1');
+do $$ begin assert cliente_cadastro_pode_puxar() = '{"um": false, "todos": false}'::jsonb, 'coordenação com a ação negada: não puxa'; end $$;
+select pg_temp.sou('00000000-0000-0000-0000-0000000000d1');
+do $$ begin assert cliente_cadastro_pode_puxar() = '{"um": false, "todos": false}'::jsonb, 'designer não puxa'; end $$;
+select pg_temp.sou('00000000-0000-0000-0000-0000000000cc');
+do $$ begin assert cliente_cadastro_pode_puxar() = '{"um": false, "todos": false}'::jsonb, 'cliente do portal não puxa'; end $$;
+select pg_temp.sou('00000000-0000-0000-0000-0000000000f1');
+
 -- 4) validações (nada é gravado quando recusa)
 select pg_temp.recusa($$select cliente_cadastro_salvar('00000000-0000-0000-0000-0000000000c1', '{"interno":{"cidade":"NÃO GRAVAR","cnpj":"1234567800019"}}')$$, '14 números');
 do $$ begin assert (cliente_cadastro('00000000-0000-0000-0000-0000000000c1')->'interno'->>'cidade') = 'Salvador - BA'; end $$;
