@@ -195,17 +195,108 @@ O **nome** do cliente não é trazido (é por ele que se casa). Campo do Núcleo
 
 ---
 
-# Entrega 2 (esboço): entrar no B7 pelo Núcleo 7
-- **No Núcleo 7:** uma função que, para quem está logado, gera um **bilhete** assinado, com o e-mail da pessoa,
-  validade de 1 minuto e uso único. A Central abre o Sistema B7 **na mesma aba**, com o bilhete. Quem só tem o B7
-  é mandado direto para ele depois do login.
-- **No B7:** e-mail nas contas (`perfis`), ligado ao do Núcleo 7; o `b7-auth` aceita o bilhete, confere a
-  assinatura, acha a conta pelo e-mail e abre a sessão do jeito que o "entrar como" já faz; a tela de login passa
-  a aceitar e-mail além do nome de usuário.
-- **Mexe no Núcleo 7 (produção):** função nova, um segredo novo dos dois lados e mudança na Central. Antes de
-  aplicar, o Yury vê o que muda e dá o ok.
-- **A decidir no desenho dela:** o que fazer com quem tem verificação em duas etapas no B7; como preencher os
-  e-mails das contas do B7 (pelo nome, com conferência); e se a leitura dos clientes migra para a função nova.
+# Entrega 2: entrar no B7 pelo Núcleo 7 (4.90)
+
+## O que já existe
+- **Núcleo 7:** login por e-mail e senha (`entrarPelaPortaUnica`). A equipe (`app_users`) vai para `/` (a N7 Gestão).
+  A Central fica em `/central` e lista os sistemas liberados para a pessoa (`useSistemasLiberados`): super admin
+  abre tudo; **a N7 Gestão vem liberada para toda a equipe**; os outros só com liberação em Usuários. O Sistema B7
+  abre em **aba nova**, sem login (`window.open`). O Núcleo 7 não pede código de verificação no login.
+- **B7:** login por nome de usuário e senha na função `b7-auth`. Cada conta tem por dentro uma identidade técnica
+  (`<id>@b7.local`). O "entrar como" já abre a sessão de uma pessoa sem senha (link mágico na identidade técnica).
+  Administrador pode ter **verificação em duas etapas** (`dois_fatores.ts`).
+- **As contas do B7 não têm e-mail.** `perfis.email_resumo` existe, mas é o e-mail para receber o resumo, opcional.
+
+## Metas
+1. Clicar em **Sistema B7** na Central do Núcleo 7 abre o B7 **na mesma aba, já logado**, sem digitar senha.
+2. **Quem tem só o B7 cai direto nele** depois de entrar no Núcleo 7. A Central só aparece para quem tem mais de um
+   sistema.
+3. As contas do B7 ganham **e-mail**, e a tela de login do B7 aceita **e-mail ou nome de usuário**.
+4. O cliente que contratou só a B7 continua entrando pela tela do B7, como hoje.
+
+## Fora (não-metas)
+- Juntar as contas num banco só, ou copiar senhas de um sistema para o outro.
+- Trocar a senha num sistema e ela mudar no outro.
+- Clientes do portal do B7 entrando pelo Núcleo 7 (fica para depois; nesta entrega é a equipe e a administração).
+- Sair de um sistema derrubar o outro.
+
+## Antimetas
+- Alguém entrar no B7 com a conta de outra pessoa (bilhete reaproveitado, copiado ou forjado).
+- Um bilhete que vale por muito tempo ou que serve mais de uma vez.
+- Passar por cima da verificação em duas etapas do B7.
+- A senha do Núcleo 7 ou o token de login dele aparecerem num endereço (URL), num log ou no B7.
+
+## Como funciona: o bilhete
+1. A pessoa está logada no Núcleo 7 e clica em **Sistema B7**.
+2. A Central chama uma função nova do Núcleo 7, **`b7-bilhete`**, com o login da pessoa. A função confere que a
+   pessoa é da equipe, está ativa e tem o Sistema B7 liberado, e devolve um bilhete:
+   `{ e: <e-mail>, n: <nome>, x: <vale até, 60 s>, j: <número único> }`, assinado com HMAC-SHA256 com um segredo que
+   só os dois servidores têm (`B7_PONTE_SEGREDO`).
+3. A Central leva a pessoa para `https://sistema.branding7.com.br/#/ponte?b=<bilhete>` **na mesma aba**. O bilhete
+   vai depois do `#`, que o navegador não manda para nenhum servidor nem guarda nos registros de acesso.
+4. O B7 tira o bilhete do endereço na hora (para ele não ficar no histórico) e manda para a `b7-auth`
+   (`acao: 'ponte'`), que:
+   - confere a assinatura (comparação em tempo constante) e a validade;
+   - confere que o número único **nunca foi usado** e o marca como usado (tabela `ponte_usados`, apagada depois de
+     1 dia);
+   - acha a conta pelo e-mail (`perfis.email`, conta ativa, que não seja de cliente);
+   - abre a sessão do mesmo jeito que o "entrar como";
+   - **se a pessoa tem verificação em duas etapas no B7, pede o código como no login normal**;
+   - registra na auditoria: "entrou pelo Núcleo 7".
+5. Qualquer falha leva para a tela de login do B7, com o motivo em português: bilhete vencido ("Volte para a Central
+   e clique de novo"), conta sem e-mail ("Peça ao administrador para pôr o seu e-mail em Pessoas e acessos"), conta
+   desativada.
+
+## E-mail nas contas do B7
+- Coluna nova **`perfis.email`**, única (sem diferenciar maiúsculas), opcional. A identidade técnica não muda.
+- **Pessoas e acessos** ganha o campo **E-mail** ao criar e editar uma pessoa da equipe.
+- Para não digitar todos: **"Ligar com o Núcleo 7"** em Pessoas e acessos (só o administrador pleno). O B7 lê, pelo
+  canal da Entrega 1, o nome e o e-mail da equipe do Núcleo 7 (`app_users`, só `name`, `email`, `is_active`), casa
+  pelo nome e mostra a lista para conferir antes de salvar. Quem não casar fica sem e-mail até alguém pôr à mão.
+- **Login do B7 aceita e-mail:** se o que foi digitado tem `@`, a `b7-auth` procura a conta pelo `perfis.email`; o
+  resto do login (senha do B7, tentativas, duas etapas) não muda.
+
+## Quem cai direto e quem vê a Central (Núcleo 7)
+- Depois do login no Núcleo 7, para a equipe: **um sistema liberado → vai direto para ele** (se for o B7, já com o
+  bilhete); **mais de um → Central**.
+- **Atenção:** hoje a N7 Gestão vem liberada para toda a equipe. Com a regra acima, quem tem a Gestão e o B7 vê a
+  Central. Para a equipe da produção cair direto no B7, a Gestão precisa estar **desligada** para ela em Usuários do
+  Núcleo 7. (Ver a pergunta para o Yury abaixo.)
+
+## O que muda no Núcleo 7 (produção) — o Yury vê e aprova antes
+- Função nova `b7-bilhete` (só lê `app_users` da própria pessoa e assina o bilhete).
+- Segredo novo `B7_PONTE_SEGREDO` (colocado pelo Kevin no painel do Supabase, dos dois lados; nunca no código nem no
+  chat) e o endereço do B7 em `B7_URL`.
+- `CentralPage`: o Sistema B7 passa a abrir na mesma aba, com o bilhete.
+- `portaUnica`: depois do login, um sistema só → direto; mais de um → Central.
+- Nenhuma tabela nem regra de acesso do Núcleo 7 muda.
+
+## Abordagens consideradas
+1. **Bilhete assinado, de 1 minuto e uso único (escolhida pelo Yury).**
+2. **Mandar o token de login do Núcleo 7 para o B7 conferir lá.** Mais simples, mas o token vale ~1 hora e dá acesso
+   ao Núcleo 7 inteiro: se vazasse do endereço, abriria os dois sistemas.
+3. **Login do B7 conferir a senha no Núcleo 7.** A senha passaria pelo servidor do B7, e o B7 dependeria do Núcleo 7
+   no ar para qualquer login.
+
+## Já decidido pelo Claude (pode mudar)
+- O bilhete vale **60 segundos** e uma vez só.
+- A **verificação em duas etapas do B7 continua valendo** para quem entra pelo Núcleo 7 (o Núcleo 7 não pede código
+  no login).
+- O e-mail casa sem diferenciar maiúsculas e sem espaços.
+- **Clientes do portal não entram pelo bilhete** nesta entrega: conta de cliente recebe "Entre pela tela do B7".
+- "Voltar à Central" dentro do B7 (Entrega 3) é só um link para a Central do Núcleo 7: quem veio de lá continua
+  logado no Núcleo 7 naquele navegador.
+
+## Testes
+- **Regras puras** (Node): assinar e conferir o bilhete; vencido; assinatura trocada; campo trocado; formato
+  estranho; e-mail com maiúsculas.
+- **Banco** (Postgres local): `perfis.email` único; uso único do número do bilhete; login por e-mail.
+- **Navegador** (Chromium, servidor simulado): `#/ponte` entra e limpa o endereço; bilhete vencido leva ao login com
+  o aviso; pede o código quando a pessoa tem duas etapas; Pessoas e acessos com o campo E-mail e o "Ligar com o
+  Núcleo 7".
+- **Núcleo 7:** a função `b7-bilhete` com o mesmo teste de regras; a Central e o login conferidos no navegador do
+  projeto deles (Playwright), sem número de telefone real.
+- **No ar:** o Yury entra no Núcleo 7, clica em Sistema B7 e cai logado; uma pessoa só do B7 cai direto.
 
 # Entrega 3 (esboço): Central dentro do B7
 - Quem tem mais de um sistema vê a Central no B7 (os mesmos sistemas liberados no Núcleo 7) e volta para o
