@@ -6,6 +6,7 @@
 // =====================================================================
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { criarResolvedor, waPadraoCom, semTabela, type Numero } from './wa-numeros.ts';
+import { ehDaEquipe, nomesPreparados, fim8 as fimOito } from './equipe-autor.ts';
 export type { Numero } from './wa-numeros.ts';
 
 export const admin = (): SupabaseClient => createClient(
@@ -174,15 +175,37 @@ export function previaDe(l: Linha): string {
 
 /** grava (ou atualiza) uma mensagem e a conversa dela. Devolve a linha gravada. */
 /** números (8 últimos dígitos) da equipe cadastrada na tela do Otto — cache de 1 min */
-let equipeCache: { em: number; nums: Set<string> } | null = null;
-export async function numerosDaEquipe(sb: SupabaseClient): Promise<Set<string>> {
-  if (equipeCache && Date.now() - equipeCache.em < 60_000) return equipeCache.nums;
-  const { data } = await sb.from('wa_assistente').select('equipe').eq('id', 1).maybeSingle();
+/* 4.91.6: e os NOMES (equipe do Otto + contas da casa no B7), para a regra única de "é da equipe" (equipe-autor.ts) */
+let equipeCache: { em: number; nums: Set<string>; nomes: string[] } | null = null;
+export async function equipeConhecida(sb: SupabaseClient): Promise<{ nums: Set<string>; nomes: string[] }> {
+  if (equipeCache && Date.now() - equipeCache.em < 60_000) return equipeCache;
+  const [{ data }, { data: ps }] = await Promise.all([
+    sb.from('wa_assistente').select('equipe').eq('id', 1).maybeSingle(),
+    sb.from('perfis').select('nome').eq('estado', 'ativa').neq('papel', 'cliente')
+  ]);
+  const eq = (data?.equipe || []) as any[];
   /* 4.80.0: o número principal e os "outros números" de cada pessoa (ex.: celular pessoal) */
-  const nums = new Set<string>(((data?.equipe || []) as any[]).flatMap(p => [p?.numero, ...String(p?.outros_numeros || '').split(/[,;\n]/)])
-    .map(n => String(n || '').replace(/\D/g, '')).filter(n => n.length >= 10).map(n => n.slice(-8)));
-  equipeCache = { em: Date.now(), nums };
-  return nums;
+  const nums = new Set<string>(eq.flatMap(p => [p?.numero, ...String(p?.outros_numeros || '').split(/[,;\n]/)]).map(fimOito).filter(Boolean));
+  const nomes = nomesPreparados([...eq.map(p => p?.nome), ...((ps || []) as any[]).filter(p => !/teste/i.test(String(p?.nome || ''))).map(p => p?.nome)]);
+  equipeCache = { em: Date.now(), nums, nomes };
+  return equipeCache;
+}
+export async function numerosDaEquipe(sb: SupabaseClient): Promise<Set<string>> { return (await equipeConhecida(sb)).nums; }
+/** 4.91.6: para uma lista de mensagens de uma conversa, diz quais são da equipe (a mesma regra em todo lugar).
+ *  O número de quem escreveu vem do contato ou, num grupo, da lista de membros (o @lid com o telefone ao lado). */
+export async function equipeDasMensagens(sb: SupabaseClient, jid: string, lista: any[], fones: Map<string, string> = new Map()): Promise<(m: any) => boolean> {
+  const eq = await equipeConhecida(sb);
+  const ids = [...new Set(lista.filter(m => !m.de_mim && m.autor_jid && !fones.get(String(m.autor_jid))).map(m => String(m.autor_jid)))];
+  const fone = new Map(fones);
+  if (ids.length) {
+    const [{ data: cts }, { data: mbs }] = await Promise.all([
+      sb.from('wa_contatos').select('jid, numero').in('jid', ids),
+      ehGrupo(jid) ? sb.from('wa_grupo_membros').select('membro_jid, telefone').eq('grupo_jid', jid).in('membro_jid', ids) : Promise.resolve({ data: [] as any[] })
+    ]);
+    for (const x of (mbs || []) as any[]) if (x.telefone) fone.set(String(x.membro_jid), String(x.telefone));
+    for (const x of (cts || []) as any[]) if (x.numero) fone.set(String(x.jid), String(x.numero));
+  }
+  return (m: any) => ehDaEquipe(eq, m, fone.get(String(m.autor_jid || '')) || (/@s\.whatsapp\.net$/.test(String(m.autor_jid || '')) ? m.autor_jid : ''));
 }
 export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, opcoes: { historico?: boolean } = {}, num?: Numero | null): Promise<Linha | null> {
   const r = interpretar(raw);
@@ -217,13 +240,13 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
   if (error) return null;
   /* 4.79.3: alguém da equipe escrevendo do celular PESSOAL num grupo de cliente ("Ótima segunda a todos" do Matheus)
      não é o cliente esperando resposta — conta como resposta da equipe. Confere pelo número (nunca pelo nome). */
+  /* 4.91.6: a regra única (equipe-autor.ts): número — inclusive o do @lid pela lista de membros do grupo — ou nome da equipe */
   let daEquipe = false;
   if (!l.de_mim && ehGrupo(jid)) {
     const k = raw?.key || {};
     const alt = [k.participantAlt, k.participantPn, k.senderPn, raw?.participantAlt].find((x: any) => typeof x === 'string' && /@s\.whatsapp\.net$/.test(x));
-    let fone = alt ? numeroDe(alt) : (/@s\.whatsapp\.net$/.test(String(l.autor_jid || '')) ? numeroDe(String(l.autor_jid)) : '');
-    if (!fone && l.autor_jid) { const { data: ct } = await sb.from('wa_contatos').select('numero').eq('jid', String(l.autor_jid)).maybeSingle(); fone = String(ct?.numero || '').replace(/\D/g, ''); }
-    if (fone) daEquipe = (await numerosDaEquipe(sb)).has(fone.slice(-8));
+    const conhecidos = new Map<string, string>(alt && l.autor_jid ? [[String(l.autor_jid), numeroDe(alt)]] : []);
+    daEquipe = (await equipeDasMensagens(sb, jid, [l], conhecidos))(l);
   }
   /* a conversa: prévia, hora, não lidas, "esperando resposta" */
   const { data: c } = await noNum(sb.from('wa_conversas').select('ultima_em, nao_lidas, esperando_desde, aguardando_cliente_desde, arquivada_auto'), nid).eq('jid', jid).maybeSingle();
