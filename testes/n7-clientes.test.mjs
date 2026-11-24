@@ -1,6 +1,6 @@
 /* 4.89.0: puxar o cadastro dos clientes do Núcleo 7 — peças puras (supabase/functions/_shared/n7-clientes.ts).
    Rodar com: node --experimental-strip-types --no-warnings testes/n7-clientes.test.mjs */
-import { limpar, normalizar, casar, buscar, duracaoDe, proposta, corpoSalvar, resumo, COLUNAS_N7 } from '../supabase/functions/_shared/n7-clientes.ts';
+import { colunaQueFalta, limpar, normalizar, casar, buscar, duracaoDe, proposta, corpoSalvar, resumo, COLUNAS_N7 } from '../supabase/functions/_shared/n7-clientes.ts';
 
 let falhas = 0;
 const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if (!c) falhas++; };
@@ -83,6 +83,13 @@ ok(!proposta({ cliente: { contrato: 'avulso' }, interno: {}, perfil: {} }, c).so
 const corpo = corpoSalvar(proposta(VAZIO, c), 'n1');
 ok(corpo.interno.n7_cliente_id === 'n1' && corpo.interno.contrato_meses === 6 && corpo.perfil.instagram === 'mercato.sadia' && corpo.logo_n7 === 'https://cdn.n7/logo.png', 'corpo do salvar: interno, perfil, logo e o vínculo');
 ok(JSON.stringify(corpoSalvar([], 'n2')) === '{"interno":{"n7_cliente_id":"n2"}}', 'sem campos: só guarda o vínculo');
+
+/* 4.91.1: coluna que não existe no Núcleo 7 (o 400 da AutoEscola Modelo) */
+const COLS = COLUNAS_N7.split(',');
+ok(colunaQueFalta('{"code":"42703","message":"column clients.dados_contratuais does not exist"}', COLS) === 'dados_contratuais', 'acha a coluna ausente na mensagem do Núcleo 7');
+ok(colunaQueFalta('{"code":"42703","message":"column \\"segmento\\" does not exist"}', COLS) === 'segmento', 'aceita a coluna entre aspas');
+ok(colunaQueFalta('{"message":"column clients.name does not exist"}', COLS) === null && colunaQueFalta('{"message":"column clients.id does not exist"}', COLS) === null, 'id e nome nunca são deixados de fora');
+ok(colunaQueFalta('{"message":"column clients.senha does not exist"}', COLS) === null && colunaQueFalta('lixo', COLS) === null && colunaQueFalta('', COLS) === null, 'outra coluna ou erro qualquer não vira "falta"');
 
 if (falhas) process.exit(1);
 console.log('Núcleo 7 (regras): ok');

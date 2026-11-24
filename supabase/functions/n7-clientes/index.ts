@@ -19,7 +19,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { comCors } from '../_shared/cors.ts';
 import { sistemasDe } from '../_shared/sistemas-n7.ts';
-import { COLUNAS_N7, limpar, casar, buscar, proposta, corpoSalvar, resumo, type ClienteN7, type CadastroB7 } from '../_shared/n7-clientes.ts';
+import { COLUNAS_N7, colunaQueFalta, limpar, casar, buscar, proposta, corpoSalvar, resumo, type ClienteN7, type CadastroB7 } from '../_shared/n7-clientes.ts';
 
 const json = (d: unknown, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json' } });
 const SEM_CANAL = 'A ligação com o Núcleo 7 não está configurada no servidor do B7 (faltam os segredos N7_URL e N7_SERVICE_KEY).';
@@ -30,10 +30,15 @@ async function lerN7(): Promise<ClienteN7[]> {
   if (!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(base) || !chave) throw new Error(SEM_CANAL);
   const h = { apikey: chave, Authorization: 'Bearer ' + chave };
   const out: ClienteN7[] = [];
+  let colunas = COLUNAS_N7.split(',');
   for (let de = 0; de < 20000; de += 1000) {
-    const r = await fetch(base + '/rest/v1/clients?select=' + COLUNAS_N7 + '&order=name.asc', { headers: { ...h, Range: de + '-' + (de + 999), 'Range-Unit': 'items' } });
+    const r = await fetch(base + '/rest/v1/clients?select=' + colunas.join(',') + '&order=name.asc', { headers: { ...h, Range: de + '-' + (de + 999), 'Range-Unit': 'items' } });
     if (!r.ok && r.status !== 206) {
-      console.error('n7-clientes: Núcleo 7 respondeu', r.status);
+      const corpo = (await r.text()).slice(0, 400);   // mensagem do PostgREST: nunca traz a chave
+      /* 4.91.1: coluna que não existe no Núcleo 7 → segue sem ela (o campo vem vazio) */
+      const falta = r.status === 400 ? colunaQueFalta(corpo, colunas) : null;
+      if (falta) { console.warn('n7-clientes: coluna ausente no Núcleo 7, lendo sem ela:', falta); colunas = colunas.filter(c => c !== falta); de -= 1000; continue; }
+      console.error('n7-clientes: Núcleo 7 respondeu', r.status, corpo);
       throw new Error('O Núcleo 7 não respondeu agora (' + r.status + '). Tente de novo em instantes.');
     }
     const linhas = await r.json();
@@ -98,7 +103,7 @@ Deno.serve(comCors(async (req) => {
       const base = (Deno.env.get('N7_URL') || '').replace(/\/$/, ''), chave = Deno.env.get('N7_SERVICE_KEY') || '';
       if (!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(base) || !chave) throw new Error(SEM_CANAL);
       const r = await fetch(base + '/rest/v1/app_users?select=name,email,is_active&order=name.asc', { headers: { apikey: chave, Authorization: 'Bearer ' + chave } });
-      if (!r.ok) { console.error('n7-clientes: equipe respondeu', r.status); throw new Error('O Núcleo 7 não respondeu agora (' + r.status + '). Tente de novo em instantes.'); }
+      if (!r.ok) { console.error('n7-clientes: equipe respondeu', r.status, (await r.text()).slice(0, 400)); throw new Error('O Núcleo 7 não respondeu agora (' + r.status + '). Tente de novo em instantes.'); }
       const linhas = await r.json();
       const equipe = (Array.isArray(linhas) ? linhas : []).map((l: any) => ({ nome: String(l?.name || '').trim().slice(0, 160), email: String(l?.email || '').trim().toLowerCase().slice(0, 160), ativo: l?.is_active !== false }))
         .filter((x: any) => x.nome && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x.email));
