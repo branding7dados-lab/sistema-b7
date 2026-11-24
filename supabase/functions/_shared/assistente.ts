@@ -21,7 +21,7 @@
 // =====================================================================
 import { levarAntigosProDrive } from './drive.ts';
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import { evo, INST, gravar, jidCanonico, waPadrao } from './wa.ts';
+import { evo, INST, gravar, jidCanonico, waPadrao, equipeDasMensagens } from './wa.ts';
 import { gerar, provedorAtual } from './ia/servico.ts';
 import { carregarContexto } from './ia/whatsapp.ts';
 import { fichaRoteiros, type Logo } from './ficha.ts';
@@ -602,7 +602,6 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
     .order('ultima_em', { ascending: false }).limit(60);
   const pendentes = ((convs || []) as any[]).filter(c => !c.vez_avaliada_em || c.vez_avaliada_em < c.ultima_em).slice(0, max);
   if (!pendentes.length) return 0;
-  const fones = new Set((cfg.equipe || []).flatMap(e => fins8(e)));
   let feitas = 0;
   for (const c of pendentes) {
     /* pega a vez desta conversa (dois relógios ao mesmo tempo não avaliam duas vezes) */
@@ -615,10 +614,8 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
       .eq('jid', c.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(16);
     const lista = ((ms || []) as any[]).reverse();
     if (!lista.length) continue;
-    const ids = [...new Set(lista.filter(m => !m.de_mim && m.autor_jid).map(m => String(m.autor_jid)))];
-    const { data: cts } = ids.length ? await sb.from('wa_contatos').select('jid, numero').in('jid', ids) : { data: [] as any[] };
-    const foneDe = new Map(((cts || []) as any[]).map(x => [x.jid, dig(x.numero)]));
-    const daEq = (m: any) => !!m.de_mim || fones.has(fim8(foneDe.get(m.autor_jid) || m.autor_jid));
+    /* 4.91.1: a mesma regra de "é da equipe" da gravação (número, @lid pela lista do grupo, ou nome da equipe) */
+    const daEq = await equipeDasMensagens(sb, c.jid, lista);
     const hm = (iso: string) => { const d = new Date(new Date(iso).getTime() - 3 * 3600000); return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + ' ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); };
     const txt = lista.map(m => hm(m.criada_em) + ' ' + (daEq(m) ? '[EQUIPE] ' + (m.do_assistente ? 'Otto' : (m.enviada_por_nome || m.autor_nome || 'Branding7')) : '[CLIENTE] ' + (m.autor_nome || 'Cliente')) + ': ' +
       (m.texto ? String(m.texto).replace(/^\*[^*]+:\*\s*/, '').replace(/\s+/g, ' ').slice(0, 280) : '(' + m.tipo + ')')).join('\n');
@@ -636,7 +633,12 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
     if (!v) continue;   /* IA não respondeu: fica a estimativa da regra; tenta de novo na próxima mensagem */
     /* desde quando: a primeira mensagem do lado que espera, depois da última do outro lado */
     const lado = (eq: boolean) => { let ini: string | null = null; for (let i = lista.length - 1; i >= 0; i--) { if (daEq(lista[i]) === eq) ini = lista[i].criada_em; else if (ini) break; } return ini; };
-    const desdeCli = v === 'cliente' ? (c.esperando_desde || lado(false) || lista[lista.length - 1].criada_em) : null;
+    /* 4.91.1: se a equipe falou DEPOIS do começo da espera, a espera antiga acabou — conta de novo da fala seguinte do cliente
+       (antes guardava o "desde" velho para sempre: a resposta do Pedro de 7 dias atrás não zerava o "há 7 dias") */
+    const respondeuDepois = !!c.esperando_desde && lista.some(m => daEq(m) && m.criada_em > c.esperando_desde);
+    let k = -1; for (let i = lista.length - 1; i >= 0; i--) if (daEq(lista[i])) { k = i; break; }
+    const recomeco = k >= 0 ? (lista[k + 1] || lista[k]).criada_em : null;   /* a fala do cliente depois da última da equipe (ou a própria, se a equipe falou por último sem resolver) */
+    const desdeCli = v === 'cliente' ? ((respondeuDepois ? recomeco : c.esperando_desde) || lado(false) || lista[lista.length - 1].criada_em) : null;
     const desdeEq = v === 'equipe' ? (c.aguardando_cliente_desde || lado(true) || lista[lista.length - 1].criada_em) : null;
     const outra = j.outra_equipe ? outraEquipeDe(cfg, j.outra_equipe) : null;
     const v2 = outra ? 'ninguem' : v;
@@ -1712,10 +1714,6 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
   const { data: convs } = await waPadrao(sb).conversas().select('jid, nome, tipo, cliente_id, esperando_desde, ultima_em').not('cliente_id', 'is', null).not('esperando_desde', 'is', null)
     .lt('esperando_desde', new Date(Date.now() - espera * 60_000).toISOString()).gt('esperando_desde', new Date(Date.now() - 7 * 86400_000).toISOString())
     .order('esperando_desde', { ascending: true }).limit(15);
-  /* quem é da equipe (para saber se alguém já respondeu do celular pessoal) */
-  const fones = new Set((cfg.equipe || []).flatMap(e => fins8(e)));
-  const { data: ps } = await sb.from('perfis').select('nome').eq('estado', 'ativa').neq('papel', 'cliente');
-  const nomesEq = new Set([...((ps || []) as any[]).map(p => semAcento(p.nome)), ...(cfg.equipe || []).map(e => semAcento(String(e.nome || '')))].filter(Boolean));
   let feitos = 0;
   for (const c of (convs || []) as any[]) {
     if (feitos >= 3) break;
@@ -1727,11 +1725,8 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
       .gte('criada_em', new Date(Date.parse(c.esperando_desde) - 30 * 60_000).toISOString()).order('criada_em').limit(40);
     const lista = (ms || []) as any[];
     const depois = lista.filter(m => m.criada_em >= c.esperando_desde);
-    /* alguém da equipe já respondeu (pelo número da B7 ou pelo celular dele)? */
-    const autoresJid = [...new Set(depois.filter(m => !m.de_mim && m.autor_jid).map(m => String(m.autor_jid)))];
-    const { data: cts } = autoresJid.length ? await sb.from('wa_contatos').select('jid, numero').in('jid', autoresJid) : { data: [] as any[] };
-    const foneDe = new Map(((cts || []) as any[]).map(x => [x.jid, dig(x.numero)]));
-    const daEq = (m: any) => m.de_mim || fones.has(fim8(foneDe.get(m.autor_jid) || m.autor_jid)) || [...nomesEq].some(n => n && semAcento(String(m.autor_nome || '')).startsWith(n.split(' ')[0]) && semAcento(String(m.autor_nome || '')).includes(n.split(' ').slice(-1)[0]));
+    /* alguém da equipe já respondeu (pelo número da B7, pelo celular dele ou pelo nome)? 4.91.1: a regra única */
+    const daEq = await equipeDasMensagens(sb, c.jid, lista);
     if (depois.some(daEq)) {
       await marcarAvisados(sb, [chave]);
       await waPadrao(sb).conversas().update({ esperando_desde: null }).eq('jid', c.jid).eq('esperando_desde', c.esperando_desde);
@@ -1780,7 +1775,21 @@ async function talvezLembrarEspera(sb: SupabaseClient, cfg: Config) {
     .not('cliente_id', 'is', null).eq('arquivada', false).not('esperando_desde', 'is', null)
     .lt('esperando_desde', new Date(agora.getTime() - Math.max(60, espera * 3) * 60_000).toISOString()).gt('esperando_desde', new Date(agora.getTime() - 14 * 86400_000).toISOString())
     .order('esperando_desde', { ascending: true }).limit(12);
-  const lista = ((convs || []) as any[]).filter(c => c.vez === 'cliente' && c.vez_avaliada_em && (!c.ultima_em || c.vez_avaliada_em >= c.ultima_em));
+  const lista0 = ((convs || []) as any[]).filter(c => c.vez === 'cliente' && c.vez_avaliada_em && (!c.ultima_em || c.vez_avaliada_em >= c.ultima_em));
+  /* 4.91.1: antes de cobrar, confere se alguém da equipe já falou depois do começo da espera (ex.: o Pedro respondeu
+     do celular dele). Se falou, a espera acaba e a conversa volta para a IA reavaliar — não entra no lembrete. */
+  const lista: any[] = [];
+  for (const c of lista0) {
+    const { data: ms } = await waPadrao(sb).mensagens().select('de_mim, autor_jid, autor_nome, criada_em').eq('jid', c.jid).eq('nota', false).eq('apagada', false)
+      .gt('criada_em', c.esperando_desde).order('criada_em', { ascending: false }).limit(40);
+    const depois = (ms || []) as any[];
+    const daEq = await equipeDasMensagens(sb, c.jid, depois);
+    if (depois.some(daEq)) {
+      await waPadrao(sb).conversas().update({ esperando_desde: null, vez_avaliada_em: null }).eq('jid', c.jid).eq('esperando_desde', c.esperando_desde);
+      continue;
+    }
+    lista.push(c);
+  }
   if (!lista.length) return;
   /* o primeiro aviso de cada espera é do vigia (com print); o lembrete só entra depois dele */
   const { data: vig } = await sb.from('wa_otto_avisos').select('chave').in('chave', lista.map(c => 'vigia:' + c.jid + ':' + c.esperando_desde));
