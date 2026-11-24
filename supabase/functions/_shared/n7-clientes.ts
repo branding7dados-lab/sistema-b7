@@ -15,6 +15,16 @@
 export const COLUNAS_N7 = 'id,name,status,cnpj,area_atuacao,segmento,audience_location,instagram,website,logo_url,' +
   'contract_months,contract_start_date,observations,holder_name,dados_contratuais,branding';
 
+/** 4.91.1: o Núcleo 7 recusou a leitura (400) porque uma coluna pedida não existe no banco
+ *  de lá (o schema de produção do N7 nem sempre segue as migrações). Devolve qual coluna,
+ *  para a leitura seguir sem ela — só colunas opcionais da lista; id e nome nunca. */
+export function colunaQueFalta(corpoErro: string, colunas: string[]): string | null {
+  let msg = '';
+  try { msg = String((JSON.parse(corpoErro) || {}).message || ''); } catch { msg = String(corpoErro || ''); }
+  const m = /column\s+(?:"?\w+"?\.)?"?(\w+)"?\s+does not exist/i.exec(msg);
+  return m && colunas.includes(m[1]) && m[1] !== 'id' && m[1] !== 'name' ? m[1] : null;
+}
+
 /** O cliente do Núcleo 7 do jeito que o B7 enxerga. Tudo texto (ou nulo). */
 export type ClienteN7 = {
   id: string; nome: string; situacao: string;
