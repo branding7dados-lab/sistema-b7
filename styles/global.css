@@ -581,6 +581,12 @@ select.campo{appearance:none;cursor:pointer;
   /* conteúdo longo rolava para fora do modal e ficava inalcançável */
   overflow-y:auto;overscroll-behavior:contain;}
 .modal.larga{width:min(760px,100%);}
+/* 4.91.3: blindagem contra CSS de fora. Extensões do Chrome injetam regras genéricas
+   como ".modal{position:fixed;top:0;left:0;height:…}" (o nome do Bootstrap) — a janela do
+   B7 ia parar no canto de cima, cortada numa faixa, com o fundo embaçado. No app (sem
+   extensões) ficava normal. A janela é sempre filha do véu: estas propriedades, que o
+   B7 nunca muda, ficam fixas aqui com mais força que um ".modal" solto. */
+.fundo-modal > .modal{position:relative;inset:auto;height:auto;min-height:0;margin:0;z-index:auto;}
 .modal h3{font-family:'B7 Titulo';font-size:19px;font-weight:800;letter-spacing:-.02em;}
 .modal .sub{font-size:13px;color:var(--ink-3);margin:7px 0 20px;line-height:1.55;}
 .modal .corpo{overflow-y:auto;margin:0 -4px;padding:0 4px;}
@@ -1392,17 +1398,12 @@ body.apurando #app{visibility:hidden;}
 
 /* ---- modal: véu escurece (e desfoca no desktop), janela assenta ---- */
 .fundo-modal,[data-theme="dark"] .fundo-modal{background:var(--veu);}
-.fundo-modal{animation:b7Fade var(--m-padrao) var(--m-entra) backwards;}
+.fundo-modal{animation:b7Fade var(--m-padrao) var(--m-entra) both;}
 /* desfoque do fundo só onde é barato: tela grande com mouse. No celular
    o véu escuro já separa, e desfocar a tela inteira custa caro. */
 @media (min-width:761px) and (pointer:fine){
   @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-    /* 4.91.2: SEM desfoque atrás das janelas. No Chrome do Windows (nov/2026) o
-       desfoque do véu + a animação da janela + o sistema "recuando" faziam a
-       janela ser desenhada no canto de cima, cortada, com o fundo embaçado —
-       a tela ficava inutilizável. O véu fica um pouco mais escuro no lugar. */
-    .fundo-modal{--veu:rgba(11,10,30,.56);}
-    [data-theme="dark"] .fundo-modal{--veu:rgba(5,3,10,.7);}
+    .fundo-modal{-webkit-backdrop-filter:blur(6px) saturate(115%);backdrop-filter:blur(6px) saturate(115%);}
     /* zzz90: com uma janela aberta, as bordas da tela ficavam claras. O
        desfoque, na beirada, mistura com "o que há fora da tela" — que é
        a cor de fundo da página (clara). Enquanto houver janela aberta, o
@@ -1515,13 +1516,14 @@ body.apurando #app{visibility:hidden;}
   @media (max-width:760px){
     body:has(> .fundo-modal:not(.saindo):not(.paleta)) #app{transform:scale(.965) translate3d(0,6px,0);border-radius:18px;overflow:hidden;}
   }
-  /* 4.91.2: no computador o sistema não recua mais atrás da janela (ver o véu, acima) */
+  @media (min-width:761px){
+    body:has(> .fundo-modal:not(.saindo)) #app{transform:scale(.992);}
+  }
 }
 
 /* ---- modal: entra de mais perto, sai para longe (desktop) ---- */
 @media (min-width:521px){
-  /* 4.91.2: "backwards" — terminada a entrada, a janela não segue presa numa camada animada */
-  .fundo-modal:not(.tp-folha) .modal{animation:b7ModalZ var(--m-padrao) var(--m-entra) backwards;}
+  .fundo-modal:not(.tp-folha) .modal{animation:b7ModalZ var(--m-padrao) var(--m-entra) both;}
   .fundo-modal.saindo:not(.tp-folha) .modal{animation:b7ModalZSai var(--m-rapido) var(--m-sai) forwards;}
 }
 @keyframes b7ModalZ{from{opacity:0;transform:translate3d(0,10px,0) scale(.965)}to{opacity:1;transform:none}}
