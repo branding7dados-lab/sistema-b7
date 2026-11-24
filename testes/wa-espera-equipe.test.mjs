@@ -1,4 +1,4 @@
-/* 4.91.1: a resposta da equipe pelo celular PESSOAL zera o "cliente esperando" (supabase/functions/_shared/wa.ts → gravar).
+/* 4.91.6: a resposta da equipe pelo celular PESSOAL zera o "cliente esperando" (supabase/functions/_shared/wa.ts → gravar).
    Caso real: o Pedro respondeu o Mercato no grupo e o Otto seguiu cobrando "há 7 dias".
    Roda o gravar de verdade com um banco falso em memória (o npm:@supabase vira um stub).
    Rodar com: node --experimental-strip-types --no-warnings testes/wa-espera-equipe.test.mjs */

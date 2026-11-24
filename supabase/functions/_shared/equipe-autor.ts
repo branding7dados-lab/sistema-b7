@@ -1,5 +1,5 @@
 // =====================================================================
-// 4.91.1 — QUEM ESCREVEU É DA EQUIPE? Uma regra só.
+// 4.91.6 — QUEM ESCREVEU É DA EQUIPE? Uma regra só.
 //
 // Antes eram três regras diferentes: a gravação da mensagem e a avaliação
 // "de quem é a vez" olhavam só o número; o vigia olhava número e nome.

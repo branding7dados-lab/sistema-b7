@@ -175,7 +175,7 @@ export function previaDe(l: Linha): string {
 
 /** grava (ou atualiza) uma mensagem e a conversa dela. Devolve a linha gravada. */
 /** números (8 últimos dígitos) da equipe cadastrada na tela do Otto — cache de 1 min */
-/* 4.91.1: e os NOMES (equipe do Otto + contas da casa no B7), para a regra única de "é da equipe" (equipe-autor.ts) */
+/* 4.91.6: e os NOMES (equipe do Otto + contas da casa no B7), para a regra única de "é da equipe" (equipe-autor.ts) */
 let equipeCache: { em: number; nums: Set<string>; nomes: string[] } | null = null;
 export async function equipeConhecida(sb: SupabaseClient): Promise<{ nums: Set<string>; nomes: string[] }> {
   if (equipeCache && Date.now() - equipeCache.em < 60_000) return equipeCache;
@@ -191,7 +191,7 @@ export async function equipeConhecida(sb: SupabaseClient): Promise<{ nums: Set<s
   return equipeCache;
 }
 export async function numerosDaEquipe(sb: SupabaseClient): Promise<Set<string>> { return (await equipeConhecida(sb)).nums; }
-/** 4.91.1: para uma lista de mensagens de uma conversa, diz quais são da equipe (a mesma regra em todo lugar).
+/** 4.91.6: para uma lista de mensagens de uma conversa, diz quais são da equipe (a mesma regra em todo lugar).
  *  O número de quem escreveu vem do contato ou, num grupo, da lista de membros (o @lid com o telefone ao lado). */
 export async function equipeDasMensagens(sb: SupabaseClient, jid: string, lista: any[], fones: Map<string, string> = new Map()): Promise<(m: any) => boolean> {
   const eq = await equipeConhecida(sb);
@@ -240,7 +240,7 @@ export async function gravar(sb: SupabaseClient, raw: any, extra: Linha = {}, op
   if (error) return null;
   /* 4.79.3: alguém da equipe escrevendo do celular PESSOAL num grupo de cliente ("Ótima segunda a todos" do Matheus)
      não é o cliente esperando resposta — conta como resposta da equipe. Confere pelo número (nunca pelo nome). */
-  /* 4.91.1: a regra única (equipe-autor.ts): número — inclusive o do @lid pela lista de membros do grupo — ou nome da equipe */
+  /* 4.91.6: a regra única (equipe-autor.ts): número — inclusive o do @lid pela lista de membros do grupo — ou nome da equipe */
   let daEquipe = false;
   if (!l.de_mim && ehGrupo(jid)) {
     const k = raw?.key || {};

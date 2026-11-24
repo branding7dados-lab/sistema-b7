@@ -614,7 +614,7 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
       .eq('jid', c.jid).eq('nota', false).eq('apagada', false).order('criada_em', { ascending: false }).limit(16);
     const lista = ((ms || []) as any[]).reverse();
     if (!lista.length) continue;
-    /* 4.91.1: a mesma regra de "é da equipe" da gravação (número, @lid pela lista do grupo, ou nome da equipe) */
+    /* 4.91.6: a mesma regra de "é da equipe" da gravação (número, @lid pela lista do grupo, ou nome da equipe) */
     const daEq = await equipeDasMensagens(sb, c.jid, lista);
     const hm = (iso: string) => { const d = new Date(new Date(iso).getTime() - 3 * 3600000); return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + ' ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); };
     const txt = lista.map(m => hm(m.criada_em) + ' ' + (daEq(m) ? '[EQUIPE] ' + (m.do_assistente ? 'Otto' : (m.enviada_por_nome || m.autor_nome || 'Branding7')) : '[CLIENTE] ' + (m.autor_nome || 'Cliente')) + ': ' +
@@ -633,7 +633,7 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
     if (!v) continue;   /* IA não respondeu: fica a estimativa da regra; tenta de novo na próxima mensagem */
     /* desde quando: a primeira mensagem do lado que espera, depois da última do outro lado */
     const lado = (eq: boolean) => { let ini: string | null = null; for (let i = lista.length - 1; i >= 0; i--) { if (daEq(lista[i]) === eq) ini = lista[i].criada_em; else if (ini) break; } return ini; };
-    /* 4.91.1: se a equipe falou DEPOIS do começo da espera, a espera antiga acabou — conta de novo da fala seguinte do cliente
+    /* 4.91.6: se a equipe falou DEPOIS do começo da espera, a espera antiga acabou — conta de novo da fala seguinte do cliente
        (antes guardava o "desde" velho para sempre: a resposta do Pedro de 7 dias atrás não zerava o "há 7 dias") */
     const respondeuDepois = !!c.esperando_desde && lista.some(m => daEq(m) && m.criada_em > c.esperando_desde);
     let k = -1; for (let i = lista.length - 1; i >= 0; i--) if (daEq(lista[i])) { k = i; break; }
@@ -1725,7 +1725,7 @@ async function talvezVigiar(sb: SupabaseClient, cfg: Config) {
       .gte('criada_em', new Date(Date.parse(c.esperando_desde) - 30 * 60_000).toISOString()).order('criada_em').limit(40);
     const lista = (ms || []) as any[];
     const depois = lista.filter(m => m.criada_em >= c.esperando_desde);
-    /* alguém da equipe já respondeu (pelo número da B7, pelo celular dele ou pelo nome)? 4.91.1: a regra única */
+    /* alguém da equipe já respondeu (pelo número da B7, pelo celular dele ou pelo nome)? 4.91.6: a regra única */
     const daEq = await equipeDasMensagens(sb, c.jid, lista);
     if (depois.some(daEq)) {
       await marcarAvisados(sb, [chave]);
@@ -1776,7 +1776,7 @@ async function talvezLembrarEspera(sb: SupabaseClient, cfg: Config) {
     .lt('esperando_desde', new Date(agora.getTime() - Math.max(60, espera * 3) * 60_000).toISOString()).gt('esperando_desde', new Date(agora.getTime() - 14 * 86400_000).toISOString())
     .order('esperando_desde', { ascending: true }).limit(12);
   const lista0 = ((convs || []) as any[]).filter(c => c.vez === 'cliente' && c.vez_avaliada_em && (!c.ultima_em || c.vez_avaliada_em >= c.ultima_em));
-  /* 4.91.1: antes de cobrar, confere se alguém da equipe já falou depois do começo da espera (ex.: o Pedro respondeu
+  /* 4.91.6: antes de cobrar, confere se alguém da equipe já falou depois do começo da espera (ex.: o Pedro respondeu
      do celular dele). Se falou, a espera acaba e a conversa volta para a IA reavaliar — não entra no lembrete. */
   const lista: any[] = [];
   for (const c of lista0) {

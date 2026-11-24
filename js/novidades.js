@@ -25,7 +25,7 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
-  { id: 'v-4.91.1', versao: '4.91.1', em: '2026-11-25T16:00:00-03:00',
+  { id: 'v-4.91.6', versao: '4.91.6', em: '2026-11-25T16:00:00-03:00',
     titulo: 'Otto: para de cobrar quem já foi respondido',
     itens: ['Quando alguém da equipe responde o cliente no grupo pelo celular pessoal, o Otto agora reconhece (pelo número ou pelo nome da pessoa na equipe) e para de avisar que o cliente está esperando.',
       'Antes de mandar o lembrete de "clientes esperando a gente", o Otto confere de novo se alguém da equipe já respondeu.'] },

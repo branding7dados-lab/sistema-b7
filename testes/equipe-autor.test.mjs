@@ -1,4 +1,4 @@
-/* 4.91.1: "quem escreveu é da equipe?" — uma regra só (supabase/functions/_shared/equipe-autor.ts).
+/* 4.91.6: "quem escreveu é da equipe?" — uma regra só (supabase/functions/_shared/equipe-autor.ts).
    Caso real: o Pedro respondeu o Mercato do celular pessoal e o Otto seguiu cobrando "há 7 dias".
    Rodar com: node --experimental-strip-types --no-warnings testes/equipe-autor.test.mjs */
 import { ehDaEquipe, nomeEhDaEquipe, nomesPreparados, fim8 } from '../supabase/functions/_shared/equipe-autor.ts';
