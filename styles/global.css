@@ -586,7 +586,10 @@ select.campo{appearance:none;cursor:pointer;
    B7 ia parar no canto de cima, cortada numa faixa, com o fundo embaçado. No app (sem
    extensões) ficava normal. A janela é sempre filha do véu: estas propriedades, que o
    B7 nunca muda, ficam fixas aqui com mais força que um ".modal" solto. */
-.fundo-modal > .modal{position:relative;inset:auto;height:auto;min-height:0;margin:0;z-index:auto;}
+.fundo-modal > .modal{position:relative;inset:auto;height:auto;min-height:0;margin:0;z-index:auto;
+  /* 4.91.4: e o miolo — ".modal{align-items:center;justify-content:center}" de fora encolhia os
+     blocos para o centro e cortava o título no alto (a rolagem não alcança o que transborda acima) */
+  display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;justify-content:flex-start;overflow-y:auto;box-sizing:border-box;}
 .modal h3{font-family:'B7 Titulo';font-size:19px;font-weight:800;letter-spacing:-.02em;}
 .modal .sub{font-size:13px;color:var(--ink-3);margin:7px 0 20px;line-height:1.55;}
 .modal .corpo{overflow-y:auto;margin:0 -4px;padding:0 4px;}
