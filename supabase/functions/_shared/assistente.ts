@@ -22,6 +22,7 @@
 import { levarAntigosProDrive } from './drive.ts';
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { evo, INST, gravar, jidCanonico, waPadrao, equipeDasMensagens } from './wa.ts';
+import { desdeClienteEspera } from './equipe-autor.ts';
 import { gerar, provedorAtual } from './ia/servico.ts';
 import { carregarContexto } from './ia/whatsapp.ts';
 import { fichaRoteiros, type Logo } from './ficha.ts';
@@ -633,12 +634,8 @@ export async function avaliarVezes(sb: SupabaseClient, cfg: Config, max = 8): Pr
     if (!v) continue;   /* IA não respondeu: fica a estimativa da regra; tenta de novo na próxima mensagem */
     /* desde quando: a primeira mensagem do lado que espera, depois da última do outro lado */
     const lado = (eq: boolean) => { let ini: string | null = null; for (let i = lista.length - 1; i >= 0; i--) { if (daEq(lista[i]) === eq) ini = lista[i].criada_em; else if (ini) break; } return ini; };
-    /* 4.91.6: se a equipe falou DEPOIS do começo da espera, a espera antiga acabou — conta de novo da fala seguinte do cliente
-       (antes guardava o "desde" velho para sempre: a resposta do Pedro de 7 dias atrás não zerava o "há 7 dias") */
-    const respondeuDepois = !!c.esperando_desde && lista.some(m => daEq(m) && m.criada_em > c.esperando_desde);
-    let k = -1; for (let i = lista.length - 1; i >= 0; i--) if (daEq(lista[i])) { k = i; break; }
-    const recomeco = k >= 0 ? (lista[k + 1] || lista[k]).criada_em : null;   /* a fala do cliente depois da última da equipe (ou a própria, se a equipe falou por último sem resolver) */
-    const desdeCli = v === 'cliente' ? ((respondeuDepois ? recomeco : c.esperando_desde) || lado(false) || lista[lista.length - 1].criada_em) : null;
+    /* 4.91.7: a regra pura (equipe-autor.ts): equipe falou por último = já respondeu, ninguém fica "esperando a gente" */
+    const desdeCli = v === 'cliente' ? desdeClienteEspera(lista, lista.map(daEq), c.esperando_desde || null) : null;
     const desdeEq = v === 'equipe' ? (c.aguardando_cliente_desde || lado(true) || lista[lista.length - 1].criada_em) : null;
     const outra = j.outra_equipe ? outraEquipeDe(cfg, j.outra_equipe) : null;
     const v2 = outra ? 'ninguem' : v;
@@ -1781,7 +1778,7 @@ async function talvezLembrarEspera(sb: SupabaseClient, cfg: Config) {
   const lista: any[] = [];
   for (const c of lista0) {
     const { data: ms } = await waPadrao(sb).mensagens().select('de_mim, autor_jid, autor_nome, criada_em').eq('jid', c.jid).eq('nota', false).eq('apagada', false)
-      .gt('criada_em', c.esperando_desde).order('criada_em', { ascending: false }).limit(40);
+      .gte('criada_em', c.esperando_desde).order('criada_em', { ascending: false }).limit(40);   /* 4.91.7: gte — a resposta que É o começo da espera também conta */
     const depois = (ms || []) as any[];
     const daEq = await equipeDasMensagens(sb, c.jid, depois);
     if (depois.some(daEq)) {

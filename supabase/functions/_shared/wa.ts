@@ -179,13 +179,16 @@ export function previaDe(l: Linha): string {
 let equipeCache: { em: number; nums: Set<string>; nomes: string[] } | null = null;
 export async function equipeConhecida(sb: SupabaseClient): Promise<{ nums: Set<string>; nomes: string[] }> {
   if (equipeCache && Date.now() - equipeCache.em < 60_000) return equipeCache;
-  const [{ data }, { data: ps }] = await Promise.all([
+  const [{ data }, { data: ps }, { data: wn }] = await Promise.all([
     sb.from('wa_assistente').select('equipe').eq('id', 1).maybeSingle(),
-    sb.from('perfis').select('nome').eq('estado', 'ativa').neq('papel', 'cliente')
+    sb.from('perfis').select('nome').eq('estado', 'ativa').neq('papel', 'cliente'),
+    sb.from('wa_numeros').select('numero')
   ]);
   const eq = (data?.equipe || []) as any[];
   /* 4.80.0: o número principal e os "outros números" de cada pessoa (ex.: celular pessoal) */
-  const nums = new Set<string>(eq.flatMap(p => [p?.numero, ...String(p?.outros_numeros || '').split(/[,;\n]/)]).map(fimOito).filter(Boolean));
+  /* 4.91.7: e os números do PRÓPRIO B7 (Videomakers, Designers…): o Otto só enxerga o número padrão, e a resposta
+     dada ao cliente por outro número da casa chegava a ele como "cliente" — a espera nunca zerava */
+  const nums = new Set<string>([...eq.flatMap(p => [p?.numero, ...String(p?.outros_numeros || '').split(/[,;\n]/)]), ...((wn || []) as any[]).map(n => n?.numero)].map(fimOito).filter(Boolean));
   const nomes = nomesPreparados([...eq.map(p => p?.nome), ...((ps || []) as any[]).filter(p => !/teste/i.test(String(p?.nome || ''))).map(p => p?.nome)]);
   equipeCache = { em: Date.now(), nums, nomes };
   return equipeCache;

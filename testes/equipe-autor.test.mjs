@@ -1,7 +1,7 @@
 /* 4.91.6: "quem escreveu é da equipe?" — uma regra só (supabase/functions/_shared/equipe-autor.ts).
    Caso real: o Pedro respondeu o Mercato do celular pessoal e o Otto seguiu cobrando "há 7 dias".
    Rodar com: node --experimental-strip-types --no-warnings testes/equipe-autor.test.mjs */
-import { ehDaEquipe, nomeEhDaEquipe, nomesPreparados, fim8 } from '../supabase/functions/_shared/equipe-autor.ts';
+import { ehDaEquipe, nomeEhDaEquipe, nomesPreparados, fim8, desdeClienteEspera } from '../supabase/functions/_shared/equipe-autor.ts';
 
 let falhas = 0;
 const ok = (c, m) => { console.log((c ? '✓ ' : '✗ ') + m); if (!c) falhas++; };
@@ -18,5 +18,17 @@ ok(!ehDaEquipe(eq, { autor_nome: 'Pedro' }), 'só "Pedro" não basta para nome d
 ok(ehDaEquipe(eq, { autor_nome: 'Bia' }) && !ehDaEquipe(eq, { autor_nome: 'Bia Mercato' }), 'nome de uma palavra: só igual');
 ok(!ehDaEquipe(eq, { autor_nome: '558399999' }) && !nomeEhDaEquipe(nomes, ''), 'número no lugar do nome ou vazio: não');
 ok(!ehDaEquipe(eq, { autor_nome: 'Mercato' }, '123@lid'), '@lid sem telefone conhecido não vira número');
+/* 4.91.7: desde quando o cliente espera a gente (lembrete "Clientes esperando a gente") */
+const L = (...q) => q.map(([h]) => ({ criada_em: '2026-11-17T' + h + ':00.000Z' }));
+const C = false, E = true;
+ok(desdeClienteEspera(L(['10:00'], ['11:00']), [C, E], '2026-11-17T10:00:00.000Z') === null,
+  'equipe falou por último (ex.: "vamos mandar o PDF"): ninguém fica esperando a gente — o lembrete não cobra');
+ok(desdeClienteEspera(L(['10:00'], ['11:00'], ['12:00']), [C, E, C], '2026-11-17T10:00:00.000Z') === '2026-11-17T12:00:00.000Z',
+  'equipe respondeu e o cliente voltou a falar: conta da nova fala do cliente, não da antiga');
+ok(desdeClienteEspera(L(['10:00'], ['10:30']), [C, C], '2026-11-17T10:00:00.000Z') === '2026-11-17T10:00:00.000Z',
+  'só o cliente falou: a espera continua de quando começou');
+ok(desdeClienteEspera(L(['10:00'], ['10:30']), [C, C], null) === '2026-11-17T10:00:00.000Z', 'sem espera anterior: a primeira fala do cliente');
+ok(desdeClienteEspera([], [], null) === null, 'conversa vazia: ninguém espera');
+
 if (falhas) process.exit(1);
 console.log('Quem é da equipe: ok');

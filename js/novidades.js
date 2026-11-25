@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.91.7', versao: '4.91.7', em: '2026-11-25T18:00:00-03:00',
+    titulo: 'Otto: chega de cobrar o que a equipe já respondeu',
+    itens: ['Se a equipe foi a última a falar no grupo do cliente, o Otto não coloca mais esse cliente em "Clientes esperando a gente" — mesmo quando ainda falta uma entrega (ex.: mandar a arte ou o PDF).',
+      'Resposta dada ao cliente por outro número do B7 (Videomakers, Designers…) agora conta como resposta da equipe.'] },
   { id: 'v-4.91.6', versao: '4.91.6', em: '2026-11-25T16:00:00-03:00',
     titulo: 'Otto: para de cobrar quem já foi respondido',
     itens: ['Quando alguém da equipe responde o cliente no grupo pelo celular pessoal, o Otto agora reconhece (pelo número ou pelo nome da pessoa na equipe) e para de avisar que o cliente está esperando.',
