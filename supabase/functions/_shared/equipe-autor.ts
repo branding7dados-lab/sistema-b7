@@ -41,3 +41,17 @@ export function ehDaEquipe(eq: { nums: Set<string>; nomes: string[] }, m: { de_m
   if (f && eq.nums.has(f)) return true;
   return nomeEhDaEquipe(eq.nomes, m.autor_nome);
 }
+
+/** 4.91.7: desde quando o CLIENTE espera a gente (a IA disse que a próxima mensagem é da equipe).
+ *  null quando a EQUIPE FALOU POR ÚLTIMO: ela já respondeu — o que falta é uma entrega (ex.: "falta enviar o PDF"),
+ *  não uma resposta, e o Otto não cobra "sem resposta" (antes a espera virava o horário da própria resposta da
+ *  equipe e o lembrete repetia a cada 3 h: "Mercato há 8 dias", "Infinite Fio há 18h").
+ *  Se a equipe falou depois do começo da espera antiga, conta da fala seguinte do cliente. */
+export function desdeClienteEspera(lista: { criada_em: string }[], daEquipe: boolean[], esperandoDesde: string | null): string | null {
+  const n = lista.length;
+  if (!n || daEquipe[n - 1]) return null;
+  let k = -1; for (let i = n - 1; i >= 0; i--) if (daEquipe[i]) { k = i; break; }
+  const primeiraDoCliente = lista[k + 1].criada_em;   /* a fala do cliente depois da última da equipe (ou a 1ª, se a equipe não aparece) */
+  const respondeuDepois = !!esperandoDesde && lista.some((m, i) => daEquipe[i] && m.criada_em > esperandoDesde);
+  return (respondeuDepois ? primeiraDoCliente : esperandoDesde) || primeiraDoCliente;
+}

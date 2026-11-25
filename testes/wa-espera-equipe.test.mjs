@@ -45,6 +45,12 @@ const msg = (id, participant, pushName, texto, quando, alt) => ({ key: { remoteJ
   pushName, messageTimestamp: Math.floor(Date.parse(quando) / 1000), message: { conversation: texto } });
 const conv = (sb) => sb.t.wa_conversas[0];
 
+/* primeiro: a equipe fica guardada por 60 s (equipeConhecida), e este caso traz um número a mais */
+{ const sb = banco(base({ wa_numeros: [{ id: 'n2', numero: '5583977776666' }] }));
+  const lista = [{ de_mim: false, autor_jid: '5583977776666@s.whatsapp.net', autor_nome: 'Designers B7' }, { de_mim: false, autor_jid: '5583911112222@s.whatsapp.net', autor_nome: 'Ana Mercato' }];
+  const daEq = await equipeDasMensagens(sb, GRUPO, lista);
+  ok(lista.map(daEq).join() === 'true,false', '4.91.7: resposta por OUTRO número do B7 (Designers) conta como equipe'); }
+
 { const sb = banco(base());
   await gravar(sb, msg('A1', '999001@lid', 'Pedro Henrique Lima', 'Oi! Já tá pronto, segue a arte 👇', '2026-11-17T13:00:00Z'), {}, {}, NUM);
   ok(conv(sb).esperando_desde === null, 'Pedro (celular pessoal, fora da lista do Otto) responde pelo nome: o "esperando" zera');
