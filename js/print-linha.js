@@ -14,8 +14,10 @@ window.B7 = window.B7 || {};
 
 B7.FolhaLinha = (function () {
   const esc = B7.UI.esc;
-  const MARCA = 'assets/brand/symbol-color.png';
-  const LOGO  = 'assets/brand/logo-white.png';
+  /* Espectro: marca nova (assets/brand/espectro); lida a cada folha, porque a identidade troca sem recarregar */
+  const ESPECTRO_ID = () => typeof document !== 'undefined' && document.documentElement.getAttribute('data-identidade') === 'espectro';
+  const MARCA = () => ESPECTRO_ID() ? 'assets/brand/espectro/simbolo.svg' : 'assets/brand/symbol-color.png';
+  const LOGO  = () => ESPECTRO_ID() ? 'assets/brand/espectro/horizontal-branco.svg' : 'assets/brand/logo-white.png';
   const MESES = B7.UI.MESES;
 
   const vazio = t => !String(t || '').trim();
@@ -30,7 +32,7 @@ B7.FolhaLinha = (function () {
 
   function cabeca(sub) {
     return '<div class="faixa-topo"></div>' +
-      '<div class="folha-cabeca"><div class="esq"><img src="' + MARCA + '" alt="">' +
+      '<div class="folha-cabeca"><div class="esq"><img src="' + MARCA() + '" alt="">' +
       '<span>B7 &nbsp;/&nbsp; BRANDING7</span></div>' +
       '<div class="dir">' + esc(sub) + '</div></div>';
   }
@@ -47,7 +49,7 @@ B7.FolhaLinha = (function () {
     const l = ctx.linha;
     return '<div class="folha abertura le-capa">' +
       '<div class="brilho"></div>' +
-      '<img class="marca" src="' + LOGO + '" alt="B7">' +
+      '<img class="marca" src="' + LOGO() + '" alt="B7">' +
       (ctx.clienteLogo ? '<div class="le-logo-cliente"><img src="' + esc(ctx.clienteLogo) + '" alt=""></div>' : '') +
       '<div class="miolo">' +
         '<div class="olho"><i></i>PLANEJAMENTO DE CONTEÚDO</div>' +
@@ -439,7 +441,7 @@ B7.FolhaLinha = (function () {
   const nota = (rot, v) => vazio(v) ? '' : '<div class="l2-nota"><b>' + rot + '</b><div>' + paragrafos(v) + '</div></div>';
 
   function cab2(rot) {
-    return '<div class="faixa-topo"></div><div class="l2-cab"><img src="' + MARCA + '" alt=""><span>' + esc(rot) + '</span></div>';
+    return '<div class="faixa-topo"></div><div class="l2-cab"><img src="' + MARCA() + '" alt=""><span>' + esc(rot) + '</span></div>';
   }
   function pe2(ctx, num) {
     const l = ctx.linha;
