@@ -2124,6 +2124,11 @@ B7.Dashboard = (function () {
         L({ ic: 'play', tom: 'azul', t: 'Refazer o tour', d: 'o passeio de 1 minuto pelo que você mais usa', botao: true, attrs: ' data-refazer-tour' })) : '');
 
     const secAparencia =
+      /* 4.93.0: identidade nova (Espectro) — só a equipe; o Portal fica no visual atual até a liberação geral */
+      (B7.Identidade && !B7.Auth.ehCliente() ? grupo('Identidade nova', 'A nova marca da Branding7 no sistema, em teste. Vale só para este aparelho: os clientes continuam vendo o visual atual.',
+        L({ ic: 'tema', tom: 'violeta', t: 'Usar a identidade nova', cls: 'cfg-alterna',
+            d: 'cores, fonte e logos novos, menu flutuante e topo redesenhado',
+            dir: chave('identidade', B7.Identidade.ligada(), 'Usar a identidade nova') })) : '') +
       grupo('Visual', 'Vale só para este aparelho — cada pessoa da equipe ajusta o seu.',
         (B7.Aparencia ? L({ ic: 'tema', tom: 'rosa', t: 'Cor do sistema',
             d: '<span data-ap-eu-d>' + esc(B7.Aparencia.resumoPessoal()) + '</span>',
@@ -2529,6 +2534,7 @@ B7.Dashboard = (function () {
       if (pref === 'som_abertura') B7.pref.gravar('som_abertura', v);
       if (pref === 'tp_espelho') gravarTp('espelho', v);
       if (pref === 'ia_roteiros' || pref === 'ia_linhas' || pref === 'ia_chat') salvarIA(sw, v);
+      if (pref === 'identidade' && B7.Identidade) { B7.Identidade.definir(v); if (B7.Nav && B7.Nav.montar) { try { B7.Nav.montar(); } catch (e) {} } }
     };
     p.querySelectorAll('.cfg-alterna').forEach(l => {
       const sw = l.querySelector('.cfg-sw');
