@@ -97,6 +97,11 @@ html[data-identidade="espectro"] .ds-card .ds-prazo.hoje{color:var(--ambar);}
 html[data-identidade="espectro"] .ds-card .ds-prazo.atrasada{color:var(--erro);}
 html[data-identidade="espectro"] .ds-card .ds-feedback{font-size:12px;font-weight:400;padding:2px 8px;border-radius:999px;}
 
+/* seleção em lote: a caixinha fica no canto direito da prévia, em Violeta Quantum quando marcada */
+html[data-identidade="espectro"] .ds-card{position:relative;}
+html[data-identidade="espectro"] .ds-selbox input:checked + i{background:#7328A5;border-color:#7328A5;}
+html[data-identidade="espectro"] [data-peca].ds-marcada{box-shadow:0 0 0 2px #7328A5 !important;background:var(--card) !important;}
+
 /* etiqueta de situação (cartão e ficha da peça): pílula 24 com ponto de 6 */
 html[data-identidade="espectro"] .ds-card-selo{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:400;white-space:nowrap;
   background:var(--neutro-bg);color:var(--neutro);}

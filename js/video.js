@@ -2817,7 +2817,7 @@ B7.Video = (function () {
     const lista = comentariosPorVersao[v.id] || [];
     const podeExcluir = c => souEquipe() || c.autor_id === meuId();
     return '<div class="vd-comentarios">' +
-      '<label class="rot">Comentários' + (lista.length ? ' <span class="vd-contagem">' + lista.length + '</span>' : '') + '</label>' +
+      '<label class="rot">Comentários com minuto' + (lista.length ? ' <span class="vd-contagem">' + lista.length + '</span>' : '') + '</label>' +
       (lista.length
         ? '<div class="vd-comentarios-lista">' + lista.map(c =>
             '<div class="vd-comentario">' +

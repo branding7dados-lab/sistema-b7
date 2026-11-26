@@ -223,7 +223,7 @@ html[data-identidade="espectro"][data-theme="dark"] .vd-detalhe :is(.vd-bloco, .
 html[data-identidade="espectro"] .vd-detalhe .vd-versao-atual{border:0;background:transparent;padding:0;border-radius:0;}
 html[data-identidade="espectro"] .vd-detalhe .vd-versao-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--borda);font-size:13.5px;}
 html[data-identidade="espectro"] .vd-detalhe .vd-versao-cab b{font-weight:400;}
-html[data-identidade="espectro"] .vd-detalhe .vd-player{max-width:none;width:100%;aspect-ratio:auto;height:470px;border-radius:26px;background:#000;overflow:hidden;box-shadow:none;}
+html[data-identidade="espectro"] .vd-detalhe .vd-player{max-width:none;width:100%;aspect-ratio:auto;height:470px;border-radius:26px;background:#000;overflow:hidden;box-shadow:none;border:0;}
 html[data-identidade="espectro"] .vd-detalhe .vd-versao-antiga-corpo .vd-player{height:300px;}
 html[data-identidade="espectro"] .vd-detalhe .vd-player-tela-cheia{top:14px;right:14px;width:40px;height:40px;border-radius:20px;background:rgba(255,255,255,.92);color:#001561;border:0;}
 html[data-identidade="espectro"] .vd-detalhe .vd-player-legenda{margin-top:10px;font-size:12.5px;color:var(--ink-3);}
@@ -271,3 +271,4 @@ html[data-identidade="espectro"] .vd-detalhe .vd-timeline{border-color:var(--bor
 /* como no quadro, o vídeo (versões, player e comentários) abre a coluna principal */
 html[data-identidade="espectro"] .vd-detalhe .vd-detalhe-principal{display:flex;flex-direction:column;min-width:0;}
 html[data-identidade="espectro"] .vd-detalhe .vd-detalhe-principal > .vd-workspace{order:-1;}
+html[data-identidade="espectro"] .vd-detalhe :is(.vd-player-legenda, .vd-versao-arquivo) a.b{text-decoration:none;}
