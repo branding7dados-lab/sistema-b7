@@ -51,6 +51,7 @@ B7.Semana = (function () {
 
   let S = { relatorio: null, itens: [], linha: null, expandido: null, pagina: 0 };
   let filtro = '';
+  let abaLista = null;      /* 'esta' | 'anteriores' — recorte da lista (Espectro) */
 
   /* estado de UI da lista global — quais grupos (mês/semana) a pessoa
      fechou, para sobreviver a um re-render (busca, por exemplo).
@@ -90,16 +91,26 @@ B7.Semana = (function () {
 
     /* zzf: a busca filtra no lugar (antes recarregava a tela inteira a
        cada letra, com esqueleto e foco devolvido à força) */
+    /* Espectro: "Esta semana" (a atual e as que vêm) × "Anteriores" —
+       um recorte só de visualização; a busca procura em tudo. */
+    const hj = hojeISO();
+    const daAba = r => (r.semana_fim && r.semana_fim < hj) ? 'anteriores' : 'esta';
+    if (!abaLista || !lista.some(r => daAba(r) === abaLista)) abaLista = lista.some(r => daAba(r) === 'esta') ? 'esta' : 'anteriores';
+    const seg = segundaDe(hj);
+    const botaoNovo = '<button class="b pri ss-novo" id="novo-status" aria-label="Novo status"><span class="ss-novo-mais" aria-hidden="true">+</span><span class="ss-novo-tx">Novo status</span></button>';
     painel().innerHTML = '<div class="conteudo entra ss-tela">' +
       '<div class="trilha ss-so-largo"><a href="#/">Início</a><span>/</span><b>Status semanal</b></div>' +
-      '<div class="cab-conteudo ss-cab"><div><h1>Status semanal</h1>' +
-      '<p>O acompanhamento de sete dias que vai para o cliente.</p></div>' +
-      '<button class="b pri ss-novo" id="novo-status" aria-label="Novo status"><span class="ss-novo-mais" aria-hidden="true">+</span><span class="ss-novo-tx">Novo status</span></button></div>' +
+      '<div class="cab-conteudo ss-cab"><div><p class="v4-sobre ss-sobre">Semana de ' + esc(periodoCurto(seg, somarDias(seg, 6))) + '</p><h1>Status semanal</h1>' +
+      '<p class="ss-apoio">O acompanhamento de sete dias que vai para o cliente.</p></div>' +
+      (lista.length ? '' : botaoNovo) + '</div>' +
 
       (lista.length
-        ? '<div class="busca-linhas ss-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
+        ? '<div class="ss-barra"><div class="filtro ss-abas" role="tablist" aria-label="Período">' +
+            '<button type="button" role="tab" data-aba-status="esta"' + (abaLista === 'esta' ? ' class="on" aria-selected="true"' : ' aria-selected="false"') + '>Esta semana</button>' +
+            '<button type="button" role="tab" data-aba-status="anteriores"' + (abaLista === 'anteriores' ? ' class="on" aria-selected="true"' : ' aria-selected="false"') + '>Anteriores</button></div>' +
+          '<div class="busca-linhas ss-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
           '<input class="campo" id="busca-status" type="search" aria-label="Buscar por cliente ou período" ' +
-          'placeholder="Buscar por cliente ou período…" value="' + esc(filtro) + '"></div>' +
+          'placeholder="Buscar por cliente ou período…" value="' + esc(filtro) + '"></div>' + botaoNovo + '</div>' +
           '<div id="ss-resultado"></div>'
         : '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
           '<b>Nenhum status semanal ainda.</b>' +
@@ -119,16 +130,37 @@ B7.Semana = (function () {
       const filtradas = termo
         ? lista.filter(r => (r.cliente_nome || '').toLowerCase().includes(termo) ||
             D().periodoTexto(r.semana_inicio, r.semana_fim).toLowerCase().includes(termo))
-        : lista;
+        : lista.filter(r => daAba(r) === abaLista);
+      const tela = cx.closest('.ss-tela'); if (tela) tela.classList.toggle('ss-buscando', !!termo);
       cx.innerHTML = filtradas.length
-        ? (termo ? '<div class="lista-status ss-plana">' + filtradas.map(cardStatus).join('') + '</div>' : gruposHTML(filtradas))
+        ? (termo ? '<div class="ss-tabela">' + cabecalhoTabela() + '<div class="lista-status ss-plana">' + filtradas.map(cardStatus).join('') + '</div></div>' : gruposHTML(filtradas))
         : '<div class="estado-b7 ss-nada"><b>Nada encontrado para “' + esc(filtro) + '”.</b></div>';
       cx.classList.remove('ss-troca'); void cx.offsetWidth; cx.classList.add('ss-troca');
       ligarLista(cx);
     };
     const busca = document.getElementById('busca-status');
     if (busca) busca.oninput = B7.UI.debounce(() => { filtro = busca.value; pintar(); }, 160);
+    painel().querySelectorAll('[data-aba-status]').forEach(b => b.onclick = () => {
+      abaLista = b.dataset.abaStatus;
+      painel().querySelectorAll('[data-aba-status]').forEach(x => {
+        const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      pintar();
+    });
     pintar();
+  }
+
+  /* "23 a 29/11" — e "30/11 a 06/12" quando a semana cruza o mês */
+  function periodoCurto(inicio, fim) {
+    if (!inicio || !fim) return '';
+    const a = D().partes(inicio), b = D().partes(fim);
+    return (a.mes === b.mes && a.ano === b.ano ? String(a.dia).padStart(2, '0') : D().curto(inicio)) + ' a ' + D().curto(fim);
+  }
+
+  /* cabeçalho das colunas (Espectro); fica escondido na identidade antiga */
+  function cabecalhoTabela() {
+    return '<div class="ss-th" hidden aria-hidden="true"><span>Cliente</span><span>Semana</span>' +
+      '<span>Resumo</span><span>Situação</span><span></span></div>';
   }
 
   function ligarLista(raiz) {
@@ -199,7 +231,7 @@ B7.Semana = (function () {
               '<span class="gs-prog"><span class="gs-barra" aria-hidden="true"><i class="env" style="width:' + pct('Enviado') + '"></i>' +
                 '<i class="pro" style="width:' + pct('Pronto para envio') + '"></i></span>' +
                 '<em class="gs-prog-n' + (n.Enviado === tot ? ' completo' : '') + '">' + n.Enviado + '/' + tot + ' enviado' + (tot === 1 ? '' : 's') + '</em></span></summary>' +
-            '<div class="lista-status">' + sem.linhas.map(cardStatus).join('') + '</div>' +
+            cabecalhoTabela() + '<div class="lista-status">' + sem.linhas.map(cardStatus).join('') + '</div>' +
           '</details>';
         }).join('') + '</div>' +
       '</details>';
@@ -216,7 +248,7 @@ B7.Semana = (function () {
       B7.UI.avatarCliente(r.cliente_nome, r.cliente_logo_url, 'p') +
       '<div class="is-tx">' +
         '<b>' + esc(r.cliente_nome) + '</b>' +
-        '<span class="is-per">' + esc(D().periodoTexto(r.semana_inicio, r.semana_fim)) + '</span>' +
+        '<span class="is-per" title="' + esc(D().periodoTexto(r.semana_inicio, r.semana_fim)) + '">' + esc(periodoCurto(r.semana_inicio, r.semana_fim)) + '</span>' +
         '<span class="is-meta">' +
           '<span>' + r.total_itens + ' demanda' + (r.total_itens === 1 ? '' : 's') + '</span>' +
           (r.updated_at ? '<span>· ' + esc(B7.UI.quando(r.updated_at)) + '</span>' : '') +
@@ -226,7 +258,7 @@ B7.Semana = (function () {
       '<span class="is-situacao ' + classe + '">' + esc(r.situacao || 'Rascunho').replace(' para envio', '<span class="is-sit-longo"> para envio</span>') + '</span>' +
       '<button class="is-previa" data-quick-status="' + esc(r.id) + '" aria-label="Prévia do status de ' + esc(r.cliente_nome) + '" title="Prévia">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg></button>' +
-      '<svg class="is-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>' +
+      '<span class="is-abrir" aria-hidden="true"><svg class="is-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>' +
     '</div>';
   }
 
@@ -536,10 +568,10 @@ B7.Semana = (function () {
       '<a class="sem-volta" href="#/semanas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Status semanal</a>' +
       '<div class="sem-cab">' +
         '<div class="sem-cab-tx">' + B7.UI.avatarCliente(r.cliente_nome, r.cliente_logo_url || null, 'sem-av') +
-        '<div><small>Status semanal</small>' +
-        '<h1>' + esc(r.cliente_nome) + '</h1>' +
-        '<span class="sem-per">' + esc(D().periodoTexto(r.semana_inicio, r.semana_fim)) +
-          ' · <i class="sem-sit">' + esc(r.situacao || 'Rascunho') + '</i></span></div></div>' +
+        '<div><small><span class="sem-cli">' + esc(r.cliente_nome) + '</span> · ' + esc(periodoCurto(r.semana_inicio, r.semana_fim)) +
+          ' · <i class="sem-sit">' + esc(r.situacao || 'Rascunho') + '</i></small>' +
+        '<h1>Status semanal</h1>' +
+        '<span class="sem-per">' + esc(D().periodoTexto(r.semana_inicio, r.semana_fim)) + '</span></div></div>' +
         '<div class="sem-acoes">' +
           '<button class="b pri" data-nova-demanda>+ <span class="sem-so-largo">Adicionar </span>Demanda</button>' +
           '<button class="b" data-exportar><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5"/><path d="M4.5 16.5v2.5A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5v-2.5"/></svg><span>Exportar</span></button>' +

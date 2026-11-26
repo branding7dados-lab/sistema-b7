@@ -125,9 +125,8 @@ B7.Legendas = (function () {
     if (q('aba')) aba = q('aba');
     const demandaId = q('demanda');
     painel().innerHTML = '<div class="conteudo entra lg">' +
-      '<div class="cb-topo"><div class="cb-titulo"><h1>Legendas</h1>' +
-        '<p class="gt-intro">A IA conserta a legenda automática do vídeo: ortografia, acento, maiúscula, pontuação, %, R$ e nome das marcas — sem reescrever o que foi falado. Os tempos não mudam.</p></div></div>' +
-      '<div class="filtro rolavel" role="tablist">' + [['consertar', 'Consertar'], ['historico', 'Histórico'], ['termos', 'Marcas e termos']].map(([k, r]) =>
+      '<div class="cb-topo"><div class="cb-titulo"><p class="v4-sobre lg-rot">Consertar .srt com IA</p><h1>Legendas</h1></div></div>' +
+      '<div class="filtro rolavel lg-abas" role="tablist">' + [['consertar', 'Consertar'], ['historico', 'Histórico'], ['termos', 'Marcas e termos']].map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (aba === k ? 'on' : '') + '" aria-selected="' + (aba === k) + '">' + r + '</button>').join('') + '</div>' +
       '<div id="lg-corpo"></div></div>';
     painel().querySelectorAll('[data-aba]').forEach(b => b.onclick = () => {
@@ -323,27 +322,33 @@ B7.Legendas = (function () {
     const mudou = c => c.ia !== c.texto;
     const n = cues.filter(mudou).length, barradas = cues.filter(c => c.barrada).length;
     let soMudadas = n > 0;
-    const linhas = () => cues.map((c, i) => ({ c, i })).filter(x => !soMudadas || mudou(x.c) || x.c.barrada).map(({ c, i }) => {
+    const visiveis = () => cues.map((c, i) => ({ c, i })).filter(x => !soMudadas || mudou(x.c) || x.c.barrada);
+    const ini = c => '<span class="lg-t" title="' + esc(c.tempo) + '">' + esc((String(c.tempo).split('-->')[0] || '').trim().replace(/,\d+$/, '')) + '</span> ';
+    const br = t => esc(t).replace(/\n/g, '<br>');
+    const originais = () => visiveis().map(({ c, i }) => '<p class="lg-l" data-i="' + i + '">' + ini(c) + br(c.texto) + '</p>').join('');
+    const linhas = () => visiveis().map(({ c, i }) => {
       const d = diff(c.texto, c.ia), desfeita = c.usar !== 'ia';
       return '<div class="lg-cue' + (mudou(c) ? ' mudou' : '') + (desfeita ? ' desfeita' : '') + '" data-i="' + i + '">' +
-        '<div class="lg-cue-cab"><b>' + esc(c.num || String(i + 1)) + '</b><small>' + esc(c.tempo) + '</small>' +
-          (mudou(c) ? '<button type="button" class="cb-link" data-desfazer="' + i + '">' + (desfeita ? 'Usar a correção' : 'Desfazer esta') + '</button>' : '') + '</div>' +
-        (mudou(c) ? '<div class="lg-dois"><p class="lg-antes">' + d.antes + '</p><p class="lg-depois">' + (desfeita ? esc(c.texto).replace(/\n/g, '<br>') : d.depois) + '</p></div>'
-          : '<p class="lg-igual">' + esc(c.texto).replace(/\n/g, '<br>') + '</p>') +
-        (c.barrada ? '<p class="lg-barrada">⚠️ A IA quis trocar palavras desta legenda; ficou a original. Sugestão dela: “' + esc(c.barrada) + '” ' +
+        '<p class="lg-l">' + ini(c) + (mudou(c) && !desfeita ? d.depois : br(desfeita ? c.texto : c.ia)) + '</p>' +
+        (mudou(c) ? '<button type="button" class="cb-link" data-desfazer="' + i + '">' + (desfeita ? 'Usar a correção' : 'Desfazer esta') + '</button>' : '') +
+        (c.barrada ? '<p class="lg-barrada">A IA quis trocar palavras desta legenda; ficou a original. Sugestão dela: “' + esc(c.barrada) + '” ' +
           '<button type="button" class="cb-link" data-aceitar="' + i + '">Usar a sugestão</button></p>' : '') +
       '</div>';
     }).join('');
     cx.innerHTML = '<section class="lg-res">' +
-      '<div class="lg-res-cab"><div><h2>' + esc(S.nome) + '</h2><p>' + cues.length + ' legendas · <b>' + n + '</b> corrigida' + (n === 1 ? '' : 's') +
+      '<div class="lg-res-card"><div class="lg-res-cab"><h2>Arquivo enviado</h2><p>' + esc(S.nome) + ' · ' + cues.length + ' bloco' + (cues.length === 1 ? '' : 's') + '</p></div>' +
+        '<div class="lg-cues lg-orig" id="lg-orig"></div></div>' +
+      '<div class="lg-res-card"><div class="lg-res-cab"><h2>Corrigido pela IA</h2><p>' + n + ' correç' + (n === 1 ? 'ão' : 'ões') +
         (barradas ? ' · ' + barradas + ' mantida' + (barradas === 1 ? '' : 's') + ' por segurança' : '') + ' · tempos iguais ao original</p></div>' +
-        '<div class="lg-res-bts"><button class="b pri" data-lg="baixar">Baixar .srt corrigido</button><button class="b contorno" data-lg="copiar">Copiar</button>' +
-        '<button class="b contorno" data-lg="nova">Outra legenda</button></div></div>' +
-      '<label class="lg-filtro"><input type="checkbox" id="lg-so"' + (soMudadas ? ' checked' : '') + '> Mostrar só as que mudaram</label>' +
-      '<div class="lg-cues" id="lg-cues"></div></section>';
+        '<div class="lg-cues" id="lg-cues"></div>' +
+        '<div class="lg-res-bts"><button class="b fina pri" data-lg="baixar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M4 20h16"/></svg>Baixar .srt</button>' +
+          '<button class="b fina contorno" data-lg="copiar">Copiar texto</button><button class="b fina contorno" data-lg="nova">Outra legenda</button>' +
+          '<label class="lg-filtro"><input type="checkbox" id="lg-so"' + (soMudadas ? ' checked' : '') + '> Só as que mudaram</label></div></div>' +
+      '</section>';
     const lista = cx.querySelector('#lg-cues');
     const repintar = () => {
       lista.innerHTML = linhas() || '<p class="gt-vazio">A IA não encontrou nada para corrigir.</p>';
+      cx.querySelector('#lg-orig').innerHTML = originais();
       lista.querySelectorAll('[data-desfazer]').forEach(b => b.onclick = () => {
         const c = cues[+b.dataset.desfazer]; c.usar = c.usar === 'ia' ? 'original' : 'ia'; S.salvoComo = null; repintar();
       });

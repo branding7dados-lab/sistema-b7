@@ -1,1 +1,124 @@
 /* Espectro · aprovacoes — redesenho fiel ao artefato. Tudo sob html[data-identidade="espectro"]. */
+/* Quadro "Aprovações": rótulo (N peças com os clientes) + título 42 · trilho de abas 34px ·
+   cartão raio 26 com tabela de 5 colunas (Peça · Cliente · Com o cliente há · Comentários · ação). */
+
+/* ---------------------------------------------------------------- cabeçalho */
+html[data-identidade="espectro"] .cab-conteudo.ap-cab{display:flex;align-items:flex-end;gap:10px;margin:4px 0 24px;}
+html[data-identidade="espectro"] .ap-cab .v4-sobre{margin:0 0 8px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);line-height:1.45;}
+html[data-identidade="espectro"] .ap-cab h1{margin:0;font-size:42px !important;line-height:1;letter-spacing:0;color:var(--ink);}
+html[data-identidade="espectro"] .ap-cab h1 .conta,
+html[data-identidade="espectro"] .ap-cab .ap-intro{display:none;}
+
+/* os números grandes saem: as abas fazem o papel (o quadro não tem cartões de contagem) */
+html[data-identidade="espectro"] .ap-resumo{display:none;}
+
+/* --------------------------------------------- abas (trilho) + busca e filtros */
+html[data-identidade="espectro"] .ap-filtros{display:flex;flex-direction:row;justify-content:space-between;align-items:center;gap:16px;margin:0 0 16px;flex-wrap:wrap;}
+html[data-identidade="espectro"] .ap-abas{display:inline-flex;flex:none;padding:4px;gap:4px;border-radius:22px;background:var(--suave);border:0;margin:0;box-shadow:none;}
+html[data-identidade="espectro"] .ap-abas .aba{height:34px;min-height:34px;padding:0 16px;border-radius:17px;display:flex;align-items:center;border:0;background:transparent;
+  font:inherit;font-size:13px;font-weight:400;color:var(--ink-3);white-space:nowrap;cursor:pointer;box-shadow:none;transition:background-color .18s, color .18s, transform .12s;}
+html[data-identidade="espectro"] .ap-abas .aba:after{display:none;}
+html[data-identidade="espectro"] .ap-abas .aba:hover{color:var(--ink);}
+html[data-identidade="espectro"] .ap-abas .aba:active{transform:scale(.97);}
+html[data-identidade="espectro"] .ap-abas .aba.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(10,16,51,.12);}
+html[data-identidade="espectro"] .ap-abas .aba:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+
+html[data-identidade="espectro"] .ap-filtros-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;min-width:0;}
+html[data-identidade="espectro"] .ap-filtros-linha .gl-busca.ap-busca-cx{width:220px;height:42px;padding:0 16px;border-radius:21px;}
+html[data-identidade="espectro"] .ap-filtros-linha .ap-sels{display:flex;flex-wrap:nowrap;gap:8px;max-height:none;opacity:1;margin:0;overflow:visible;}
+html[data-identidade="espectro"] .ap-sels .campo{height:42px;min-height:42px;margin:0;padding:0 34px 0 16px;border-radius:21px;font-size:13px;color:var(--ink);
+  background-color:var(--card);border:1px solid var(--borda-forte);width:auto;max-width:190px;}
+
+/* ---------------------------------------------------------------- tabela */
+html[data-identidade="espectro"] .ap-lista{display:block;background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);border-radius:26px;padding:4px;box-sizing:border-box;overflow:hidden;}
+html[data-identidade="espectro"] .ap-tab-cab,
+html[data-identidade="espectro"] .ap-lista .ap-item{display:grid;grid-template-columns:2fr 1.3fr .8fr .7fr 1.2fr;gap:14px;}
+html[data-identidade="espectro"] .ap-tab-cab{padding:10px 18px;font-size:11.5px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);}
+html[data-identidade="espectro"] .ap-lista .ap-item{align-items:center;padding:12px 18px;margin:0;border:0;border-top:1px solid var(--borda);border-radius:0;background:transparent;box-shadow:none;
+  font-size:13.5px;color:var(--ink);cursor:pointer;overflow:visible;transform:none;transition:background-color .18s;}
+html[data-identidade="espectro"] .ap-lista .ap-item:before{display:none;}
+html[data-identidade="espectro"] .ap-lista .ap-item:hover{background:var(--suave);transform:none;box-shadow:none;border-color:var(--borda);}
+html[data-identidade="espectro"] .ap-lista .ap-item:active{transform:none;}
+html[data-identidade="espectro"] .ap-lista .ap-item > *{min-width:0;grid-column:auto;grid-row:auto;}
+
+/* peça: miniatura 56×42 raio 10 + título */
+html[data-identidade="espectro"] .ap-peca{display:flex;align-items:center;gap:12px;}
+html[data-identidade="espectro"] .ap-thumb{width:56px;height:42px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg, rgba(115,40,165,.14), rgba(224,47,117,.12));color:#7328A5;}
+html[data-identidade="espectro"] .ap-thumb svg{width:20px;height:20px;}
+html[data-identidade="espectro"] .ap-peca .ap-tx{display:flex;flex-direction:column;gap:2px;min-width:0;grid-column:auto;grid-row:auto;}
+html[data-identidade="espectro"] .ap-peca .ap-tx b{font-size:13.5px;font-weight:400;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+html[data-identidade="espectro"] .ap-peca .ap-tx small{font-size:11.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+
+/* cliente: avatar 26 raio 10 + nome */
+html[data-identidade="espectro"] .ap-cli{display:flex;align-items:center;gap:10px;}
+html[data-identidade="espectro"] .ap-cli .ap-logo{width:26px;height:26px;min-width:26px;border-radius:10px;font-size:10px;flex:none;grid-column:auto;grid-row:auto;align-self:center;}
+html[data-identidade="espectro"] .ap-cli p{margin:0;min-width:0;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* há quanto tempo: etiqueta 24px com ponto */
+html[data-identidade="espectro"] .ap-ha-chip,
+html[data-identidade="espectro"] .ap-lista .ap-sit{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:400;
+  letter-spacing:0;text-transform:none;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;}
+html[data-identidade="espectro"] .ap-ha-chip:before,
+html[data-identidade="espectro"] .ap-lista .ap-sit:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:1;flex:none;animation:none;}
+html[data-identidade="espectro"] .ap-ha-chip.neutro{background:var(--neutro-bg);color:var(--neutro);}
+html[data-identidade="espectro"] .ap-ha-chip.ambar{background:var(--ambar-bg);color:var(--ambar);}
+html[data-identidade="espectro"] .ap-ha-chip.erro{background:var(--erro-bg);color:var(--erro);}
+
+html[data-identidade="espectro"] .ap-coms{color:var(--ink-3);white-space:nowrap;}
+
+/* ação: botão 34px (Lembrar no WhatsApp) ou o próximo passo */
+html[data-identidade="espectro"] .ap-fim{display:flex;justify-content:flex-start;}
+html[data-identidade="espectro"] .ap-lembrar{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:34px;padding:0 16px;border-radius:17px;
+  font:inherit;font-size:13px;font-weight:400;cursor:pointer;white-space:nowrap;background:var(--card);color:var(--ink);border:1px solid var(--borda);
+  transition:background-color .18s, border-color .18s, color .18s, transform .12s;}
+html[data-identidade="espectro"] .ap-lembrar svg{width:16px;height:16px;flex:none;}
+html[data-identidade="espectro"] .ap-lembrar:hover{border-color:#7328A5;color:#7328A5;}
+html[data-identidade="espectro"] .ap-lembrar:active{transform:scale(.97);}
+html[data-identidade="espectro"] .ap-lembrar:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .ap-lista .ap-acao{font-size:12.5px;color:var(--ink-3);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* vazio */
+html[data-identidade="espectro"] .ap-filtros + .estado-b7{border-radius:26px;background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);}
+
+/* ---------------------------------------------------------------- escuro */
+html[data-identidade="espectro"][data-theme="dark"] .ap-thumb{background:linear-gradient(135deg, rgba(181,123,230,.22), rgba(255,92,154,.16));color:#D9B8F5;}
+html[data-identidade="espectro"][data-theme="dark"] .ap-lista .ap-item:hover{background:rgba(255,255,255,.04);}
+html[data-identidade="espectro"][data-theme="dark"] .ap-lembrar{background:rgba(255,255,255,.04);border-color:var(--borda-forte);}
+html[data-identidade="espectro"][data-theme="dark"] .ap-lembrar:hover{border-color:var(--acento);color:var(--acento);}
+html[data-identidade="espectro"][data-theme="dark"] .ap-sels .campo{background-color:var(--card);}
+
+/* ---------------------------------------------------------------- celular */
+@media (max-width:760px){
+  html[data-identidade="espectro"] .cab-conteudo.ap-cab{margin:0 0 16px;justify-content:flex-start;align-items:flex-start;text-align:left;}
+  html[data-identidade="espectro"] .cab-conteudo.ap-cab > div{text-align:left;}
+  html[data-identidade="espectro"] .ap-cab h1{font-size:32px !important;}
+  html[data-identidade="espectro"] .ap-resumo{display:none !important;}
+  html[data-identidade="espectro"] .ap-filtros{flex-direction:column;align-items:stretch;gap:10px;margin:0 0 14px;}
+  html[data-identidade="espectro"] .ap-abas{display:flex !important;max-width:100%;overflow-x:auto;scrollbar-width:none;}
+  html[data-identidade="espectro"] .ap-abas::-webkit-scrollbar{display:none;}
+  html[data-identidade="espectro"] .ap-abas .aba{flex:none;}
+  html[data-identidade="espectro"] .ap-filtros-linha{display:flex;flex-direction:column;align-items:stretch;gap:8px;}
+  html[data-identidade="espectro"] .ap-filtros-linha .gl-linha-busca{display:flex;gap:8px;width:100%;}
+  html[data-identidade="espectro"] .ap-filtros-linha .gl-busca.ap-busca-cx{flex:1;width:auto;}
+  html[data-identidade="espectro"] .ap-filtros-linha .gl-bt-filtros{height:42px;border-radius:21px !important;padding:0 16px;background:var(--card);border:1px solid var(--borda-forte);color:var(--ink);font-weight:400;}
+  html[data-identidade="espectro"] .ap-filtros-linha .ap-sels{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);max-height:0;opacity:0;overflow:hidden;margin-top:-8px;
+    transition:max-height .35s cubic-bezier(.16,1,.3,1), opacity .25s, margin .35s;}
+  html[data-identidade="espectro"] .ap-filtros-linha .ap-sels.aberto{max-height:200px;opacity:1;margin-top:0;}
+  html[data-identidade="espectro"] .ap-sels #ap-periodo{grid-column:1 / -1;}
+  html[data-identidade="espectro"] .ap-sels .campo{max-width:none;width:100%;}
+
+  html[data-identidade="espectro"] .ap-tab-cab{display:none;}
+  html[data-identidade="espectro"] .ap-lista{border-radius:22px;}
+  html[data-identidade="espectro"] .ap-lista .ap-item{display:flex;flex-wrap:wrap;align-items:center;gap:0 10px;padding:14px;}
+  html[data-identidade="espectro"] .ap-lista .ap-tab-cab + .ap-item{border-top:0;}
+  html[data-identidade="espectro"] .ap-lista .ap-item .ap-peca{flex:1 1 100%;margin-bottom:10px;}
+  html[data-identidade="espectro"] .ap-peca .ap-tx b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:14px;line-height:1.3;}
+  html[data-identidade="espectro"] .ap-lista .ap-item .ap-cli{order:1;flex:1 1 0;}
+  html[data-identidade="espectro"] .ap-lista .ap-item .ap-ha{order:2;flex:0 1 auto;max-width:60%;}
+  /* quebra de linha: cliente + espera numa linha, comentários + ação na outra */
+  html[data-identidade="espectro"] .ap-lista .ap-item:before{display:block;content:"";order:3;flex:1 1 100%;height:0;margin:0;position:static;width:auto;background:none;}
+  html[data-identidade="espectro"] .ap-lista .ap-item .ap-coms{order:4;flex:1 1 0;font-size:12.5px;margin-top:10px;}
+  html[data-identidade="espectro"] .ap-lista .ap-item .ap-fim{order:5;flex:none;margin-top:10px;justify-content:flex-end;max-width:100%;}
+  html[data-identidade="espectro"] .ap-lista .ap-acao{font-size:12px;}
+}

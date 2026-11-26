@@ -18,11 +18,11 @@ B7.Aprovacoes = (function () {
   const painel = () => document.getElementById('painel-dashboard');
 
   const SITUACOES = [
-    ['aguardando', 'Aguardando cliente', ['pendente', 'parcial']],
-    ['ajustes',    'Ajustes solicitados', ['ajustes']],
-    ['recusado',   'Recusados', ['recusado']],
-    ['aprovado',   'Aprovados', ['aprovado']],
-    ['todos',      'Todos', null]   /* inclui versões substituídas e canceladas */
+    ['aguardando', 'Com o cliente', ['pendente', 'parcial']],
+    ['ajustes',    'Ajuste pedido', ['ajustes']],
+    ['recusado',   'Recusadas', ['recusado']],
+    ['aprovado',   'Aprovadas', ['aprovado']],
+    ['todos',      'Todas', null]   /* inclui versões substituídas e canceladas */
   ];
   const ROTULO = { pendente: 'Aguardando cliente', parcial: 'Parcialmente revisado', aprovado: 'Aprovado',
                    ajustes: 'Ajustes solicitados', recusado: 'Recusado', substituido: 'Versão substituída',
@@ -129,7 +129,7 @@ B7.Aprovacoes = (function () {
     painel().innerHTML = '<div class="conteudo entra">' +
       /* zzx: no celular o cabeçalho é compacto (título + contador); a
          frase de apoio fica só no computador */
-      '<div class="cab-conteudo ap-cab"><div><p class="v4-sobre">Com o cliente</p><h1>Aprovações <span class="conta">' + itens.length + '</span></h1>' +
+      '<div class="cab-conteudo ap-cab"><div><p class="v4-sobre">' + resumo.aguardando + (resumo.aguardando === 1 ? ' peça com o cliente' : ' peças com os clientes') + '</p><h1>Aprovações <span class="conta">' + itens.length + '</span></h1>' +
       '<p class="ap-intro">O que foi enviado aos clientes e o que eles decidiram. Corrigir é no editor; aqui você vê e acompanha.</p></div></div>' +
 
       '<div class="ap-resumo">' +
@@ -166,7 +166,9 @@ B7.Aprovacoes = (function () {
       '</div>' +
 
       (itens.length
-        ? '<div class="ap-lista">' + itens.map((a, i) => linha(a, i)).join('') + '</div>'
+        ? '<div class="ap-lista"><div class="ap-tab-cab" aria-hidden="true"><span>Peça</span><span>Cliente</span><span>' +
+            (F.situacao === 'aguardando' ? 'Com o cliente há' : 'Situação') + '</span><span>Comentários</span><span></span></div>' +
+            itens.map((a, i) => linha(a, i)).join('') + '</div>'
         : '<div class="estado-b7"><b>' + vazio() + '</b><p>Os filtros valem para a lista e para os números acima.</p></div>') +
     '</div>';
 
@@ -180,6 +182,13 @@ B7.Aprovacoes = (function () {
     }, 350); };
     if (F.refocar) { F.refocar = false; const b = p.querySelector('#ap-busca'); b.focus(); b.setSelectionRange(b.value.length, b.value.length); }
     p.querySelectorAll('[data-abrir]').forEach(el => el.onclick = () => { location.hash = '#/aprovacoes/' + el.dataset.abrir; });
+    /* lembrar o cliente no WhatsApp direto da lista (mesmo envio do detalhe) */
+    p.querySelectorAll('[data-wa-lembrar]').forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const ap = itens.find(x => String(x.id) === b.dataset.waLembrar); if (!ap) return;
+      B7.WhatsApp.enviar({ tipo: 'aprovacao', refId: ap.id, clienteId: ap.client_id, clienteNome: ap.cliente_nome || '',
+        titulo: ap.titulo || '', link: 'https://sistema.branding7.com.br/#/revisar/' + ap.id });
+    });
     p.querySelectorAll('[data-resumo]').forEach(el => el.onclick = () => { F.situacao = el.dataset.resumo; abrir(true); });
     const abre = p.querySelector('#ap-abre'), sels = p.querySelector('#ap-sels');
     if (abre && sels) abre.onclick = () => {
@@ -213,32 +222,49 @@ B7.Aprovacoes = (function () {
     return '<button class="ap-num ' + k + (F.situacao === k ? ' on' : '') + '" data-resumo="' + k + '"><b>' + n + '</b><span>' + r + '</span></button>';
   }
 
+  /* ícone da peça (a lista não tem miniatura do material: mostra o tipo) */
+  const ICONE_TIPO = {
+    roteiro: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
+    linha: '<path d="M4 6h16M4 12h16M4 18h10"/>',
+    conteudo: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="15.5" cy="8.5" r="1.5"/>',
+    semana: '<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    design_versao: '<path d="M14.5 4.5l5 5L8 21H3v-5z"/><path d="M12.5 6.5l5 5"/>'
+  };
+  const svgIc = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  /* há quanto tempo está com o cliente: hoje · 1 dia · N dias (a cor sobe com a espera) */
+  function haQuanto(iso) {
+    const d = iso ? Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 864e5)) : 0;
+    const tom = d >= 5 ? 'erro' : d >= 2 ? 'ambar' : 'neutro';
+    return '<span class="ap-ha-chip ' + tom + '">' + (d === 0 ? 'hoje' : d === 1 ? '1 dia' : d + ' dias') + '</span>';
+  }
+
   function linha(a, i) {
     const pend = a.situacao === 'pendente' || a.situacao === 'parcial';
     const acao = pend ? (a.decisao_anulada ? 'Aprovação anulada · aguardando o cliente' : 'Aguardando o cliente')
       : a.situacao === 'ajustes' ? 'Corrigir e reenviar'
       : a.situacao === 'recusado' ? 'Repensar a proposta'
       : a.situacao === 'aprovado' ? 'Seguir para a produção' : '';
-    const pct = a.total_partes ? Math.round(100 * (a.partes_aprovadas || 0) / a.total_partes) : 0;
+    const novos = +a.comentarios_abertos || 0, total = +a.comentarios_total || 0;
+    const resposta = decisaoVale(a)
+      ? (a.origem_decisao === 'externa' ? 'via ' + (CANAL[a.canal_decisao] || 'canal externo') + (a.registrado_por_nome ? ' (reg. ' + a.registrado_por_nome + ')' : '')
+          : 'por ' + (a.decidido_por_nome || 'Cliente')) + ' · ' + B7.UI.quando(a.decidido_em)
+      : a.decisao_anulada ? 'anulada em ' + dataBR(a.anulada_em)
+      : a.ultima_resposta_cliente ? 'comentou ' + B7.UI.quando(a.ultima_resposta_cliente) : '';
+    const podeLembrar = pend && a.versao_atual && B7.WhatsApp && B7.WhatsApp.podeEnviar && B7.WhatsApp.podeEnviar();
     return '<div class="ap-item sit-' + esc(pend ? 'aguardando' : a.situacao) + '" data-abrir="' + esc(a.id) + '" style="--i:' + Math.min(i || 0, 8) + '">' +
-      B7.UI.avatarCliente(a.cliente_nome, a.cliente_logo_url, 'ap-logo') +
-      '<div class="ap-tx">' +
-        '<b>' + esc(a.titulo) + '</b>' +
-        '<small>' + esc(a.cliente_nome) + ' · ' + esc(TIPO[a.tipo] || a.tipo) + ' · v' + a.versao +
-          (a.versao_atual ? '' : ' (substituída)') + ' · enviado ' + esc(B7.UI.quando(a.enviado_em)) +
-          (a.enviado_por_nome ? ' por ' + esc(a.enviado_por_nome) : '') + '</small>' +
-      '</div>' +
-      '<div class="ap-cenas">' + (a.total_partes
-        ? '<b>' + (a.partes_aprovadas || 0) + '/' + a.total_partes + '</b><span>cenas ok' + (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' ajuste(s)' : '') + '</span>' +
-          '<i class="ap-barra" style="--p:' + pct + '%"></i>'
-        : '') + '</div>' +
-      '<div class="ap-resposta">' + (decisaoVale(a)
-        ? '<b>' + esc(a.origem_decisao === 'externa' ? 'Via ' + (CANAL[a.canal_decisao] || 'canal externo') : (a.decidido_por_nome || 'Cliente')) + '</b><span>' +
-            (a.origem_decisao === 'externa' ? 'reg. ' + esc(a.registrado_por_nome || '') + ' · ' : '') + esc(B7.UI.quando(a.decidido_em)) + '</span>'
-        : a.decisao_anulada ? '<b>Anulada</b><span>' + esc(dataBR(a.anulada_em)) + '</span>'
-        : (a.ultima_resposta_cliente ? '<b>Comentou</b><span>' + esc(B7.UI.quando(a.ultima_resposta_cliente)) + '</span>' : '<span>sem resposta</span>')) + '</div>' +
-      '<span class="ap-sit ' + esc(a.situacao) + '">' + esc(rotulo(a.situacao)) + '</span>' +
-      '<span class="ap-acao">' + esc(acao) + '</span>' +
+      '<div class="ap-peca"><span class="ap-thumb">' + svgIc(ICONE_TIPO[a.tipo] || ICONE_TIPO.conteudo) + '</span>' +
+        '<div class="ap-tx"><b>' + esc(a.titulo) + '</b>' +
+          '<small>' + esc(TIPO[a.tipo] || a.tipo) + ' · v' + a.versao + (a.versao_atual ? '' : ' (substituída)') +
+            (a.total_partes ? ' · ' + (a.partes_aprovadas || 0) + '/' + a.total_partes + ' cenas ok' + (a.partes_ajustes ? ' · ' + a.partes_ajustes + ' ajuste(s)' : '') : '') +
+            ' · enviado ' + esc(B7.UI.quando(a.enviado_em)) + (a.enviado_por_nome ? ' por ' + esc(a.enviado_por_nome) : '') +
+            (resposta ? ' · ' + esc(resposta) : '') + '</small></div></div>' +
+      '<div class="ap-cli">' + B7.UI.avatarCliente(a.cliente_nome, a.cliente_logo_url, 'ap-logo') + '<p>' + esc(a.cliente_nome) + '</p></div>' +
+      '<div class="ap-ha">' + (pend && F.situacao === 'aguardando' ? haQuanto(a.enviado_em)
+        : '<span class="ap-sit ' + esc(a.situacao) + '">' + esc(rotulo(a.situacao)) + '</span>') + '</div>' +
+      '<div class="ap-coms">' + (novos ? novos + (novos === 1 ? ' novo' : ' novos') : total ? String(total) : '—') + '</div>' +
+      '<div class="ap-fim">' + (podeLembrar
+        ? '<button type="button" class="ap-lembrar" data-wa-lembrar="' + esc(a.id) + '">' + svgIc('<path d="M3 11.5L21 3l-8.5 18-2-7.5z"/>') + 'Lembrar no WhatsApp</button>'
+        : '<span class="ap-acao">' + esc(acao) + '</span>') + '</div>' +
     '</div>';
   }
 
