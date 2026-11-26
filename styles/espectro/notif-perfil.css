@@ -94,6 +94,7 @@ html[data-identidade="espectro"] .sino-esq > span{width:34px;height:34px;border-
   html[data-identidade="espectro"] .sino-item{padding:12px 14px;}
 }
 @media (max-width:600px){
+  html[data-identidade="espectro"] .sino-painel{width:auto;}
   /* no celular o link vira só o ícone (sem espaço para a frase) */
   html[data-identidade="espectro"] .sino-acao:not(.so-ic){width:30px;padding:0;color:#7328A5;}
   html[data-identidade="espectro"] .sino-acao:not(.so-ic) svg{display:block;width:17px;height:17px;}
@@ -122,16 +123,24 @@ html[data-identidade="espectro"] .pf-pop .pf-painel > :not(.pf-topo){margin-left
 html[data-identidade="espectro"] .pf-topo,
 html[data-identidade="espectro"] .pf-topo.pf-topo-prog{position:relative;overflow:hidden;gap:14px;padding:28px 24px;border-radius:0;background:#001561;color:#fff;}
 html[data-identidade="espectro"] .pf-topo::before{content:"";position:absolute;right:-60px;top:-40px;width:300px;height:300px;opacity:.5;pointer-events:none;
-  background:url('../../assets/brand/espectro/padrao-lampada-violeta.svg') center/contain no-repeat;}
+  background:url('../../assets/brand/espectro/padrao-lampada-violeta.svg') center/contain no-repeat;
+  -webkit-mask:radial-gradient(circle at 55% 45%, #000 25%, transparent 70%);mask:radial-gradient(circle at 55% 45%, #000 25%, transparent 70%);}
 html[data-identidade="espectro"] .pf-topo > *{position:relative;}
 html[data-identidade="espectro"] .pf-topo .pf-av-g{width:60px;height:60px;}
-html[data-identidade="espectro"] .pf-topo .pf-av-g .pf-av-in{border-radius:26px;font-size:60px;background:#7328A5;color:#fff;}
+html[data-identidade="espectro"] .pf-topo .pf-av-g .pf-av-in{border-radius:26px;font-size:60px;}
+html[data-identidade="espectro"] :is(.pf-topo, .pf-card) .pf-av-in{font-weight:400;letter-spacing:0;text-shadow:none;}
+html[data-identidade="espectro"] :is(.pf-topo, .pf-card) .pf-av-in span{font-size:.4em;}
+html[data-identidade="espectro"] :is(.pf-topo, .pf-card) .pf-av-in::before,
+html[data-identidade="espectro"] :is(.pf-topo, .pf-card) .pf-av-in::after{display:none;}
+html[data-identidade="espectro"] .pf-topo .pf-av-in:not(.com-foto){background:#7328A5;}
+html[data-identidade="espectro"] .pf-card .pf-av-in:not(.com-foto){background:var(--b7-espectro-curto);}
 html[data-identidade="espectro"] .pf-topo .pf-ponto{width:14px;height:14px;box-shadow:0 0 0 3px #001561;}
 html[data-identidade="espectro"] .pf-quem b{font-size:22px;font-weight:400;line-height:1.2;color:#fff;}
 html[data-identidade="espectro"] .pf-quem small,
 html[data-identidade="espectro"] .pf-topo .pf-funcoes{font-size:13px;color:#C3C7E0;opacity:1;margin-top:2px;}
 html[data-identidade="espectro"] .pf-topo .pf-cargos:empty{display:none;}
-html[data-identidade="espectro"] .pf-editar{height:30px;padding:0 12px;border-radius:15px;background:rgba(255,255,255,.14);color:#fff;font-size:12px;font-weight:400;}
+html[data-identidade="espectro"] .pf-topo .pf-quem b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-identidade="espectro"] .pf-editar{position:absolute !important;top:10px;right:12px;height:26px;padding:0 11px;border-radius:13px;background:rgba(255,255,255,.14);color:#fff;font-size:12px;font-weight:400;}
 html[data-identidade="espectro"] .pf-editar:hover{background:rgba(255,255,255,.24);}
 
 /* rótulos de seção */
@@ -160,6 +169,7 @@ html[data-identidade="espectro"] .pf-ponto[data-st="nao_perturbe"]{--pf-cor:var(
 html[data-identidade="espectro"] .pf-card .pf-ponto{box-shadow:0 0 0 2.5px var(--card);}
 html[data-identidade="espectro"][data-theme="dark"] .pf-card .pf-ponto{box-shadow:0 0 0 2.5px #0C0E2A;}
 
+html[data-identidade="espectro"] .pf-pop .pf-recado{width:calc(100% - 48px);}
 html[data-identidade="espectro"] .pf-recado{height:40px;margin-top:10px;padding:0 14px;border-radius:14px;border:1px solid var(--borda);background:var(--card);
   font-size:13px;color:var(--ink);}
 html[data-identidade="espectro"] .pf-recado::placeholder{color:var(--ink-4);}
@@ -194,7 +204,7 @@ html[data-identidade="espectro"] .pf-it{gap:10px;margin:0 -10px;width:calc(100% 
 html[data-identidade="espectro"] button.pf-it:hover{background:var(--suave);}
 html[data-identidade="espectro"] .pf-it svg{width:16px;height:16px;color:var(--ink);}
 html[data-identidade="espectro"] .pf-it > span{font-size:12px;font-weight:400;color:var(--ink-4);}
-html[data-identidade="espectro"] .pf-ent .pf-ent-ic{width:16px;flex:none;visibility:hidden;font-size:12px;}
+html[data-identidade="espectro"] .pf-ent .pf-ent-ic{width:16px;flex:none;margin-left:0;visibility:hidden;font-size:12px;}
 html[data-identidade="espectro"] .pf-chave{width:34px;height:20px;background:var(--borda-forte);}
 html[data-identidade="espectro"] .pf-chave.on{background:#7328A5;}
 html[data-identidade="espectro"] .pf-sep{display:none;}
