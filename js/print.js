@@ -14,8 +14,10 @@ B7.Folha = (function () {
   /* Marca na impressão — arquivos oficiais, sem redesenho e sem efeito:
      • ficha (fundo branco)   → símbolo colorido, que imprime com contraste;
      • abertura (fundo preto) → lockup branco. */
-  const MARCA = 'assets/brand/symbol-color.png';
-  const LOGO  = 'assets/brand/logo-white.png';
+  /* Espectro: marca nova (assets/brand/espectro); lida a cada folha, porque a identidade troca sem recarregar */
+  const ESPECTRO_ID = () => typeof document !== 'undefined' && document.documentElement.getAttribute('data-identidade') === 'espectro';
+  const MARCA = () => ESPECTRO_ID() ? svgPronto(E_SIMBOLO, 2117, 2072) : 'assets/brand/symbol-color.png';
+  const LOGO  = () => ESPECTRO_ID() ? svgPronto(E_LOGO, 2971, 654) : 'assets/brand/logo-white.png';
 
   const paragrafos = txt => {
     const ls = String(txt || '').split('\n').map(s => s.trim()).filter(Boolean);
@@ -67,9 +69,91 @@ B7.Folha = (function () {
       '</div></div>';
   }
 
+  /* Espectro (5.x): a ficha do quadro "Ficha A4 do roteiro" — faixa Azul Matriz no alto,
+     dados da gravação em cartões, cenas numa linha do tempo de hexágonos e uma caixinha
+     por cena para marcar ao gravar. Estilo em styles/espectro/ficha-slides.css. Hexágono
+     e canto cortado sem clip-path nem máscara (o html2canvas do PDF não desenha nenhum dos dois).
+     Os logos são SVG só com viewBox, que o html2canvas também não desenha: na primeira ficha
+     o arquivo é lido e passa a entrar como data: com largura e altura (svgPronto). */
+  const E_LOGO = 'assets/brand/espectro/horizontal-branco.svg', E_SIMBOLO = 'assets/brand/espectro/simbolo.svg';
+  const svgLido = {};
+  function svgPronto(url, w, h) {
+    if (svgLido[url]) return svgLido[url];
+    if (svgLido[url] === undefined && typeof fetch === 'function') {
+      svgLido[url] = null;
+      fetch(url).then(r => r.ok ? r.text() : Promise.reject(new Error('svg ' + r.status)))
+        .then(t => { svgLido[url] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(t.replace('<svg ', '<svg width="' + w + '" height="' + h + '" ')); })
+        .catch(e => { console.warn('ficha: logo sem tamanho para o PDF', e); });
+    }
+    return url;
+  }
+  const E_MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>';
+  const E_FALA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>';
+  const E_OLHO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const E_SETA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  const E_HEX = '10,0 30,0 40,17.5 30,35 10,35 0,17.5';
+
+  function cenaEspectro(cena, i, ultima) {
+    const tipo = CHAVE[cena.tipo] ? cena.tipo : 'Narrativa';
+    const k = CHAVE[tipo], forte = tipo === 'Gancho' || tipo === 'CTA';
+    const etiqueta = (cena.funcao && cena.funcao.trim()) ? cena.funcao.trim() : (tipo === 'CTA' ? 'CTA' : ROTULO[tipo]);
+    const dir = String(cena.direcao || '').trim();
+    const off = tipo === 'Narração' || /off|narra/i.test(dir);
+    const imagens = String(cena.sugestao_cenas || '').split('\n').map(s => s.trim()).filter(Boolean);
+    let corpo;
+    if (tipo === 'Gancho') corpo = '<div class="rte-gancho"><span class="rte-aspas">&#8220;</span>' + paragrafos(cena.texto) + '</div>';
+    else if (tipo === 'CTA') corpo = '<div class="rte-cta"><div class="rte-cta-tx">' + paragrafos(cena.texto) + '</div><span class="rte-cta-ic">' + E_SETA + '</span></div>';
+    else corpo = '<div class="rte-texto">' + paragrafos(cena.texto) + '</div>';
+    return '<div class="rte-cena c-' + k + '">' + (ultima ? '' : '<span class="rte-fio"></span>') +
+      '<span class="rte-hex"><svg viewBox="0 0 40 35" aria-hidden="true">' +
+        (forte ? '<defs><linearGradient id="rte-g' + i + '" x1="0" y1="0" x2="1" y2=".6"><stop offset="0" stop-color="#7328A5"/>' +
+          '<stop offset=".6" stop-color="#E02F75"/><stop offset="1" stop-color="#FF5A57"/></linearGradient></defs>' : '') +
+        '<polygon points="' + E_HEX + '" fill="' + (forte ? 'url(#rte-g' + i + ')' : '#520083') + '"/></svg><b>' + (i + 1) + '</b></span>' +
+      '<div class="rte-cena-cx">' +
+        '<div class="rte-meta"><span class="rte-tipo">' + esc(etiqueta) + '</span>' +
+          (dir ? '<span class="rte-dir">' + (off ? E_MIC : E_FALA) + esc(dir) + '</span>' : '') + '</div>' +
+        (imagens.length ? '<p class="rte-img">' + E_OLHO + '<span>Na imagem: ' + esc(imagens.join(' · ')) + '</span></p>' : '') +
+        corpo +
+      '</div>' +
+      '<span class="rte-marcar" aria-label="Gravada"></span></div>';
+  }
+
+  function folhaEspectro(ctx) {
+    const r = ctx.roteiro, n = ctx.cenas.length;
+    const kicker = (ctx.semCliente ? [ctx.gravacao] : [ctx.cliente, ctx.gravacao]).filter(Boolean).join(' · ');
+    const dados = [['Gravação', ctx.dataGravacao], ['Local', ctx.local], ['Videomaker', ctx.videomaker],
+      ['Sessão', ctx.semCliente ? '' : ctx.gravacao], ['Cenas', String(n)]].filter(d => !vazio(d[1])).slice(0, 4);
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    return '<div class="folha rt rte" data-roteiro="' + esc(r.id) + '" style="--fs:' + (r.escala || 1) + '">' +
+      '<div class="rte-cab"><span class="rte-cab-luz"></span>' +
+        '<span class="rte-cab-padrao"></span><span class="rte-cab-veu"></span>' +
+        '<div class="rte-cab-in">' +
+          '<div class="rte-cab-topo"><img class="rte-logo" src="' + svgPronto(E_LOGO, 2971, 654) + '" alt="Branding7">' +
+            '<span class="rte-selo">Roteiro ' + (ctx.indice + 1) + ' de ' + (ctx.total || 1) + '</span></div>' +
+          '<div class="rte-cab-tx">' + (kicker ? '<p class="rte-kicker">' + esc(kicker) + '</p>' : '') +
+            '<h2 class="' + (vazio(r.titulo) ? 'fraco' : '') + '">' + esc(r.titulo || 'Título do roteiro') + '</h2>' +
+            (vazio(r.objetivo) ? '' : '<p class="rte-obj">Objetivo: ' + esc(r.objetivo) + '</p>') + '</div>' +
+        '</div>' +
+        '<span class="rte-cab-faixa"></span>' +
+        '<svg class="rte-cab-corte" width="26" height="46" viewBox="0 0 26 46" aria-hidden="true"><polygon points="26,0 26,46 0,46" fill="#FFFFFF"/></svg>' +
+      '</div>' +
+      (dados.length ? '<div class="rte-dados" style="--n:' + dados.length + '">' + dados.map(([rot, v]) =>
+        '<div><p>' + esc(rot) + '</p><b>' + esc(v) + '</b></div>').join('') + '</div>' : '') +
+      '<div class="rte-sec"><b>Roteiro</b><span></span><p>' + n + ' cena' + (n === 1 ? '' : 's') + ' · marque ao gravar</p></div>' +
+      '<div class="rte-cenas">' + ctx.cenas.map((c, i) => cenaEspectro(c, i, i === n - 1)).join('') + '</div>' +
+      '<div class="rte-obs"><p>Observações do set</p>' +
+        (vazio(r.observacao_gravacao) ? '' : '<div class="rte-obs-tx">' + esc(r.observacao_gravacao) + '</div>') +
+        '<i></i><i></i></div>' +
+      '<div class="rte-pe"><span><img src="' + svgPronto(E_SIMBOLO, 2117, 2072) + '" alt="">Impresso pelo Sistema B7 · ' + esc(hoje) + '</span><span>Página 1 de 1</span></div>' +
+      '<span class="rte-pe-faixa"></span>' +
+      '<div class="aviso-overflow">PASSOU DA PÁGINA — REDUZA A FONTE (A−) OU TIRE UMA CENA</div>' +
+    '</div>';
+  }
+
   /* ctx = { cliente, clienteLogo, dataGravacao, gravacao, roteiro, cenas, indice, total, semCliente }
      dataGravacao é opcional: sem data, ela some em vez de mostrar vazio. */
   function folhaHTML(ctx) {
+    if (ESPECTRO_ID()) return folhaEspectro(ctx);
     const r = ctx.roteiro;
     const cenas = ctx.cenas.map((c, i) => cenaHTML(c, i)).join('<div class="esp"></div>');
     const num = String(ctx.indice + 1).padStart(2, '0');
@@ -83,7 +167,7 @@ B7.Folha = (function () {
       '</div>';
     return '<div class="folha rt" data-roteiro="' + esc(r.id) + '" style="--fs:' + (r.escala || 1) + '">' +
       '<div class="rt-faixa"></div>' +
-      '<div class="rt-cab"><div class="rt-marca"><img src="' + MARCA + '" alt=""><span><b>Branding7</b><small>Roteiro de gravação</small></span></div>' + meta + '</div>' +
+      '<div class="rt-cab"><div class="rt-marca"><img src="' + MARCA() + '" alt=""><span><b>Branding7</b><small>Roteiro de gravação</small></span></div>' + meta + '</div>' +
       '<div class="rt-topo">' +
         '<div class="rt-selo"><small>ROTEIRO</small><b>' + num + '</b><i>de ' + total + '</i></div>' +
         '<div class="rt-topo-tx">' +
@@ -116,7 +200,7 @@ B7.Folha = (function () {
     const dados = (o.dados || []).filter(d => d && d[1]);
     return '<div class="folha abertura cp">' +
       '<div class="cp-painel"><div class="cp-luz"></div><div class="cp-luz l2"></div>' +
-        '<div class="cp-topo"><img class="cp-marca" src="' + LOGO + '" alt="B7"><span class="cp-kicker">' + esc(o.kicker || '') + '</span></div>' +
+        '<div class="cp-topo"><img class="cp-marca" src="' + LOGO() + '" alt="B7"><span class="cp-kicker">' + esc(o.kicker || '') + '</span></div>' +
         '<div class="cp-miolo">' +
           '<h1>' + o.titulo + '</h1>' +
           (o.sub ? '<div class="cp-sub">' + esc(o.sub) + '</div>' : '') +
@@ -166,7 +250,10 @@ B7.Folha = (function () {
     folha.classList.toggle('estourou', estourou(folha));
   }
 
-  return { folhaHTML, aberturaHTML, capa, ajustar, estourou, marcarOverflow };
+  /* já deixa os logos do Espectro lidos para o primeiro PDF sair com eles */
+  if (ESPECTRO_ID()) { svgPronto(E_LOGO, 2971, 654); svgPronto(E_SIMBOLO, 2117, 2072); }
+
+  return { folhaHTML, aberturaHTML, capa, ajustar, estourou, marcarOverflow, svgPronto };
 })();
 
 

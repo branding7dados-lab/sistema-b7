@@ -185,7 +185,8 @@ B7.TV = (function () {
     const cx = raiz && raiz.querySelector('#tv-logo'); if (!cx) return;
     cx.hidden = modoAtivo !== 'logo';
     if (cx.hidden) { cx.dataset.k = ''; return; }
-    const padrao = (cfg.visual === 'claro') ? 'assets/brand/logo-color.png' : 'assets/brand/logo-white.png';
+    const padrao = espectro() ? (cfg.visual === 'claro' ? 'assets/brand/espectro/horizontal-preto.svg' : 'assets/brand/espectro/horizontal-branco.svg')
+      : (cfg.visual === 'claro') ? 'assets/brand/logo-color.png' : 'assets/brand/logo-white.png';
     const img = cfg.logo_img || padrao, frase = String(cfg.logo_frase || '').trim();
     const k = img + '|' + frase + '|' + (cfg.logo_relogio ? 1 : 0);
     if (cx.dataset.k !== k) {
@@ -329,9 +330,56 @@ B7.TV = (function () {
     '</section>';
   }
 
+  /* Espectro (quadro "Painel de TV"): quatro cartões cheios no alto e cada cliente num cartão com a
+     barra do mês e a etiqueta do estado. Os números saem do mesmo panorama_mes e das publicações de hoje. */
+  const espectro = () => document.documentElement.getAttribute('data-identidade') === 'espectro';
+  const ROT_CARTAO = { atraso: 'Atrasado', atencao: 'Atenção', andamento: 'Em dia', ok: 'Entregue', vazio: 'Sem movimento' };
+  const COR_AV = ['#7328A5', '#001561', '#E02F75', '#520083', '#FF5A57'];
+  const numero = v => Number(v) || 0;
+  function andamentoMes(linhas) {
+    let soma = 0, com = 0; linhas.forEach(l => { if (l.etapas) { soma += l.pct; com++; } });
+    return { pct: com ? Math.round(soma / com * 100) : 0, com };
+  }
+  function resumoEspectro(linhas) {
+    let entregues = 0, aprov = 0, atrasos = 0;
+    linhas.forEach(({ c }) => {
+      entregues += numero(c.video && c.video.entregues) + numero(c.design && c.design.finalizados);
+      aprov += numero(c.aprovacoes);
+      atrasos += numero(c.video && c.video.atrasados) + numero(c.design && c.design.atrasados) + numero(c.publicacoes && c.publicacoes.atrasados) + numero(c.gravacoes && c.gravacoes.atrasadas);
+    });
+    const cartao = (cor, rot, v, fim) => '<div class="tv-kpi tv-kpi-' + cor + '"><p>' + rot + '</p><b><span data-conta="' + v + '">' + v + '</span>' + (fim || '') + '</b></div>';
+    const a = andamentoMes(linhas);
+    return '<section class="tv-resumo tv-kpis" aria-label="Resumo do mês">' +
+      (cfg.publicacoes && S.publicacoes ? cartao('violeta', 'Publicações hoje', S.publicacoes.length) : cartao('violeta', 'Andamento do mês', a.pct, '<i>%</i>')) +
+      cartao('matriz', 'Peças entregues no mês', entregues) + cartao('roxo', 'Em aprovação', aprov) + cartao('atraso', 'Atrasos', atrasos) +
+    '</section>';
+  }
+  function cartaoCliente(l, i) {
+    const p = l.etapas ? Math.round(l.pct * 100) : 0;
+    const cor = COR_AV[[...String(l.c.nome || '')].reduce((s, ch) => s + ch.charCodeAt(0), 0) % COR_AV.length];
+    return '<div class="tv-cli tv-cli-cartao tv-e-' + l.estado + '" style="--i:' + i + ';--tv-av:' + cor + '">' +
+      '<div class="tv-cli-topo">' + B7.UI.avatarCliente(l.c.nome, l.c.logo_url, 'tv-cli-av') + '<span class="tv-cli-nome">' + esc(l.c.nome) + '</span></div>' +
+      '<span class="tv-cli-barra"><i style="width:' + p + '%"></i></span>' +
+      '<div class="tv-cli-pe"><span class="tv-cli-pct">' + (l.etapas ? p + '% do mês' : 'sem etapa medida') + '</span>' +
+        '<em class="tv-cli-estado">' + ROT_CARTAO[l.estado] + '</em></div>' +
+      '<span class="tv-cli-etapas">' + B7.Panorama.ETAPAS.map(([k, rot]) => {
+        const x = l.cels[k];
+        return '<i class="tv-e-' + x.estado + '" title="' + esc(rot + (x.valor ? ' · ' + x.valor : '')) + '">' + esc(x.valor || '') + '</i>';
+      }).join('') + '</span></div>';
+  }
+  let altCartao = 160;
+  function capacidadeCartoes(cx) {
+    if (window.innerWidth <= 1100 || !cx) return { colunas: 1, porColuna: 999, total: 999 };
+    const est = getComputedStyle(cx), gap = parseFloat(est.columnGap) || 20, gapL = parseFloat(est.rowGap) || 20;
+    const colunas = Math.max(1, Math.min(4, Math.floor((cx.clientWidth + gap) / (300 + gap))));
+    const linhas = Math.max(1, Math.floor((cx.clientHeight + gapL) / (altCartao + gapL)));
+    return { colunas, porColuna: linhas, total: colunas * linhas };
+  }
+
   /* quantos clientes cabem numa página: mede a altura que sobrou */
   function capacidade() {
     const cx = raiz && raiz.querySelector('#tv-clientes-corpo');
+    if (espectro()) return capacidadeCartoes(cx);
     /* tela estreita (não é TV): a lista inteira, rolando, sem páginas */
     if (window.innerWidth <= 1100) return { colunas: 1, porColuna: 999, total: 999 };
     /* duas colunas só se sobrar espaço para o nome do cliente (o tamanho "maior" estreita a tela útil) */
@@ -349,6 +397,8 @@ B7.TV = (function () {
     const cx = raiz.querySelector('#tv-clientes-corpo'); if (!cx) return;
     const vivos = linhas.filter(l => l.estado !== 'vazio').sort((a, b) => PESO[a.estado] - PESO[b.estado] || a.pct - b.pct ||
       String(a.c.nome).localeCompare(String(b.c.nome), 'pt-BR'));
+    /* Espectro: mede um cartão de verdade antes de contar quantos cabem */
+    if (espectro() && vivos.length) { cx.innerHTML = cartaoCliente(vivos[0], 0); altCartao = cx.firstChild.offsetHeight || altCartao; }
     const cap = capacidade(), paginas = Math.max(1, Math.ceil(vivos.length / cap.total));
     if (pagina >= paginas) pagina = 0;
     const fatia = vivos.slice(pagina * cap.total, (pagina + 1) * cap.total);
@@ -370,6 +420,7 @@ B7.TV = (function () {
           return '<i class="tv-e-' + x.estado + '">' + esc(x.valor || '') + '</i>';
         }).join('') + '</span>' +
         '<b class="tv-cli-pct">' + (l.etapas ? Math.round(l.pct * 100) + '%' : '') + '</b></div>';
+    if (espectro()) { cx.innerHTML = fatia.map(cartaoCliente).join(''); return; }
     let html = '';
     for (let c = 0; c * porCol < fatia.length; c++) html += cab + fatia.slice(c * porCol, (c + 1) * porCol).map((l, i) => linha(l, c * porCol + i)).join('');
     cx.innerHTML = html;
@@ -450,8 +501,10 @@ B7.TV = (function () {
     const primeira = !corpo.dataset.pronto; corpo.dataset.pronto = '1';
     corpo.className = 'tv-corpo' + (tela === 'semana' ? ' tv-tela-semana' : tela === 'mural' ? ' tv-tela-semana tv-tela-mural' : (cfg.clientes ? '' : ' sem-clientes') + (lado ? '' : ' sem-lado')) +
       (entrando || primeira ? ' tv-entra' : '');
-    corpo.innerHTML = resumo(S.panorama) + (tela === 'semana' ? semana() : tela === 'mural' ? mural()
+    const esp = espectro(), and = esp ? andamentoMes(S.panorama) : null;
+    corpo.innerHTML = (esp ? resumoEspectro(S.panorama) : resumo(S.panorama)) + (tela === 'semana' ? semana() : tela === 'mural' ? mural()
       : (cfg.clientes ? '<section class="tv-bloco tv-clientes"><header><h2>Clientes em ' + MES[a.getMonth()] + '</h2>' +
+          (esp ? '<span class="tv-and">' + and.pct + '% de andamento · ' + and.com + (and.com === 1 ? ' cliente' : ' clientes') + ' com movimento</span>' : '') +
           '<span class="tv-nota" id="tv-clientes-nota"></span></header>' +
           '<div class="tv-clientes-corpo" id="tv-clientes-corpo"></div></section>' : '') +
         (lado ? '<aside class="tv-lado">' + lado + '</aside>' : ''));
@@ -508,8 +561,8 @@ B7.TV = (function () {
     raiz = document.createElement('div');
     raiz.className = 'tv'; raiz.id = 'tv-raiz';
     raiz.innerHTML =
-      '<header class="tv-cab"><div class="tv-marca"><img class="tv-logo claro" src="assets/brand/logo-color.png" alt="Branding7">' +
-          '<img class="tv-logo escuro" src="assets/brand/logo-white.png" alt="" aria-hidden="true"></div>' +
+      '<header class="tv-cab"><div class="tv-marca"><img class="tv-logo claro" src="' + (espectro() ? 'assets/brand/espectro/horizontal-preto.svg' : 'assets/brand/logo-color.png') + '" alt="Branding7">' +
+          '<img class="tv-logo escuro" src="' + (espectro() ? 'assets/brand/espectro/horizontal-branco.svg' : 'assets/brand/logo-white.png') + '" alt="" aria-hidden="true"></div>' +
         '<div class="tv-hoje" id="tv-hoje" hidden></div>' +
         '<div class="tv-relogio" id="tv-relogio"></div></header>' +
       '<div class="tv-recado" id="tv-recado" role="status" hidden></div>' +
