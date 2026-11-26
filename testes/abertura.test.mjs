@@ -144,20 +144,44 @@ for (const estilo of ['hiper', 'bigbang', 'classica', 'streaming', 'tinta', 'gli
   await ctx.close();
 }
 
-/* 5) 5.14.0 identidade nova: 3 aberturas (faisca · corte · pulso) e 6 carregamentos. O que a pessoa
-   escolheu no visual antigo cai no padrão novo; no fim da abertura o símbolo está inteiro e parado. */
-for (const [escolha, esperado] of [[null, 'faisca'], ['streaming', 'faisca'], ['faisca', 'faisca'], ['corte', 'corte'], ['pulso', 'pulso']]) {
+/* 5) 5.16.0 identidade nova: as 3 aberturas "Cine" do artefato (ignicao · hiperespaco · aurora-espectro).
+   O que a pessoa escolheu antes (visual antigo ou Faísca/Corte/Pulso da 5.14) cai na Ignição; no fim da
+   cena o logo está inteiro e parado, e nada do visual antigo aparece. */
+for (const [escolha, esperado, peca] of [[null, 'ignicao', '.ign-bl'], ['streaming', 'ignicao', '.ign-bl'], ['faisca', 'ignicao', '.ign-bl'], ['pulso', 'ignicao', '.ign-bl'],
+  ['ignicao', 'ignicao', '.ign-bl'], ['hiperespaco', 'hiperespaco', '.hip-sym'], ['aurora-espectro', 'aurora-espectro', '.aur-vidro']]) {
   const ctx = await nav.newContext({ viewport:{width:390,height:844} });
   await ctx.addInitScript(e => { try { if (e) localStorage.setItem('b7_pref_abertura_estilo', JSON.stringify(e)); } catch (x) {} }, escolha);
   const pg = await ctx.newPage(); await pg.goto(BASE + '/index.html'); await pg.waitForTimeout(500);
-  const t = await pg.evaluate(() => {
+  const t = await pg.evaluate(sel => {
     for (const a of document.getAnimations()) { try { if (a.effect && a.effect.getTiming().iterations !== Infinity) a.finish(); } catch (e) {} }
-    const m = document.querySelector('.b7-abertura .esp-ab-marca'), b7 = document.querySelector('.b7-abertura .esp-ab-b7');
-    const ceu = document.querySelector('.b7-abertura .ab-palco');
-    return { estilo: document.documentElement.getAttribute('data-ab-estilo'), visivel: !!m && m.getBoundingClientRect().width > 40 && getComputedStyle(m).opacity === '1',
-      inteiro: !!b7 && /none|140%/.test(getComputedStyle(b7).clipPath), antigo: !!ceu && getComputedStyle(ceu).display !== 'none' };
-  });
-  ok(t.estilo === esperado && t.visivel && t.inteiro && !t.antigo, 'identidade nova, escolha ' + (escolha || 'nenhuma') + ' → ' + esperado + ': símbolo inteiro e visível, sem o céu antigo (' + JSON.stringify(t) + ')');
+    const m = document.querySelector('.b7-abertura ' + sel), ceu = document.querySelector('.b7-abertura .ab-palco'), velha = document.querySelector('.b7-abertura .esp-ab');
+    const r = m && m.getBoundingClientRect();
+    const tf = m && getComputedStyle(m).transform;
+    return { estilo: document.documentElement.getAttribute('data-ab-estilo'), visivel: !!m && r.width > 40 && getComputedStyle(m).opacity === '1',
+      /* parado = sem deslocamento e sem escala (o símbolo do Hiperespaço termina de frente, só com a perspectiva 3D) */
+      parado: !!tf && (tf === 'none' || sel === '.aur-vidro' || (() => { const k = new DOMMatrix(tf), q = x => Math.abs(x) < 1e-3;
+        return q(k.m11 - 1) && q(k.m22 - 1) && q(k.m12) && q(k.m21) && q(k.m41) && q(k.m42); })()),
+      antigo: !!ceu && getComputedStyle(ceu).display !== 'none', faiscaVelha: !!velha && getComputedStyle(velha).display !== 'none',
+      relogio: !!document.querySelector('.b7-abertura .cine-relogio') && document.querySelector('.b7-abertura .cine-relogio').getAnimations().length > 0 };
+  }, peca);
+  ok(t.estilo === esperado && t.visivel && t.parado && !t.antigo && !t.faiscaVelha && t.relogio,
+    'identidade nova, escolha ' + (escolha || 'nenhuma') + ' → ' + esperado + ': cena do artefato inteira e parada no fim, sem nada do visual antigo (' + JSON.stringify(t) + ')');
+  await ctx.close();
+}
+/* 5b) a saída da abertura nova é só a cena apagando: sem a onda de luz e sem o "assentar" da antiga */
+{
+  const ctx = await nav.newContext({ viewport:{width:1280,height:800} });
+  await ctx.route(/supabase\.co\//, r => r.fulfill({ status:401, contentType:'application/json', body:'{}' }));
+  const pg = await ctx.newPage(); await pg.goto(BASE + '/index.html'); await pg.waitForTimeout(400);
+  await pg.evaluate(() => { for (const a of document.querySelector('.b7-abertura .cine-relogio').getAnimations()) a.finish(); });
+  await pg.waitForFunction(() => { const a = document.querySelector('.b7-abertura'); return !a || a.classList.contains('saindo'); }, null, { timeout: 12000 }).catch(() => {});
+  const vistos = { luz: false, revela: false, saiu: false };
+  for (let i = 0; i < 14; i++) {
+    const v = await pg.evaluate(() => ({ luz: !!document.querySelector('.ab-luz'), revela: document.body.classList.contains('ab-revela'), saiu: !document.querySelector('.b7-abertura') }));
+    vistos.luz ||= v.luz; vistos.revela ||= v.revela; vistos.saiu ||= v.saiu;
+    await pg.waitForTimeout(100);
+  }
+  ok(vistos.saiu && !vistos.luz && !vistos.revela, 'saída da abertura nova: a cena apaga, sem a onda de luz nem o assentar da abertura antiga (' + JSON.stringify(vistos) + ')');
   await ctx.close();
 }
 for (const [escolha, esperado] of [[null, 'corte'], ['relampago', 'corte'], ['lampada', 'lampada'], ['faixa', 'faixa'], ['tres-pontos', 'tres-pontos'], ['anel', 'anel'], ['hexagono', 'hexagono']]) {

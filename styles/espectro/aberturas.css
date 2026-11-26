@@ -1,5 +1,6 @@
 /* Espectro — aberturas e carregamentos (5.14.0), quadros "Aberturas" e "Carregamentos" do artefato.
-   As 10 aberturas antigas viram 3 (data-ab-estilo: faisca · corte · pulso) e os carregamentos viram
+   5.16.0: as aberturas completas são as 3 "Cine" do artefato (ignicao · hiperespaco · aurora-espectro),
+   em styles/espectro/aberturas-cine.css; aqui ficam a base e os carregamentos, que viram
    os 6 do Espectro (data-ab-carga: corte · lampada · faixa · tres-pontos · anel · hexagono).
    A marcação nova (.esp-ab) está dentro do #abertura no index.html; a escolha, no <head> e em
    js/app.js (B7.Abertura). Com "reduzir movimento", o símbolo aparece parado.
@@ -29,42 +30,7 @@ html[data-identidade="espectro"] .b7-abertura .ab-fio:after{width:40%;border-rad
 html[data-identidade="espectro"] .b7-abertura.saindo{animation:espAbSai .5s cubic-bezier(.4,0,.2,1) forwards;}
 @keyframes espAbSai{to{opacity:0}}
 
-/* ================================================================== ABERTURAS (a completa) */
-/* 01 · FAÍSCA — o B7 entra num corte de 60°, a lâmpada acende com brilho coral e o nome sobe (4,2 s) */
-html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial{background:#001561;}
-html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-padrao{display:block;inset:0;
-  background:url('../../assets/brand/espectro/padrao-lampada-matriz.svg') center/cover;opacity:.35;}
-html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-b7{animation:espA1b 4.2s cubic-bezier(.2,.8,.2,1) both;}
-@keyframes espA1b{0%{clip-path:polygon(0 0,0 0,0 100%,0 100%)}25%,100%{clip-path:polygon(0 0,140% 0,100% 100%,0 100%)}}
-html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-lampada{animation:espA1l 4.2s ease-out both;}
-@keyframes espA1l{0%,30%{opacity:0;transform:translateY(10px) scale(.4)}40%{opacity:1;transform:scale(1.15);filter:drop-shadow(0 0 18px rgba(255,90,87,.95))}48%,100%{opacity:1;transform:none;filter:drop-shadow(0 0 0 rgba(255,90,87,0))}}
-html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-brilho{display:block;width:180px;height:180px;border-radius:50%;
-  left:calc(50% - 12px);top:calc(50% - 183px);background:radial-gradient(circle,#FF5A57 0%,rgba(224,47,117,.5) 35%,transparent 70%);opacity:0;
-  animation:espA1f 4.2s ease-out both;}
-@keyframes espA1f{0%,36%{opacity:0;transform:scale(.2)}44%{opacity:.9}70%,100%{opacity:0;transform:scale(1.6)}}
-html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-nome{display:block;animation:espA1w 4.2s ease-out both;}
-@keyframes espA1w{0%,50%{opacity:0;transform:translateY(12px)}62%,100%{opacity:1;transform:none}}
-
-/* 02 · CORTE ESPECTRO — uma faixa do Espectro atravessa a tela a 60° e revela o símbolo (3,6 s) */
-html[data-identidade="espectro"][data-ab-estilo="corte"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-marca{width:130px;animation:espA2s 3.6s ease-out both;}
-@keyframes espA2s{0%,30%{opacity:0;transform:scale(.92)}48%,100%{opacity:1;transform:none}}
-html[data-identidade="espectro"][data-ab-estilo="corte"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-lampada{opacity:1;}
-html[data-identidade="espectro"][data-ab-estilo="corte"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-faixa{display:block;top:-20%;bottom:-20%;left:50%;width:40%;z-index:3;
-  background:linear-gradient(90deg,#001561,#520083,#7328A5,#E02F75,#FF5A57);transform:translateX(-50%) skewX(-30deg) translateX(-300%);
-  animation:espA2bar 3.6s cubic-bezier(.7,0,.3,1) both;}
-@keyframes espA2bar{0%{transform:translateX(-50%) skewX(-30deg) translateX(-300%)}45%,100%{transform:translateX(-50%) skewX(-30deg) translateX(330%)}}
-
-/* 03 · PULSO — o Espectro gira desfocado atrás do símbolo, com um anel que pulsa (contínuo) */
-html[data-identidade="espectro"][data-ab-estilo="pulso"]:not(.ab-curta) .b7-abertura.inicial{background:#001561;}
-html[data-identidade="espectro"][data-ab-estilo="pulso"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-giro{display:block;inset:-30%;
-  background:conic-gradient(from 0deg,#001561,#520083,#7328A5,#E02F75,#FF5A57,#001561);filter:blur(60px);opacity:.85;animation:espA3r 6s linear infinite;}
-@keyframes espA3r{to{transform:rotate(360deg)}}
-html[data-identidade="espectro"][data-ab-estilo="pulso"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-anel{display:block;width:220px;height:220px;border-radius:50%;
-  left:calc(50% - 110px);top:calc(50% - 110px);border:1.5px solid rgba(255,255,255,.5);animation:espA3g 3s ease-out infinite;}
-@keyframes espA3g{0%{transform:scale(.6);opacity:.8}100%{transform:scale(1.5);opacity:0}}
-html[data-identidade="espectro"][data-ab-estilo="pulso"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-marca{width:120px;animation:espA3s 3s ease-in-out infinite;}
-html[data-identidade="espectro"][data-ab-estilo="pulso"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-lampada{opacity:1;}
-@keyframes espA3s{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+/* ================================================================== ABERTURAS (a completa): styles/espectro/aberturas-cine.css */
 
 /* ================================================================== CARREGAMENTOS (recarregar e cortina) */
 html[data-identidade="espectro"].ab-curta .b7-abertura.inicial,
@@ -120,7 +86,6 @@ html[data-identidade="espectro"][data-ab-carga="hexagono"] .esp-cg-hex img{width
 /* ------------------------------------------------------------------ celular */
 @media (max-width:760px){
   html[data-identidade="espectro"] .esp-ab-marca{width:150px;}
-  html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-brilho{left:calc(50% - 12px);top:calc(50% - 145px);width:140px;height:140px;}
 }
 
 /* ------------------------------------------------------------------ reduzir movimento: o símbolo parado */

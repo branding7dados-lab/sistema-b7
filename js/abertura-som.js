@@ -600,7 +600,134 @@ B7.SomAbertura = (function () {
     [1.94, t => { estalo(t); estalo(t + .05); estalo(t + .11); }],
     [2.2, letras], [2.8, cintilar], [3.1, assinatura]
   ];
-  const ROTEIROS_EST = { streaming: ROTEIRO_STREAMING, hiper: ROTEIRO_HIPER, tinta: ROTEIRO_TINTA, glitch: ROTEIRO_GLITCH, aurora: ROTEIRO_AURORA, neon: ROTEIRO_NEON, mosaico: ROTEIRO_MOSAICO, estudio: ROTEIRO_AURORA, programador: ROTEIRO_PROGRAMADOR };
+  /* =================================================================
+     5.16.0 — SOM DO ESPECTRO (2ª versão). Pedido do Kevin: a 1ª versão "parece feita de qualquer
+     jeito" — muitas camadas baratas (batida, palmas, chimbal, onda quadrada). Agora é o contrário:
+     poucas peças, bem acabadas, como uma assinatura sonora de marca:
+       • AR: um sopro largo em estéreo que cresce com a imagem (ruído rosado filtrado, dois lados);
+       • IMPACTO: um só, encorpado e macio — grave que desce e um "whoomp" abafado, sem estalo;
+       • PIANO ELÉTRICO (FM suave) para os acordes, em lá maior com sétima e nona;
+       • CRISTAL (parciais de sino, aditivo) para a ASSINATURA DE TRÊS NOTAS (mi · lá · dó#), a
+         mesma nas três aberturas, no momento em que a marca aparece;
+       • uma sala própria, clara e de 2,4 s (não a sala de cinema da trilha antiga).
+     ================================================================= */
+  const NOTA = { A1: 55, A2: 110, E3: 164.81, A3: 220, B3: 246.94, Cs4: 277.18, E4: 329.63, Gs4: 415.3, A4: 440, B4: 493.88,
+    Cs5: 554.37, E5: 659.25, Fs5: 739.99, Gs5: 830.61, A5: 880, B5: 987.77, Cs6: 1108.73, E6: 1318.51, A6: 1760 };
+  const ACORDE = [NOTA.A2, NOTA.E3, NOTA.Cs4, NOTA.Gs4, NOTA.B4];          /* lá com sétima maior e nona, aberto */
+  const MOTIVO = [NOTA.E5, NOTA.A5, NOTA.Cs6];                              /* a assinatura de três notas */
+  function salaEsp() {
+    if (ctx.__sala && ctx.__salaSaida === saida) return ctx.__sala;
+    const seg = 2.4, n = Math.floor(ctx.sampleRate * seg), ir = ctx.createBuffer(2, n, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const d = ir.getChannelData(c); let lp = 0;
+      for (let i = 0; i < n; i++) { const x = i / n; lp = lp * .55 + (Math.random() * 2 - 1) * .45; d[i] = lp * Math.pow(1 - x, 3) * (i < ctx.sampleRate * .012 ? i / (ctx.sampleRate * .012) : 1); }
+    }
+    const cv = ctx.createConvolver(), g = ctx.createGain(), hp = ctx.createBiquadFilter();
+    cv.buffer = ir; g.gain.value = .55; hp.type = 'highpass'; hp.frequency.value = 180;
+    g.connect(hp); hp.connect(cv); cv.connect(saida);
+    ctx.__sala = g; ctx.__salaSaida = saida; return g;
+  }
+  const painel = (no, p) => { if (!ctx.createStereoPanner || !p) return no; const s = ctx.createStereoPanner(); s.pan.value = p; no.connect(s); return s; };
+  function saidaCom(no, molhado) { no.connect(saida); const g = ctx.createGain(); g.gain.value = molhado; no.connect(g); g.connect(salaEsp()); }
+  /* AR: ruído rosado (filtrado) nos dois lados, crescendo (ou descendo) com um filtro que abre */
+  function ar(t, dur, v = .05, sobe = true, largura = .7) {
+    [-largura, largura].forEach((p, k) => {
+      const lp = ctx.createBiquadFilter(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+      lp.type = 'lowpass'; lp.frequency.value = 5200; bp.type = 'bandpass'; bp.Q.value = .7;
+      bp.frequency.setValueAtTime(sobe ? 500 : 3600, t); bp.frequency.exponentialRampToValueAtTime(sobe ? 3600 + k * 400 : 400, t + dur);
+      fonteRuido(t, dur).connect(lp); lp.connect(bp); bp.connect(g);
+      g.gain.setValueAtTime(0.0001, t);
+      if (sobe) { g.gain.exponentialRampToValueAtTime(v, t + dur * .92); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + .12); }
+      else { g.gain.exponentialRampToValueAtTime(v, t + dur * .12); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); }
+      saidaCom(painel(g, p), .35);
+    });
+  }
+  /* IMPACTO: grave descendo + um "whoomp" abafado; nada de estalo */
+  function impacto(t, v = .7) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(72, t); o.frequency.exponentialRampToValueAtTime(38, t + .9);
+    o.connect(g); g.connect(saida); o.start(t); o.stop(t + 1.4);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .018); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+    const lp = ctx.createBiquadFilter(), gn = ctx.createGain(); lp.type = 'lowpass'; lp.Q.value = 1.2;
+    lp.frequency.setValueAtTime(1400, t); lp.frequency.exponentialRampToValueAtTime(90, t + .45);
+    fonteRuido(t, .6).connect(lp); lp.connect(gn); saidaCom(gn, .5);
+    gn.gain.setValueAtTime(0.0001, t); gn.gain.exponentialRampToValueAtTime(v * .5, t + .012); gn.gain.exponentialRampToValueAtTime(0.0001, t + .55);
+  }
+  /* PIANO ELÉTRICO: FM suave (moduladora 1:1 para o corpo e um toque agudo no ataque) */
+  function piano(t, hz, v = .05, dur = 2.4, pan = 0) {
+    const c = ctx.createOscillator(), m = ctx.createOscillator(), gm = ctx.createGain(), m2 = ctx.createOscillator(), gm2 = ctx.createGain(), g = ctx.createGain();
+    c.type = 'sine'; m.type = 'sine'; m2.type = 'sine'; c.frequency.value = hz; m.frequency.value = hz; m2.frequency.value = hz * 14;
+    gm.gain.setValueAtTime(hz * 1.3, t); gm.gain.exponentialRampToValueAtTime(hz * .15, t + 1.2);
+    gm2.gain.setValueAtTime(hz * .9, t); gm2.gain.exponentialRampToValueAtTime(1, t + .08);
+    m.connect(gm); gm.connect(c.frequency); m2.connect(gm2); gm2.connect(c.frequency);
+    c.connect(g); saidaCom(painel(g, pan), .45);
+    [c, m, m2].forEach(o => { o.start(t); o.stop(t + dur + .1); });
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .006); g.gain.exponentialRampToValueAtTime(v * .35, t + .5); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  }
+  function acorde(t, notas = ACORDE, v = .04, dur = 3, dedilhado = .018) { notas.forEach((n, i) => piano(t + i * dedilhado, n, v * (n < 150 ? 1.3 : 1), dur, (i / (notas.length - 1) - .5) * .7)); }
+  /* CRISTAL: parciais de sino (1 · 2,76 · 5,4 · 8,93), cada uma morrendo no seu tempo */
+  function cristal(t, hz, v = .03, dur = 2.2, pan = 0) {
+    const g = ctx.createGain(); saidaCom(painel(g, pan), .6);
+    g.gain.value = 1;
+    [[1, 1, 1], [2.76, .45, .55], [5.4, .22, .3], [8.93, .1, .16]].forEach(([r, a, d]) => {
+      const o = ctx.createOscillator(), go = ctx.createGain(); o.type = 'sine'; o.frequency.value = hz * r;
+      o.connect(go); go.connect(g); o.start(t); o.stop(t + dur * d + .1);
+      go.gain.setValueAtTime(0.0001, t); go.gain.exponentialRampToValueAtTime(v * a, t + .004); go.gain.exponentialRampToValueAtTime(0.0001, t + dur * d);
+    });
+  }
+  /* CAMA: o acorde sustentado, quente, entrando devagar */
+  function camaEsp(t, dur, notas = ACORDE, v = .03, abre = 1800) {
+    const lp = ctx.createBiquadFilter(), g = ctx.createGain(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(400, t); lp.frequency.exponentialRampToValueAtTime(abre, t + dur * .5);
+    notas.forEach((n, i) => [-5, 5].forEach(d => { const o = ctx.createOscillator(); o.type = i % 2 ? 'triangle' : 'sine'; o.frequency.value = n; o.detune.value = d; o.connect(lp); o.start(t); o.stop(t + dur + 1.6); }));
+    lp.connect(g); saidaCom(g, .5);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + Math.min(1.4, dur * .45)); g.gain.setValueAtTime(v, t + dur); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 1.5);
+  }
+  /* a assinatura: mi · lá · dó#, no cristal com o piano dobrando uma oitava abaixo */
+  function assinaturaEsp(t, v = 1, passo = .2) {
+    MOTIVO.forEach((n, i) => { cristal(t + i * passo, n, .032 * v, i === 2 ? 3 : 1.8, (i - 1) * .35); piano(t + i * passo, n / 2, .03 * v, 2.2, (i - 1) * .35); });
+  }
+
+  /* IGNIÇÃO (8 s): 0,0 o ar cresce com as linhas · 1,44–1,6 a lâmpada pisca (quatro "tins") · 1,62 ACENDE:
+     o impacto e o acorde aberto no piano · 2,1 as metades do B7 passam (ar dos dois lados) · 3,2 travam (um
+     impacto pequeno) · 3,86 a palavra: a assinatura · 5,0 a frase: a cama do acorde e um brilho */
+  const ROTEIRO_IGNICAO = [
+    [0.0, t => ar(t, 1.6, .045)], [0.2, t => camaEsp(t, 1.3, [NOTA.A2, NOTA.E3], .02, 700)],
+    [1.44, t => cristal(t, NOTA.A6, .01, .4)], [1.49, t => cristal(t, NOTA.E6, .008, .3)], [1.55, t => cristal(t, NOTA.A6, .01, .4)], [1.6, t => cristal(t, NOTA.E6, .012, .5)],
+    [1.62, t => impacto(t, .75)], [1.62, t => acorde(t, ACORDE, .045, 3.2)], [1.64, t => cristal(t, NOTA.A6, .016, 2.6)],
+    [2.05, t => ar(t, .55, .03, true, .9)], [2.12, t => ar(t, .55, .03, true, -.9)],
+    [3.2, t => impacto(t, .3)], [3.86, t => assinaturaEsp(t)],
+    [5.0, t => camaEsp(t, 1.9, ACORDE, .028, 2400)], [5.0, t => piano(t, NOTA.A3, .035, 3)], [5.05, t => cristal(t, NOTA.E6, .014, 2.6, .3)]
+  ];
+  /* HIPERESPAÇO (7 s): 0,3–3,6 o túnel — o ar crescendo devagar, um grave subindo por baixo e os anéis
+     passando (ar curto, um lado e outro) · 3,66 um respiro mudo · 3,78 O SALTO: impacto e acorde ·
+     3,95 o halo: brilho · 4,9 "SISTEMA B7": a assinatura · 5,5 a cama do acorde */
+  const ROTEIRO_HIPERESPACO = [
+    [0.3, t => ar(t, 3.3, .05)],
+    [0.3, t => { const o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter(); o.type = 'triangle'; o.frequency.setValueAtTime(55, t); o.frequency.exponentialRampToValueAtTime(110, t + 3.3);
+      lp.type = 'lowpass'; lp.frequency.value = 500; o.connect(lp); lp.connect(g); g.connect(saida); o.start(t); o.stop(t + 3.4);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.12, t + 3.2); g.gain.exponentialRampToValueAtTime(0.0001, t + 3.36); }],
+    ...[.9, 1.5, 2.0, 2.45, 2.85, 3.2].map((x, i) => [x, t => ar(t, .4, .018 + i * .003, true, i % 2 ? .9 : -.9)]),
+    [3.78, t => impacto(t, .85)], [3.78, t => acorde(t, ACORDE, .05, 3.2, .012)], [3.95, t => cristal(t, NOTA.A6, .016, 2.6)],
+    [4.9, t => assinaturaEsp(t, 1, .17)], [5.5, t => camaEsp(t, 1.4, ACORDE, .026, 2400)]
+  ];
+  /* AURORA (4,6 s): calma — a cama aberta desde o começo e brilhos de cristal espalhados como a poeira ·
+     1,2 o símbolo acende: acorde macio · 1,3 a frase: a assinatura, devagar · 2,8 o acorde se resolve */
+  const ROTEIRO_AURORA_ESP = [
+    [0.0, t => camaEsp(t, 3.8, ACORDE, .026, 1500)], [0.1, t => ar(t, 1.2, .02)],
+    ...[NOTA.E6, NOTA.B5, NOTA.Cs6, NOTA.A5, NOTA.E6, NOTA.Gs5, NOTA.B5].map((n, i) => [.35 + i * .45, t => cristal(t, n, .009, 1.8, i % 2 ? .6 : -.6)]),
+    [1.2, t => impacto(t, .25)], [1.2, t => acorde(t, ACORDE, .032, 3, .03)],
+    [1.35, t => assinaturaEsp(t, .8, .26)], [2.8, t => piano(t, NOTA.A3, .028, 2.4)], [2.8, t => cristal(t, NOTA.A5, .014, 2.4)]
+  ];
+  /* recarregar no Espectro (carregamentos): só a assinatura, baixinha */
+  const ROTEIRO_CURTO_ESP = [[0.0, t => ar(t, .35, .015)], [0.3, t => assinaturaEsp(t, .55, .12)]];
+  /* saída no Espectro: o ar desce e o lá grave fecha */
+  function partidaEsp(t) {
+    cortarTrilha(t);
+    ar(t, .6, .03, false);
+    piano(t + .35, NOTA.A2, .03, 1.6);
+  }
+  const ESPECTRO_EST = ['ignicao', 'hiperespaco', 'aurora-espectro'];
+  const ROTEIROS_EST = { streaming: ROTEIRO_STREAMING, hiper: ROTEIRO_HIPER, tinta: ROTEIRO_TINTA, glitch: ROTEIRO_GLITCH, aurora: ROTEIRO_AURORA, neon: ROTEIRO_NEON, mosaico: ROTEIRO_MOSAICO, ignicao: ROTEIRO_IGNICAO, hiperespaco: ROTEIRO_HIPERESPACO, 'aurora-espectro': ROTEIRO_AURORA_ESP, estudio: ROTEIRO_AURORA, programador: ROTEIRO_PROGRAMADOR };
   const estiloAtual = () => document.documentElement.getAttribute('data-ab-estilo');
   const roteiroCompleto = () => ROTEIROS_EST[estiloAtual()] || ROTEIRO;
   let inicioAnim = null, tocada = false, roteiro = ROTEIRO;
@@ -624,10 +751,11 @@ B7.SomAbertura = (function () {
     /* recarregar na mesma sessão: a trilha relâmpago, alinhada ao palco
        (na curta a lâmpada já está parada no logo; quem anima é o palco) */
     const curta = document.documentElement.classList.contains('ab-curta');
-    if (curta) roteiro = ROTEIRO_CURTO; else roteiro = roteiroCompleto();
+    const esp = document.documentElement.getAttribute('data-identidade') === 'espectro';
+    if (curta) roteiro = esp ? ROTEIRO_CURTO_ESP : ROTEIRO_CURTO; else roteiro = roteiroCompleto();
     if (!preparar()) return;
     requestAnimationFrame(() => {
-      const a = el.querySelector(curta ? '.ab-palco' : ROTEIROS_EST[estiloAtual()] ? '.ab-marca' : '.ab-simbolo');
+      const a = el.querySelector(curta ? (esp ? '.esp-ab-marca' : '.ab-palco') : esp ? '.cine-relogio' : ROTEIROS_EST[estiloAtual()] ? '.ab-marca' : '.ab-simbolo');
       const an = a && a.getAnimations ? a.getAnimations()[0] : null;
       inicioAnim = an && an.startTime != null ? an.startTime : 0;   /* startTime = o 0 s da sequência (o atraso conta depois) */
       const vai = () => { if (el.isConnected && !el.classList.contains('saindo')) tocarTrilha(decorridoAgora()); };
@@ -650,7 +778,8 @@ B7.SomAbertura = (function () {
   /* chamada pela saída da abertura (js/app.js) */
   function aoSair() {
     if (!ligado() || !ctx || ctx.state !== 'running') return;
-    try { partida(ctx.currentTime + .02); } catch (e) {}
+    const esp = document.documentElement.getAttribute('data-identidade') === 'espectro';
+    try { (esp ? partidaEsp : partida)(ctx.currentTime + .02); } catch (e) {}
   }
   /* "Ver abertura" (Configurações): toque do usuário → som garantido */
   function reproduzir() {
@@ -670,7 +799,7 @@ B7.SomAbertura = (function () {
     const off = new OAC(2, 44100 * (curto ? 3.5 : 9), 44100);
     preparar(off);
     (curto ? ROTEIRO_CURTO : ROTEIROS_EST[qual] || ROTEIRO).forEach(([quando, fn]) => fn(quando));
-    partida(curto ? 1.0 : (saidaEm || ({ streaming: 3.6, hiper: 4.0, tinta: 4.2, glitch: 4.2, aurora: 4.2, neon: 3.8, mosaico: 4.2, estudio: 4.2, programador: 4.2 })[qual] || 6.4));
+    (ESPECTRO_EST.includes(qual) ? partidaEsp : partida)(curto ? 1.0 : (saidaEm || ({ ignicao: 7.0, hiperespaco: 6.3, 'aurora-espectro': 4.4, streaming: 3.6, hiper: 4.0, tinta: 4.2, glitch: 4.2, aurora: 4.2, neon: 3.8, mosaico: 4.2, estudio: 4.2, programador: 4.2 })[qual] || 6.4));
     const buf = await off.startRendering();
     [ctx, saida, sala, ruido, drone, cama] = salvo;
     if (cru) return [buf.getChannelData(0), buf.getChannelData(1)];

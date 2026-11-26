@@ -269,6 +269,8 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
   html[data-identidade="espectro"] body[data-shell="interno"] .topo-global .aj-bt{order:3;}
   html[data-identidade="espectro"] body[data-shell="interno"] .topo-global .conv-bt{order:3;}
   html[data-identidade="espectro"] body[data-shell="interno"] .topo-global .sino{order:4;}
+  /* 5.16.0: o "Novidades" ficava sem ordem e caía no começo da barra, por cima do título; mora com os botões, antes do sino */
+  html[data-identidade="espectro"] body[data-shell="interno"] .topo-global .nv-topo{order:3;height:48px;border-radius:24px;padding:0 8px 0 14px;margin:0;flex:none;background:var(--card);}
   html[data-identidade="espectro"] body[data-shell="interno"] .topo-global :is(.aj-bt, .conv-bt, .sino){width:48px;height:48px;min-width:48px;border-radius:24px;flex:none;
     background:var(--card);border:1px solid var(--esp-cartao-borda);color:var(--ink);box-shadow:0 8px 24px rgba(10,16,51,.04);display:inline-flex;align-items:center;justify-content:center;position:relative;}
   html[data-identidade="espectro"] body[data-shell="interno"] .topo-global :is(.aj-bt, .conv-bt, .sino):hover{background:var(--suave);}
