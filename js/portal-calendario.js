@@ -62,7 +62,7 @@ B7.PortalCalendario = (function () {
       return '<' + tag + ' class="pcal-item pcal-' + it.tipo + (it.status ? ' st-' + esc(it.status) : '') + '"' + (it.aprovacao ? ' data-aprovacao="' + esc(it.aprovacao) + '"' : '') +
         ' title="' + esc(it.titulo + (it.status ? ' · ' + (B7.Portal.statusCli(it.status) || '') : '')) + '">' +
         (it.aprovTipo === 'design_versao' ? '<span class="pcal-mini" data-mini="' + esc(it.aprovacao) + '"></span>' : '<span class="pcal-ic" aria-hidden="true">' + it.icone + '</span>') +
-        '<span class="pcal-tx"><b>' + esc(it.titulo) + '</b>' + (it.status ? '<small>' + esc(B7.Portal.statusCli(it.status) || '') + '</small>' : '<small>' + esc(it.sub) + '</small>') + '</span>' +
+        '<span class="pcal-tx"><b>' + esc(it.titulo) + '</b><small>' + esc(it.sub) + (it.status ? ' · ' + esc(B7.Portal.statusCli(it.status) || '') : '') + '</small></span>' +
       '</' + tag.split(' ')[0] + '>';
     };
 
@@ -85,14 +85,14 @@ B7.PortalCalendario = (function () {
         '<div>' + porDia[k].map(chip).join('') + '</div></section>';
     }).join('');
 
-    painel.innerHTML = '<div class="conteudo entra portal-home pcal-tela">' +
-      '<header class="ph-cab com-acao"><div><h1>Calendário</h1>' +
+    painel.innerHTML = '<div class="conteudo entra portal-home pcal-tela pc-tela">' +
+      '<header class="ph-cab"><div><h1>Calendário de publicações</h1>' +
         '<p class="ph-emp">' + (total || gravs
           ? (total ? total + (total === 1 ? ' publicação' : ' publicações') : '') + (total && gravs ? ' e ' : '') + (gravs ? gravs + (gravs === 1 ? ' gravação' : ' gravações') : '') + ' em ' + MESES[mes.getMonth()] + '.'
-          : 'Nada marcado em ' + MESES[mes.getMonth()] + ' ainda.') + '</p></div>' +
-        '<div class="pcal-nav"><button type="button" class="b fina contorno" data-mes="-1" aria-label="Mês anterior">‹</button>' +
+          : 'Nada marcado em ' + MESES[mes.getMonth()] + ' ainda.') + '</p></div></header>' +
+      '<div class="pcal-nav"><button type="button" class="b fina contorno" data-mes="-1" aria-label="Mês anterior">‹</button>' +
           '<b>' + MESES[mes.getMonth()] + ' ' + mes.getFullYear() + '</b>' +
-          '<button type="button" class="b fina contorno" data-mes="1" aria-label="Próximo mês">›</button></div></header>' +
+          '<button type="button" class="b fina contorno" data-mes="1" aria-label="Próximo mês">›</button></div>' +
       '<div class="pcal-grade">' + grade + '</div>' +
       '<div class="pcal-agenda">' + (agenda || '<div class="pt-vazio"><b>Nada marcado neste mês.</b><p>As datas aparecem aqui quando a Branding7 libera o planejamento.</p></div>') + '</div>' +
       '<p class="pcal-legenda"><span class="pcal-li"><span class="pcal-l post"></span>publicação</span> <span class="pcal-li"><span class="pcal-l grav"></span>gravação</span> <span class="pcal-li">· toque para abrir o que tem aprovação</span></p>' +

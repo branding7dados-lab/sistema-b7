@@ -1,1 +1,240 @@
-/* Espectro — portal-c (onda 2). Toda regra começa com html[data-identidade="espectro"]. */
+/* Espectro — portal-c (onda 2). Toda regra começa com html[data-identidade="espectro"].
+   Portal do cliente: Calendário (.pcal-tela), Pedidos (.pp-tela), Equipe (.pq-tela) — as três com .pc-tela —,
+   a pesquisa do mês (.psat) e os recados da B7 (.prc) no Início.
+   Quadros: Portal-calendario, Portal-pedidos, Portal-equipe, Portal-pesquisa, Portal-comunicado. */
+
+/* ------------------------------------------------------------ telas: título 42px sem faixa, largura toda (40px de margem) */
+html[data-identidade="espectro"] .portal-home.pc-tela{max-width:none;padding-left:40px;padding-right:40px;}
+html[data-identidade="espectro"] .pc-tela *,
+html[data-identidade="espectro"] :is(.psat, .prc) *{font-weight:400;}
+html[data-identidade="espectro"] .pc-tela > .ph-cab{background:none;color:var(--ink);padding:16px 0 0;margin:0 0 24px;border-radius:0;overflow:visible;box-shadow:none;}
+html[data-identidade="espectro"] .pc-tela > .ph-cab:after{display:none;}
+html[data-identidade="espectro"] .pc-tela > .ph-cab h1{color:var(--ink);font-size:42px !important;line-height:1;letter-spacing:0;margin:0;}
+html[data-identidade="espectro"] .pc-tela > .ph-cab .ph-emp{color:var(--ink-3);font-size:14px;margin-top:8px;max-width:none;line-height:1.45;}
+html[data-identidade="espectro"] .pc-tela .pt-nada{font-size:13px;color:var(--ink-3);margin:14px 0 0;}
+html[data-identidade="espectro"] .pc-tela > .ph-cab + .pt-nada{margin:-8px 0 16px;}
+html[data-identidade="espectro"] .pc-tela .pt-vazio{background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);border-radius:26px;}
+html[data-identidade="espectro"] .pc-tela .pt-vazio b{font-family:var(--b7-fonte);font-size:18px;color:var(--ink);}
+
+/* cartão do Espectro: branco, raio 26, borda quase invisível e sombra longa */
+html[data-identidade="espectro"] .pc-cartao{background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);border-radius:26px;box-sizing:border-box;min-width:0;}
+html[data-identidade="espectro"] .pc-cartao-cab{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px 4px;}
+html[data-identidade="espectro"] .pc-cartao-tit{font-size:15px;color:var(--ink);margin:0;}
+html[data-identidade="espectro"] .pc-cartao-tit small{font-size:12px;color:var(--ink-3);margin-left:6px;}
+html[data-identidade="espectro"] .pc-cartao-cab .b svg{flex:none;}
+
+/* etiqueta: pílula 24px com ponto */
+html[data-identidade="espectro"] :is(.pp-sit, .pq-tag){display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;
+  font-size:12px;letter-spacing:0;text-transform:none;white-space:nowrap;background:var(--neutro-bg);color:var(--neutro);justify-self:start;}
+html[data-identidade="espectro"] :is(.pp-sit, .pq-tag):before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
+html[data-identidade="espectro"] :is(.pp-sit.pp-recebido, .pq-tag.pq-dono){background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"] .pp-sit.pp-em_producao{background:var(--ambar-bg);color:var(--ambar);}
+html[data-identidade="espectro"] .pp-sit.pp-concluido{background:var(--ok-bg);color:var(--ok);}
+html[data-identidade="espectro"] .pp-sit.pp-cancelado{background:var(--neutro-bg);color:var(--neutro);}
+html[data-identidade="espectro"][data-theme="dark"] :is(.pp-sit.pp-recebido, .pq-tag.pq-dono){background:rgba(181,123,230,.16);color:#C9A2EE;}
+
+/* ------------------------------------------------------------ CALENDÁRIO */
+/* troca de mês: o seletor em pílula do quadro (fundo suave, item ativo branco) */
+html[data-identidade="espectro"] .pcal-tela .pcal-nav{display:inline-flex;align-items:center;gap:4px;padding:4px;border-radius:22px;background:var(--suave);margin:0 0 16px;}
+html[data-identidade="espectro"] .pcal-tela .pcal-nav .b{min-height:34px;height:34px;width:34px;min-width:34px;padding:0;border-radius:17px;border:0;background:transparent;color:var(--ink-3);font-size:18px;box-shadow:none;}
+html[data-identidade="espectro"] .pcal-tela .pcal-nav .b:hover{background:var(--card);color:var(--ink);}
+html[data-identidade="espectro"] .pcal-tela .pcal-nav b{display:flex;align-items:center;height:34px;padding:0 16px;border-radius:17px;min-width:0;
+  background:var(--card);color:var(--ink);font-size:13px;box-shadow:0 1px 3px rgba(10,16,51,.12);text-transform:capitalize;}
+html[data-identidade="espectro"][data-theme="dark"] .pcal-tela .pcal-nav b{background:var(--elevado);box-shadow:0 1px 3px rgba(0,0,0,.4);}
+
+/* a grade: 7 colunas de 12px de vão, sem caixa por dia; "Seg 23" no alto de cada dia, hoje em Violeta */
+html[data-identidade="espectro"] .pcal-tela .pcal-grade{gap:22px 12px;}
+html[data-identidade="espectro"] .pcal-tela .pcal-sem{display:none;}
+html[data-identidade="espectro"] .pcal-tela .pcal-dia{min-height:0;background:none;border:0;border-radius:0;padding:0;gap:10px;box-shadow:none;}
+html[data-identidade="espectro"] .pcal-tela .pcal-dia.passado{opacity:1;}
+html[data-identidade="espectro"] .pcal-tela .pcal-dia.passado .pcal-n{color:var(--ink-3);}
+html[data-identidade="espectro"] .pcal-tela .pcal-n{font-size:13px;color:var(--ink);padding:0;}
+html[data-identidade="espectro"] .pcal-tela .pcal-grade > .pcal-dia:nth-child(7n+8) .pcal-n:before{content:"Dom ";}
+html[data-identidade="espectro"] .pcal-tela .pcal-grade > .pcal-dia:nth-child(7n+9) .pcal-n:before{content:"Seg ";}
+html[data-identidade="espectro"] .pcal-tela .pcal-grade > .pcal-dia:nth-child(7n+10) .pcal-n:before{content:"Ter ";}
+html[data-identidade="espectro"] .pcal-tela .pcal-grade > .pcal-dia:nth-child(7n+11) .pcal-n:before{content:"Qua ";}
+html[data-identidade="espectro"] .pcal-tela .pcal-grade > .pcal-dia:nth-child(7n+12) .pcal-n:before{content:"Qui ";}
+html[data-identidade="espectro"] .pcal-tela .pcal-grade > .pcal-dia:nth-child(7n+13) .pcal-n:before{content:"Sex ";}
+html[data-identidade="espectro"] .pcal-tela .pcal-grade > .pcal-dia:nth-child(7n+14) .pcal-n:before{content:"Sáb ";}
+html[data-identidade="espectro"] .pcal-tela .pcal-dia.hoje{border:0;box-shadow:none;}
+html[data-identidade="espectro"] .pcal-tela .pcal-dia.hoje .pcal-n{color:#7328A5;}
+html[data-identidade="espectro"][data-theme="dark"] .pcal-tela .pcal-dia.hoje .pcal-n{color:var(--acento);}
+
+/* a peça do dia: cartão de raio 18 com a arte (120px) e, embaixo, "Tipo · situação" e o título */
+html[data-identidade="espectro"] .pcal-tela .pcal-item{flex-direction:column;align-items:stretch;gap:0;padding:0;border-radius:18px;overflow:hidden;
+  background:var(--card);border:1px solid var(--borda);border-left:1px solid var(--borda);text-align:left;width:100%;box-sizing:border-box;}
+html[data-identidade="espectro"] .pcal-tela button.pcal-item:hover{background:var(--card);border-color:rgba(115,40,165,.35);transform:translateY(-1px);}
+html[data-identidade="espectro"] .pcal-tela .pcal-ic{display:none;}
+html[data-identidade="espectro"] .pcal-tela .pcal-mini{display:block;width:100%;height:120px;border-radius:0;background-color:var(--suave);background-position:center;background-size:cover;box-shadow:none;}
+html[data-identidade="espectro"] .pcal-tela .pcal-tx{padding:10px;gap:0;}
+html[data-identidade="espectro"] .pcal-tela .pcal-tx small{order:-1;font-size:12px;color:var(--ink-3);white-space:normal;}
+html[data-identidade="espectro"] .pcal-tela .pcal-tx b{font-size:13px;line-height:1.35;color:var(--ink);}
+html[data-identidade="espectro"] .pcal-tela .pcal-item.st-aguardando_voce .pcal-tx small{color:#7328A5;}
+html[data-identidade="espectro"][data-theme="dark"] .pcal-tela .pcal-item.st-aguardando_voce .pcal-tx small{color:var(--acento);}
+html[data-identidade="espectro"] .pcal-tela .pcal-item.pcal-grav{background:var(--suave);border-color:transparent;}
+html[data-identidade="espectro"] .pcal-tela .pcal-item.pcal-grav .pcal-tx small{color:#E02F75;}
+html[data-identidade="espectro"][data-theme="dark"] .pcal-tela .pcal-item.pcal-grav .pcal-tx small{color:#FF5C9A;}
+html[data-identidade="espectro"] .pcal-tela .pcal-mais{font-size:12px;color:var(--ink-3);padding:0 2px;}
+html[data-identidade="espectro"] .pcal-tela .pcal-legenda{font-size:12.5px;color:var(--ink-3);margin-top:24px;gap:8px;}
+html[data-identidade="espectro"] .pcal-tela .pcal-l{width:8px;height:8px;border-radius:50%;background:#7328A5;}
+html[data-identidade="espectro"] .pcal-tela .pcal-l.grav{background:#E02F75;}
+
+/* ------------------------------------------------------------ PEDIDOS: lista em tabela + "Novo pedido" (420px) */
+html[data-identidade="espectro"] .pp-tela .pp-grade{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:20px;align-items:start;}
+html[data-identidade="espectro"] .pp-tela .pp-lista{display:block;padding:4px;overflow:hidden;}
+html[data-identidade="espectro"] .pp-tela .pp-lista > .pc-cartao-tit{padding:14px 18px 4px;}
+html[data-identidade="espectro"] .pp-tela .pp-lista > .pt-vazio{box-shadow:none;border:0;margin:0;}
+html[data-identidade="espectro"] .pp-tela :is(.pp-cab, .pp-pedido){display:grid;grid-template-columns:2fr .8fr .9fr;gap:14px;padding:10px 18px;}
+html[data-identidade="espectro"] .pp-tela .pp-cab{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);}
+html[data-identidade="espectro"] .pp-tela .pp-pedido{align-items:center;padding:12px 18px;border:0;border-top:1px solid var(--borda);border-radius:0;background:none;font-size:13.5px;box-shadow:none;}
+html[data-identidade="espectro"] .pp-tela .pp-tx{min-width:0;}
+html[data-identidade="espectro"] .pp-tela .pp-pedido h3{font-family:var(--b7-fonte);font-size:13.5px;line-height:1.4;color:var(--ink);margin:0;}
+html[data-identidade="espectro"] .pp-tela .pp-pe{font-size:12px;color:var(--ink-3);margin-top:2px;}
+html[data-identidade="espectro"] .pp-tela .pp-pe b{color:var(--ink-2);}
+html[data-identidade="espectro"] .pp-tela .pp-pe .pp-tipo{font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink-3);}
+html[data-identidade="espectro"] .pp-tela .pp-desc{font-size:12px;color:var(--ink-3);margin-top:2px;-webkit-line-clamp:1;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;}
+html[data-identidade="espectro"] .pp-tela .pp-quando{color:var(--ink-3);}
+
+/* o formulário (no cartão e na janela) */
+html[data-identidade="espectro"] .pp-tela .pp-novo{padding:24px;}
+html[data-identidade="espectro"] .pp-novo > .pc-cartao-tit{font-size:16px;margin-bottom:10px;}
+html[data-identidade="espectro"] .pp-novo .mb{margin:0 0 12px;}
+html[data-identidade="espectro"] .pp-novo .rot{display:block;font-size:13px;letter-spacing:0 !important;text-transform:none;color:var(--ink-2);margin:0 0 6px;}
+html[data-identidade="espectro"] .pp-novo .rot small{font-size:12px;color:var(--ink-3);}
+html[data-identidade="espectro"] .pp-novo input.campo{height:44px;min-height:44px;border-radius:22px;border-color:var(--borda-forte);padding:0 18px;width:100%;box-sizing:border-box;}
+html[data-identidade="espectro"] .pp-novo textarea.campo{height:100px;border-radius:14px;padding:10px 12px;resize:none;width:100%;box-sizing:border-box;}
+html[data-identidade="espectro"] .pp-tipos{display:flex;flex-wrap:wrap;gap:6px;}
+html[data-identidade="espectro"] .pp-tipo-op{position:relative;padding:0;border:0;border-radius:17px;background:none;}
+html[data-identidade="espectro"] .pp-tipo-op input{position:absolute;opacity:0;width:1px;height:1px;margin:0;}
+html[data-identidade="espectro"] .pp-tipo-op > span{display:flex;align-items:center;height:34px;padding:0 16px;border-radius:17px;border:1px solid var(--borda);background:var(--card);color:var(--ink-2);font-size:13px;cursor:pointer;}
+html[data-identidade="espectro"] .pp-tipo-op b{font-size:13px;}
+html[data-identidade="espectro"] .pp-tipo-op small{display:none;}
+html[data-identidade="espectro"] .pp-tipo-op:has(input:checked){background:none;}
+html[data-identidade="espectro"] .pp-tipo-op:has(input:checked) > span{background:#F0E8F8;border-color:transparent;color:#7328A5;}
+html[data-identidade="espectro"][data-theme="dark"] .pp-tipo-op:has(input:checked) > span{background:rgba(181,123,230,.16);color:#C9A2EE;}
+html[data-identidade="espectro"] .pp-tipo-op:has(input:focus-visible) > span{box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .pp-novo .acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+html[data-identidade="espectro"] .pp-novo .acoes .b{flex:1 1 auto;}
+html[data-identidade="espectro"] .pp-novo .acoes .b.pri{flex-basis:100%;order:-1;}
+html[data-identidade="espectro"] .pp-novo .acoes .b svg{flex:none;}
+
+/* ------------------------------------------------------------ EQUIPE: tabela Pessoa · Papel · Pode · ações */
+html[data-identidade="espectro"] .pq-tela .pq-lista{display:block;padding:4px;overflow:hidden;}
+html[data-identidade="espectro"] .pq-tela .pq-lista > .pt-nada{padding:12px 18px 16px;margin:0;}
+html[data-identidade="espectro"] .pq-tela :is(.pq-cab, .pq-pessoa){display:grid;grid-template-columns:1.8fr .7fr 1.6fr minmax(0,.9fr);gap:14px;align-items:center;padding:10px 18px;}
+html[data-identidade="espectro"] .pq-tela .pq-cab{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);}
+html[data-identidade="espectro"] .pq-tela .pq-pessoa{padding:12px 18px;border-top:1px solid var(--borda);font-size:13.5px;flex-wrap:nowrap;}
+html[data-identidade="espectro"] .pq-tela .pq-pessoa + .pq-pessoa{border-top:1px solid var(--borda);}
+html[data-identidade="espectro"] .pq-tela .pq-quem{display:flex;align-items:center;gap:10px;min-width:0;}
+html[data-identidade="espectro"] .pq-tela .pq-av.av-pessoa{width:32px;height:32px;border-radius:14px;font-size:32px;flex:none;}
+html[data-identidade="espectro"] .pq-tela .pq-av.av-pessoa,
+html[data-identidade="espectro"] .pq-tela .pq-av.av-pessoa > *{border-radius:14px !important;}
+html[data-identidade="espectro"] .pq-tela .pq-id{min-width:0;flex:1;}
+html[data-identidade="espectro"] .pq-tela .pq-id b{display:block;font-size:13.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-identidade="espectro"] .pq-tela .pq-id span{display:block;font-size:12px;color:var(--ink-3);margin-top:0;overflow:hidden;text-overflow:ellipsis;}
+html[data-identidade="espectro"] .pq-tela .pq-id em{color:var(--ambar);}
+html[data-identidade="espectro"] .pq-tela .pq-voce{font-size:11px;letter-spacing:.06em;color:var(--ink-3);}
+html[data-identidade="espectro"] .pq-tela .pq-pode{color:var(--ink-3);min-width:0;}
+html[data-identidade="espectro"] .pq-tela .pq-papel{width:100%;min-width:0;min-height:34px;height:34px;border-radius:17px;padding:0 12px;font-size:13px;}
+html[data-identidade="espectro"] .pq-tela .pq-bts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;}
+html[data-identidade="espectro"] .pq-tela .pq-bts .b{min-height:34px;padding:0 14px;}
+html[data-identidade="espectro"] .pq-tela .pq-bts .b.contorno{border-color:var(--borda);}
+html[data-identidade="espectro"] .pq-tela .pq-bts .b.perigo{background:var(--card);color:var(--erro);border-color:var(--borda);}
+
+/* ------------------------------------------------------------ PESQUISA DO MÊS (no Início): o cartão do quadro */
+html[data-identidade="espectro"] .psat{background:var(--card);border:1px solid var(--esp-cartao-borda);border-radius:28px;padding:32px;padding-top:40px;box-shadow:var(--sh-2);margin-bottom:24px;}
+html[data-identidade="espectro"] .psat::before{height:8px;background:var(--b7-espectro);}
+html[data-identidade="espectro"] .psat-ic{display:none;}
+html[data-identidade="espectro"] .psat-cab b{font-family:var(--b7-fonte);font-size:28px;line-height:1.2;color:var(--ink);margin-top:8px;}
+html[data-identidade="espectro"] .psat-cab small{display:none;}
+html[data-identidade="espectro"] .psat-cab small.psat-sobre{display:block;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#7328A5;margin:0;}
+html[data-identidade="espectro"][data-theme="dark"] .psat-cab small.psat-sobre{color:var(--acento);}
+html[data-identidade="espectro"] .psat-notas{gap:6px;margin-top:20px;}
+html[data-identidade="espectro"] .psat-n{height:44px;border-radius:14px;border:1px solid var(--borda);background:var(--card);font:400 14px/1 var(--b7-fonte);color:var(--ink);}
+html[data-identidade="espectro"] .psat-n:hover{border-color:rgba(115,40,165,.4);background:var(--card);color:var(--ink);transform:translateY(-2px);}
+html[data-identidade="espectro"] :is(.psat-n.nb, .psat-n.nm, .psat-n.na):hover{background:var(--card);border-color:rgba(115,40,165,.4);color:var(--ink);}
+html[data-identidade="espectro"] :is(.psat-n.nb, .psat-n.nm, .psat-n.na).on{background:#7328A5;border-color:#7328A5;color:#fff;transform:none;}
+html[data-identidade="espectro"] .psat-eixo{font-size:12px;color:var(--ink-3);margin-top:6px;}
+html[data-identidade="espectro"] .psat-mais{margin-top:18px;}
+html[data-identidade="espectro"] .psat-mais .rot{display:block;font-size:13px;letter-spacing:0;text-transform:none;color:var(--ink-2);margin:0 0 6px;}
+html[data-identidade="espectro"] .psat-mais textarea.campo{height:90px;border-radius:14px;padding:10px 12px;resize:none;width:100%;box-sizing:border-box;}
+html[data-identidade="espectro"] .psat-acoes{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+html[data-identidade="espectro"] .psat-acoes .psat-x{background:transparent;border:0;color:var(--ink-2);font-size:14px;padding:0 22px;}
+html[data-identidade="espectro"] .psat-acoes .psat-x:hover{background:var(--suave);}
+html[data-identidade="espectro"] .psat-obg b{font-family:var(--b7-fonte);font-size:22px;}
+html[data-identidade="espectro"] .psat-obg small{font-size:13px;color:var(--ink-3);}
+
+/* ------------------------------------------------------------ RECADOS DA B7 (no Início): o comunicado do quadro */
+html[data-identidade="espectro"] #ph-recados:not(:empty){gap:16px;margin-bottom:24px;}
+html[data-identidade="espectro"] .prc{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:20px;padding:36px 32px 28px;border-radius:28px;
+  border:1px solid var(--esp-cartao-borda);background:var(--card);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .prc::before{inset:0 0 auto 0;width:auto;height:8px;background:var(--b7-espectro);}
+html[data-identidade="espectro"] :is(.prc.prc-atencao, .prc.prc-feriado)::before{background:var(--b7-espectro);}
+html[data-identidade="espectro"] .prc-ic{display:none;}
+html[data-identidade="espectro"] .prc-tx small{font-size:12px;letter-spacing:.1em;color:#7328A5;}
+html[data-identidade="espectro"] .prc.prc-atencao .prc-tx small{color:#E02F75;}
+html[data-identidade="espectro"][data-theme="dark"] .prc-tx small{color:var(--acento);}
+html[data-identidade="espectro"][data-theme="dark"] .prc.prc-atencao .prc-tx small{color:#FF5C9A;}
+html[data-identidade="espectro"] .prc-tx b{font-family:var(--b7-fonte);font-size:28px;line-height:1.2;color:var(--ink);margin-top:8px;}
+html[data-identidade="espectro"] .prc-tx p{font-size:14.5px;color:var(--ink-2);margin-top:10px;line-height:1.6;}
+html[data-identidade="espectro"] .prc-x{display:inline-flex;align-items:center;justify-content:center;height:42px;padding:0 22px;border-radius:21px;border:0;
+  background:#7328A5;color:#fff;font-family:var(--b7-fonte);font-size:14px;line-height:1;white-space:nowrap;box-shadow:0 8px 22px rgba(115,40,165,.32);
+  transition:transform var(--t-micro), background-color var(--t);}
+html[data-identidade="espectro"] .prc-x:hover{background:#520083;}
+html[data-identidade="espectro"] .prc-x:active{transform:scale(.97);}
+
+/* ------------------------------------------------------------ largura média */
+@media (max-width:1180px){
+  html[data-identidade="espectro"] .pp-tela .pp-grade{grid-template-columns:minmax(0,1fr) 360px;}
+  html[data-identidade="espectro"] .pq-tela :is(.pq-cab, .pq-pessoa){grid-template-columns:1.6fr .8fr 1.2fr minmax(0,1fr);}
+}
+
+/* ------------------------------------------------------------ celular */
+@media (max-width:760px){
+  html[data-identidade="espectro"] .portal-home.pc-tela{padding-left:16px;padding-right:16px;}
+  html[data-identidade="espectro"] .pc-tela > .ph-cab{padding-top:8px;margin-bottom:18px;}
+  html[data-identidade="espectro"] .pc-tela > .ph-cab h1{font-size:30px !important;}
+  html[data-identidade="espectro"] .pc-tela > .ph-cab .ph-emp{font-size:13.5px;}
+
+  /* calendário: agenda por dia, cada dia num cartão */
+  html[data-identidade="espectro"] .pcal-tela .pcal-agenda{gap:12px;}
+  html[data-identidade="espectro"] .pcal-tela .pcal-ag-dia{grid-template-columns:48px minmax(0,1fr);gap:12px;padding:14px;border-radius:22px;border:1px solid var(--esp-cartao-borda);background:var(--card);box-shadow:var(--sh-2);}
+  html[data-identidade="espectro"] .pcal-tela .pcal-ag-dia.hoje{border-color:rgba(115,40,165,.35);}
+  html[data-identidade="espectro"] .pcal-tela .pcal-ag-dia h3 b{font-family:var(--b7-fonte);font-weight:400;font-size:26px;color:var(--ink);}
+  html[data-identidade="espectro"] .pcal-tela .pcal-ag-dia.hoje h3 :is(b, span){color:#7328A5;}
+  html[data-identidade="espectro"][data-theme="dark"] .pcal-tela .pcal-ag-dia.hoje h3 :is(b, span){color:var(--acento);}
+  html[data-identidade="espectro"] .pcal-tela .pcal-ag-dia h3 span{font-size:12px;letter-spacing:0;text-transform:capitalize;color:var(--ink-3);}
+  html[data-identidade="espectro"] .pcal-tela .pcal-ag-dia .pcal-item{flex-direction:row;align-items:center;padding:0;border-radius:16px;}
+  html[data-identidade="espectro"] .pcal-tela .pcal-ag-dia .pcal-mini{width:64px;height:64px;flex:none;}
+  html[data-identidade="espectro"] .pcal-tela .pcal-ag-dia .pcal-tx{flex:1;min-width:0;padding:10px 12px;}
+  html[data-identidade="espectro"] .pcal-tela .pcal-ag-dia .pcal-tx b{font-size:14px;}
+  html[data-identidade="espectro"] .pcal-tela .pcal-ag-dia .pcal-tx small{font-size:12px;}
+
+  /* pedidos: o formulário primeiro, a lista embaixo; cada pedido em duas linhas */
+  html[data-identidade="espectro"] .pp-tela .pp-grade{grid-template-columns:minmax(0,1fr);gap:16px;}
+  html[data-identidade="espectro"] .pp-tela .pp-novo{order:-1;padding:20px;}
+  html[data-identidade="espectro"] .pp-tela .pp-cab{display:none;}
+  html[data-identidade="espectro"] .pp-tela .pp-pedido{grid-template-columns:minmax(0,1fr) auto;row-gap:6px;}
+  html[data-identidade="espectro"] .pp-tela .pp-tx{grid-column:1 / -1;}
+  html[data-identidade="espectro"] .pp-tela .pp-quando{font-size:12px;}
+  html[data-identidade="espectro"] .pp-tela .pp-sit{justify-self:end;}
+
+  /* equipe: cada pessoa vira um bloco (quem, papel e o que pode, ações) */
+  html[data-identidade="espectro"] .pq-tela .pq-cab{display:none;}
+  html[data-identidade="espectro"] .pq-tela .pq-pessoa{grid-template-columns:auto minmax(0,1fr);row-gap:10px;column-gap:12px;}
+  html[data-identidade="espectro"] .pq-tela .pq-quem{grid-column:1 / -1;}
+  html[data-identidade="espectro"] .pq-tela .pq-papel{width:auto;min-width:120px;}
+  html[data-identidade="espectro"] .pq-tela .pq-pode{font-size:12.5px;}
+  html[data-identidade="espectro"] .pq-tela .pq-bts{grid-column:1 / -1;justify-content:stretch;}
+  html[data-identidade="espectro"] .pq-tela .pq-bts:empty{display:none;}
+  html[data-identidade="espectro"] .pq-tela .pq-bts .b{flex:1;}
+  html[data-identidade="espectro"] .pc-cartao-cab .b{padding:0 14px;}
+
+  /* pesquisa e recados */
+  html[data-identidade="espectro"] .psat{padding:24px 20px;padding-top:32px;border-radius:24px;}
+  html[data-identidade="espectro"] .psat-cab b{font-size:22px;}
+  html[data-identidade="espectro"] .psat-notas{grid-template-columns:repeat(6,minmax(0,1fr));}
+  html[data-identidade="espectro"] .prc{grid-template-columns:minmax(0,1fr);padding:30px 20px 20px;border-radius:24px;}
+  html[data-identidade="espectro"] .prc-tx b{font-size:22px;}
+  html[data-identidade="espectro"] .prc-x{justify-self:end;}
+}
