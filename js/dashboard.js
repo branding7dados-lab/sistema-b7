@@ -439,13 +439,10 @@ B7.Dashboard = (function () {
       rotulo: k ? B7.Gravacao.mesRef(+k.slice(0, 4), +k.slice(5, 7)) : 'Sem mês de referência (gravações antigas)',
       itens: grupos.get(k).sort(ord) }));
   }
-  /* ---- linha da lista de Gravações ----
-     A capa roxa se repetia em todo card e escondia o que importa. Aqui
-     cada gravação é uma linha: QUANDO (dia em destaque), DE QUEM, quanto
-     já foi gravado, quem grava e o status. Data que já passou sem a
+  /* ---- cartão da lista de Gravações ----
+     Capa com QUANDO e DE QUEM; embaixo o nome da gravação, quem grava,
+     quanto já foi gravado e o status. Data que já passou sem a
      gravação ser concluída ganha um aviso. */
-  const DIAS_CURTOS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-  const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   const hojeISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   const ehAtivaComData = g => (g.situacao === 'Agendada' || g.situacao === 'Remarcada') && !!g.data_gravacao;
   const dataPassou = g => ehAtivaComData(g) && String(g.data_gravacao).slice(0, 10) < hojeISO();
@@ -460,45 +457,40 @@ B7.Dashboard = (function () {
     if (dias > 1 && dias <= 6) return 'Em ' + dias + ' dias' + hora;
     return B7.UI.dataBR(g.data_gravacao) + hora;
   }
-  function diaTile(g) {
-    if (!g.data_gravacao) return '<div class="gl-dia semdata" aria-hidden="true"><b>–</b><small>sem data</small></div>';
-    const [y, m, d] = String(g.data_gravacao).slice(0, 10).split('-').map(Number);
-    const dt = new Date(y, m - 1, d);
-    const hoje = String(g.data_gravacao).slice(0, 10) === hojeISO();
-    return '<div class="gl-dia' + (hoje ? ' hoje' : '') + (g.situacao === 'Cancelada' ? ' off' : '') + '" aria-hidden="true">' +
-      '<small>' + DIAS_CURTOS[dt.getDay()] + '</small><b>' + d + '</b><small>' + MESES_CURTOS[m - 1] + '</small></div>';
-  }
-  function progressoGrav(g) {
-    const total = g.total_itens != null ? +g.total_itens : +(g.total_roteiros || 0);
-    const feitos = g.total_itens != null ? +(g.itens_gravados || 0) : 0;
-    if (!total) return '<div class="gl-prog nada"><span class="gl-prog-tx">Nada na lista ainda</span></div>';
-    const pct = Math.round(feitos / total * 100);
-    return '<div class="gl-prog' + (feitos === total ? ' completo' : '') + '" title="' + feitos + ' de ' + total + ' itens gravados">' +
-      '<div class="gl-barra" role="progressbar" aria-valuemin="0" aria-valuemax="' + total + '" aria-valuenow="' + feitos + '" aria-label="Itens gravados"><i style="width:' + pct + '%"></i></div>' +
-      '<span class="gl-prog-tx"><b>' + feitos + '</b>/' + total + ' gravados</span></div>';
-  }
   const podeEditarGrav = () => !(B7.Auth && B7.Auth.ehEquipe) || B7.Auth.ehEquipe();
+  /* Espectro: cada gravação é um cartão com capa no degradê (cor fixa por
+     cliente), a data em etiqueta na capa e o nome do cliente grande. */
+  const IC_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+  function tomCapa(chave) { let h = 0; String(chave || '').split('').forEach(c => { h = (h * 31 + c.charCodeAt(0)) >>> 0; }); return h % 5; }
+  function dataCapa(g) {
+    if (!g.data_gravacao) return 'Sem data';
+    const [, m, d] = String(g.data_gravacao).slice(0, 10).split('-');
+    const hi = g.hora_inicio ? String(g.hora_inicio).slice(0, 5).split(':') : null;
+    return d + '/' + m + (hi ? ' · ' + (+hi[0]) + 'h' + (hi[1] !== '00' ? hi[1] : '') : '');
+  }
   function linhaGravacao(g) {
     const legado = !g.competencia_ano;
     const aviso = dataPassou(g) ? '<span class="gl-alerta">Data passou · concluir ou remarcar</span>' : '';
     const quando = quandoRel(g);
-    /* gl-s-<situação>: a faixa de cor à esquerda (zze) */
-    return '<div class="gl-item gl-s-' + esc(String(g.situacao || 'Pendente').toLowerCase()) + (g.situacao === 'Cancelada' ? ' cancelada' : '') + '" data-gravacao="' + esc(g.id) + '" ' +
+    const total = g.total_itens != null ? +g.total_itens : +(g.total_roteiros || 0);
+    const feitos = g.total_itens != null ? +(g.itens_gravados || 0) : 0;
+    const extras = (g.videomakers_extra_nomes || []).length;
+    const info = [g.videomaker_nome ? String(g.videomaker_nome).split(' ')[0] + (extras ? ' +' + extras : '') : 'Sem responsável',
+      total ? (feitos ? feitos + ' de ' + total + ' gravados' : total + (total === 1 ? ' item' : ' itens')) : 'Nada na lista ainda'];
+    /* gl-s-<situação>: a cor da situação (zze) */
+    return '<div class="gl-item gl-card gl-s-' + esc(String(g.situacao || 'Pendente').toLowerCase()) + (g.situacao === 'Cancelada' ? ' cancelada' : '') + '" data-gravacao="' + esc(g.id) + '" ' +
       'data-total-roteiros="' + (g.total_roteiros || 0) + '" tabindex="0" role="link" aria-label="Abrir gravação ' + esc(g.cliente_nome + ' — ' + g.nome) + '">' +
-      diaTile(g) +
-      '<div class="gl-quem">' + B7.UI.avatarCliente(g.cliente_nome, g.cliente_logo_url || null, 'p') +
-        '<div class="gl-tx"><b>' + esc(g.cliente_nome || 'Sem cliente') + '</b>' +
-        '<span class="gl-nome">' + esc(g.nome) + '</span>' +
-        '<span class="gl-sub">' + (quando ? '<span class="gl-quando">' + esc(quando) + '</span>' : '') + aviso +
+      '<div class="gl-capa" data-tom="' + tomCapa(g.client_id || g.cliente_nome) + '" aria-hidden="true">' +
+        '<img class="gl-capa-marca" src="assets/brand/symbol-white.png" alt="">' +
+        '<span class="gl-capa-data">' + IC_CAM + esc(dataCapa(g)) + '</span>' +
+        '<b class="gl-capa-cli">' + esc(g.cliente_nome || 'Sem cliente') + '</b></div>' +
+      '<div class="gl-rodape">' +
+        '<div class="gl-tx"><b class="gl-nome" title="' + esc(g.nome) + '">' + esc(g.nome) + '</b>' +
+        '<span class="gl-info" title="' + esc(g.videomaker_nome ? [g.videomaker_nome].concat(g.videomakers_extra_nomes || []).join(', ') : '') + '">' + esc(info.join(' · ')) + '</span>' +
+        '<span class="gl-sub">' + (/^(Hoje|Amanhã|Em )/.test(quando) ? '<span class="gl-quando">' + esc(quando) + '</span>' : '') + aviso +
           (legado && podeEditarGrav() ? '<button type="button" class="gl-definir" data-definir-mes="' + esc(g.id) + '">Definir mês</button>' : '') +
-        '</span></div></div>' +
-      progressoGrav(g) +
-      '<div class="gl-resp">' + (g.videomaker_nome
-        ? B7.UI.avatarPessoa({ nome: g.videomaker_nome }, 'mini') + '<span>' + esc(String(g.videomaker_nome).split(' ')[0]) +
-          /* v3.5.0: quem grava junto */
-          ((g.videomakers_extra_nomes || []).length ? ' <small class="gl-mais-vm" title="' + esc(g.videomakers_extra_nomes.join(', ')) + '">+' + g.videomakers_extra_nomes.length + '</small>' : '') + '</span>'
-        : '<span class="gl-sem">Sem responsável</span>') + '</div>' +
-      '<div class="gl-st">' + chipGravacao(g) + '</div>' +
+        '</span></div>' +
+      '<div class="gl-st">' + chipGravacao(g) + '</div></div>' +
       '<div class="menu"><button class="ico gl-mais" aria-label="Mais ações" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button>' +
         '<div class="lista">' +
         (legado && podeEditarGrav() ? '<button data-definir-mes="' + esc(g.id) + '">Definir mês de referência</button><hr>' : '') +
@@ -595,34 +587,41 @@ B7.Dashboard = (function () {
     const clientes = [...new Map(gravacoes.map(g => [g.client_id, g.cliente_nome])).entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'pt-BR'));
     const meses = () => [...new Set(gravacoes.map(chaveMes).filter(Boolean))].sort().reverse();
     const resps = [...new Map(gravacoes.filter(g => g.videomaker_id).map(g => [g.videomaker_id, g.videomaker_nome])).entries()];
-    const STATUS = [['', 'Todas'], ['Agendada', 'Marcadas'], ['Remarcada', 'Remarcadas'], ['Pendente', 'Sem data'], ['Gravada', 'Concluídas'], ['Cancelada', 'Canceladas']];
+    const STATUS = [['Agendada', 'Marcadas'], ['Remarcada', 'Remarcadas'], ['Pendente', 'Sem data'], ['Gravada', 'Concluídas'], ['Cancelada', 'Canceladas'], ['', 'Todas']];
     const sel = (id, atual, ops, rot) => '<select class="campo fina gv-filtro' + (atual ? ' ativo' : '') + '" id="' + id + '" aria-label="' + esc(rot) + '">' +
       ops.map(([v, r]) => '<option value="' + esc(v) + '"' + (v === atual ? ' selected' : '') + '>' + esc(r) + '</option>').join('') + '</select>';
     const opcoesMes = () => [['', 'Todos os meses'], ['sem', 'Sem mês (antigas)']].concat(meses().map(k => [k, B7.Gravacao.mesRef(+k.slice(0, 4), +k.slice(5, 7))]));
 
-    /* zze: no celular o cabeçalho é compacto (Calendário vira ícone, "+ Nova"
-       em pílula) e os três seletores ficam atrás do botão "Filtros" */
+    /* Espectro: rótulo (diárias dos próximos 10 dias) + título; a busca
+       fica na linha do título; as pílulas de status e as ações numa linha
+       só; os três seletores ficam atrás do botão "Filtros" */
+    const hoje0 = hojeISO(), lim10 = (() => { const d = new Date(); d.setDate(d.getDate() + 10); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+    const proximas = gravacoes.filter(g => ehAtivaComData(g) && String(g.data_gravacao).slice(0, 10) >= hoje0 && String(g.data_gravacao).slice(0, 10) <= lim10).length;
     painel().innerHTML = '<div class="conteudo gl-pagina">' +
       /* zzz17: título de página (h1) — o nome do topo do celular se
          recolhe enquanto ele está à vista — e a contagem como frase */
-      '<div class="secao-topo gl-topo"><div class="gl-tit"><p class="v4-sobre">Agenda de campo</p><h1>Gravações</h1>' +
-      '<p><b id="gv-conta">' + gravacoes.length + '</b> <span id="gv-conta-tx">gravaç' + (gravacoes.length === 1 ? 'ão' : 'ões') + '</span> · por mês de referência</p></div><div class="espaco"></div>' +
-      (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="b contorno gl-cal" href="#/calendario?v=mes&amp;tipo=gravacoes" aria-label="Calendário de gravações">' + IC_CAL + '<span class="gl-so-largo">Calendário</span></a>' : '') +
-      '<button class="b pri gl-nova" data-nova-gravacao>' + IC.mais + 'Nova<span class="gl-so-largo">&nbsp;gravação</span></button></div>' +
-      (gravacoes.length ? '<div class="gl-filtros">' +
-        '<div class="gl-linha-busca"><div class="gl-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
-          '<input class="campo fina" id="fg-busca" type="search" placeholder="Buscar cliente ou gravação" aria-label="Buscar cliente ou gravação" value="' + esc(FG.busca || '') + '"></div>' +
-          '<button type="button" class="gl-bt-filtros" id="fg-abre" aria-expanded="false" aria-controls="fg-sels">' +
-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' +
-            '<span>Filtros</span><b id="fg-qtd" hidden></b></button></div>' +
-        '<div class="gl-sels" id="fg-sels">' +
-        sel('fg-cliente', FG.cliente, [['', 'Todos os clientes']].concat(clientes), 'Cliente') +
-        '<span id="fg-mes-cx">' + sel('fg-mes', FG.mes, opcoesMes(), 'Mês de referência') + '</span>' +
-        (resps.length ? sel('fg-resp', FG.resp, [['', 'Todos os responsáveis'], ['sem', 'Sem responsável']].concat(resps), 'Responsável') : '') +
-        '</div>' +
-        '<button class="b fina contorno gl-limpar" id="fg-limpar" hidden>Limpar filtros</button>' +
-        '<span class="gl-quebra"></span><div class="filtro gl-status" id="filtro-status" role="group" aria-label="Status"></div>' +
-      '</div>' : '') +
+      '<div class="secao-topo gl-topo"><div class="gl-tit"><p class="v4-sobre">' + (proximas ? proximas + (proximas === 1 ? ' diária' : ' diárias') + ' nos próximos 10 dias' : 'Agenda de campo') + '</p><h1>Gravações</h1>' +
+      '<p class="gl-conta"><b id="gv-conta">' + gravacoes.length + '</b> <span id="gv-conta-tx">gravaç' + (gravacoes.length === 1 ? 'ão' : 'ões') + '</span> · por mês de referência</p></div><div class="espaco"></div>' +
+      (gravacoes.length ? '<label class="gl-busca"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg>' +
+        '<input class="campo fina" id="fg-busca" type="search" placeholder="Buscar cliente ou gravação" aria-label="Buscar cliente ou gravação" value="' + esc(FG.busca || '') + '"></label>' : '') +
+      '</div>' +
+      '<div class="gl-filtros">' +
+        '<div class="gl-barra-acoes">' +
+          (gravacoes.length ? '<div class="filtro gl-status" id="filtro-status" role="group" aria-label="Status"></div>' : '<span></span>') +
+          '<div class="gl-acoes">' +
+            (gravacoes.length ? '<button class="b fina contorno gl-limpar" id="fg-limpar" hidden>Limpar filtros</button>' +
+              '<button type="button" class="gl-bt-filtros" id="fg-abre" aria-expanded="false" aria-controls="fg-sels">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>' +
+              '<span>Filtros</span><b id="fg-qtd" hidden></b></button>' : '') +
+            (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="b contorno gl-cal" href="#/calendario?v=mes&amp;tipo=gravacoes" aria-label="Calendário de gravações">' + IC_CAL + '<span class="gl-so-largo">Calendário</span></a>' : '') +
+            '<button class="b pri gl-nova" data-nova-gravacao>' + IC.mais + 'Nova<span class="gl-so-largo">&nbsp;gravação</span></button>' +
+          '</div></div>' +
+        (gravacoes.length ? '<div class="gl-sels" id="fg-sels">' +
+          sel('fg-cliente', FG.cliente, [['', 'Todos os clientes']].concat(clientes), 'Cliente') +
+          '<span id="fg-mes-cx">' + sel('fg-mes', FG.mes, opcoesMes(), 'Mês de referência') + '</span>' +
+          (resps.length ? sel('fg-resp', FG.resp, [['', 'Todos os responsáveis'], ['sem', 'Sem responsável']].concat(resps), 'Responsável') : '') +
+        '</div>' : '') +
+      '</div>' +
       (gravacoes.length ? '<div id="lista-gravacoes"></div>' : vazioGravacoes()) + '</div>';
 
     const passa = (g, semStatus) => {
@@ -785,35 +784,23 @@ B7.Dashboard = (function () {
         (g.id ? '<span class="cr-data">' + esc(quandoGrava(g)) + '</span>' : '') +
       '</div></div>';
   }
+  /* Espectro: uma linha da tabela (Roteiro · Cliente · Gravação · Atualizado · Situação) */
   function linhaRoteiroLista(r) {
+    const g = r.gravacao || {};
+    const cliente = g.cliente_nome || 'Sem cliente';
+    const dia = g.data_gravacao ? B7.UI.dataBR(String(g.data_gravacao).slice(0, 10)).slice(0, 5) : '—';
+    const qg = g.banco ? '' : quandoGrava(g);
     return '<div class="rt-linha" data-gravacao="' + esc(r.recording_session_id || (r.client_id ? 'banco-' + r.client_id : 'banco-geral')) + '" data-roteiro="' + esc(r.id) + '" role="link" tabindex="0" ' +
         'aria-label="Abrir roteiro ' + esc(tituloTela(r.titulo)) + '">' +
-      '<span class="rt-l-tx"><b>' + esc(tituloTela(r.titulo)) + '</b>' + (r.objetivo ? '<small>' + esc(r.objetivo) + '</small>' : '') + '</span>' +
-      '<span class="rt-l-st">' + B7.UI.chipRevisao(r.status) + '</span>' +
+      '<span class="rt-l-tx"' + (r.objetivo ? ' title="' + esc(r.objetivo) + '"' : '') + '><b>' + esc(tituloTela(r.titulo)) + '</b></span>' +
+      '<span class="rt-l-cli">' + B7.UI.avatarCliente(cliente, g.cliente_logo_url || null) +
+        '<span class="rt-l-cli-tx"><b>' + esc(cliente) + '</b><small>' + esc(g.nome ? tituloTela(g.nome) : 'Gravação removida') + '</small></span></span>' +
+      '<span class="rt-l-grav"' + (qg ? ' title="' + esc(qg) + '"' : '') + '>' + esc(g.banco ? '—' : dia) + '</span>' +
       '<span class="rt-l-quando" title="' + esc(r.updated_at || '') + '">' + esc(B7.UI.quando(r.updated_at)) + '</span>' +
-      '<button type="button" class="rt-apagar" data-apagar-roteiro="' + esc(r.id) + '" data-nome="' + esc(r.titulo || '') + '" title="Apagar roteiro" aria-label="Apagar roteiro">' + IC_LIXO + '</button>' +
-      '<span class="rt-l-seta" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span></div>';
+      '<span class="rt-l-st">' + B7.UI.chipRevisao(r.status) + '</span>' +
+      '<button type="button" class="rt-apagar" data-apagar-roteiro="' + esc(r.id) + '" data-nome="' + esc(r.titulo || '') + '" title="Apagar roteiro" aria-label="Apagar roteiro">' + IC_LIXO + '</button></div>';
   }
-  function grupoRoteirosHTML(grp) {
-    const g = grp.gravacao || {};
-    const cliente = g.cliente_nome || 'Sem cliente';
-    const conta = {}; grp.itens.forEach(r => { const k = r.status || 'Em criação'; conta[k] = (conta[k] || 0) + 1; });
-    const total = grp.itens.length;
-    const barra = ROT_ORDEM.filter(k => conta[k]).map(k =>
-      '<i class="rt-seg ' + (B7.UI.CLASSE_REVISAO[k] || 'criacao') + '" style="flex:' + conta[k] + '" title="' + conta[k] + ' ' + esc(k.toLowerCase()) + '"></i>').join('');
-    const prontos = (conta['Pronto para gravar'] || 0) + (conta['Gravado'] || 0);
-    const qg = quandoGrava(g);
-    return '<section class="rt-grupo">' +
-      '<header class="rt-g-cab" data-gravacao="' + esc(grp.id) + '" role="link" tabindex="0" aria-label="Abrir gravação ' + esc(g.nome || '') + ' de ' + esc(cliente) + '">' +
-        B7.UI.avatarCliente(cliente, g.cliente_logo_url || null) +
-        '<span class="rt-g-tx"><b>' + esc(cliente) + '</b><small>' + IC.gravacoes + esc(g.nome ? tituloTela(g.nome) : 'Gravação removida') + '</small></span>' +
-        (qg ? '<span class="rt-g-quando' + (/^Grava .*(hoje|amanhã|em \d dias)/.test(qg) ? ' perto' : /^Era/.test(qg) ? ' atras' : '') + '">' + esc(qg) + '</span>' : '') +
-        '<span class="rt-g-prog" title="' + prontos + ' de ' + total + ' prontos ou gravados">' +
-          '<span class="rt-barra">' + barra + '</span><small>' + prontos + '/' + total + ' prontos' +
-          (g.total_roteiros > total ? ' · ' + g.total_roteiros + ' na gravação' : '') + '</small></span>' +
-      '</header>' +
-      '<div class="rt-g-lista">' + grp.itens.map(linhaRoteiroLista).join('') + '</div></section>';
-  }
+  const RT_TABELA_CAB = '<div class="rt-tab-cab" aria-hidden="true"><span>Roteiro</span><span>Cliente</span><span>Gravação</span><span>Atualizado</span><span>Situação</span><span></span></div>';
 
   async function abrirRoteiros() {
     marcarNav('#/roteiros');
@@ -842,23 +829,14 @@ B7.Dashboard = (function () {
     const ICL = '<svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>';
     const ICC = '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7.2" height="7.2" rx="2.3"/><rect x="13.3" y="3.5" width="7.2" height="7.2" rx="2.3"/><rect x="3.5" y="13.3" width="7.2" height="7.2" rx="2.3"/><rect x="13.3" y="13.3" width="7.2" height="7.2" rx="2.3"/></svg>';
     painel().innerHTML = '<div class="conteudo entra rt">' +
-      '<div class="rt-cab"><div class="rt-cab-tx"><p class="v4-sobre">Escrita</p><h1>Roteiros</h1>' +
-        '<p id="rt-sub">' + roteiros.length + ' roteiros, separados pelo mês da gravação</p></div>' +
-        (roteiros.length ? '<div class="rt-cab-acoes"><div class="filtro rt-vista" role="group" aria-label="Forma de ver">' +
-          '<button data-vista="lista" aria-label="Lista por gravação" title="Lista por gravação">' + ICL + '<span>Lista</span></button>' +
-          '<button data-vista="cards" aria-label="Cards" title="Cards">' + ICC + '<span>Cards</span></button></div>' +
-          '<button class="b contorno" data-ir="#/gravacao/banco-geral/roteiros?ia=novo" title="Roteiro sem cliente e sem gravação">' + IC.mais + '<span>Novo roteiro</span></button>' +
-          '<button class="b pri rt-novo" data-nova-gravacao aria-label="Nova gravação">' + IC.mais + '<span>Nova gravação</span></button></div>' : '') +
+      '<div class="rt-cab"><div class="rt-cab-tx"><p class="v4-sobre" id="rt-sub">' + roteiros.length + ' roteiros, separados pelo mês da gravação</p><h1>Roteiros</h1></div>' +
+        (roteiros.length ? '<div class="busca-local rt-busca"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
+          '<input class="campo" id="rt-busca" type="search" placeholder="Buscar roteiro, cliente ou gravação…" autocomplete="off" aria-label="Buscar roteiros"></div>' : '') +
       '</div>' +
-      '<section class="rt-geral"><header class="rt-geral-cab"><span class="rt-geral-ic">📚</span><span><b>Banco geral</b><small>Ideias e modelos de roteiro, sem cliente. Quando for usar, “Mover para…” ou “Duplicar para…” um cliente.</small></span>' +
-        '<button class="b fina contorno" data-ir="#/gravacao/banco-geral/roteiros?ia=novo">' + IC.mais + 'Novo</button></header>' +
-        (gerais.length ? '<div class="rt-geral-lista">' + gerais.map(linhaRoteiroLista).join('') + '</div>' : '<p class="rt-geral-vazio">Nenhum roteiro no banco geral.</p>') +
-      '</section>' +
       (roteiros.length ?
+        '<div class="rt-filtros">' +
         '<div class="filtro rolavel rt-status" id="rt-status" role="group" aria-label="Estágio"></div>' +
         '<div class="rt-barra-f">' +
-          '<div class="busca-local"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
-            '<input class="campo" id="rt-busca" type="search" placeholder="Buscar roteiro, cliente ou gravação…" autocomplete="off" aria-label="Buscar roteiros"></div>' +
           '<select class="campo rt-sel" id="rt-mes" aria-label="Mês"><option value="">Mês</option>' +
             meses.map(k => '<option value="' + k + '">' + esc(rotuloMes(k)) + (k === agoraMes ? ' (este mês)' : '') + '</option>').join('') + '</select>' +
           (clientes.length > 1 ? '<select class="campo rt-sel" id="rt-cliente" aria-label="Cliente">' +
@@ -867,12 +845,21 @@ B7.Dashboard = (function () {
           '<select class="campo rt-sel" id="rt-ordem" aria-label="Ordenar">' +
             '<option value="recentes">Recentes</option><option value="gravacao">Próx. gravação</option><option value="cliente">Cliente A–Z</option></select>' +
           '<button class="b fina contorno" id="rt-limpar-f" style="display:none">Limpar</button>' +
-        '</div>' +
+          '<div class="filtro rt-vista" role="group" aria-label="Forma de ver">' +
+            '<button data-vista="lista" aria-label="Tabela" title="Tabela">' + ICL + '<span>Lista</span></button>' +
+            '<button data-vista="cards" aria-label="Cards" title="Cards">' + ICC + '<span>Cards</span></button></div>' +
+          '<button class="b fina contorno rt-novo" data-nova-gravacao aria-label="Nova gravação">' + IC.mais + '<span>Nova gravação</span></button>' +
+          '<button class="b fina pri" data-ir="#/gravacao/banco-geral/roteiros?ia=novo" title="Roteiro sem cliente e sem gravação">' + IC.mais + '<span>Novo roteiro</span></button>' +
+        '</div></div>' +
         '<div id="lista-roteiros"></div>'
       : estadoB7(IC.roteiros, 'Nenhum roteiro ainda.',
           'Crie uma gravação e escreva o primeiro roteiro: ele aparece aqui assim que for salvo.',
           '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button>' +
           '<button class="b contorno" data-ir="#/gravacao/banco-geral/roteiros?ia=novo">' + IC.mais + 'Novo roteiro sem cliente</button>')) +
+      '<section class="rt-geral"><header class="rt-geral-cab"><span><b>Banco geral</b><small>Ideias e modelos de roteiro, sem cliente. Quando for usar, “Mover para…” ou “Duplicar para…” um cliente.</small></span>' +
+        '<button class="b fina contorno" data-ir="#/gravacao/banco-geral/roteiros?ia=novo">' + IC.mais + 'Novo</button></header>' +
+        (gerais.length ? '<div class="rt-geral-lista rt-tabela">' + RT_TABELA_CAB + gerais.map(linhaRoteiroLista).join('') + '</div>' : '<p class="rt-geral-vazio">Nenhum roteiro no banco geral.</p>') +
+      '</section>' +
       '</div>';
     ligar();
     /* lixeira de cada roteiro (delegado: a lista é redesenhada pelos filtros) */
@@ -945,7 +932,8 @@ B7.Dashboard = (function () {
         });
         if (F.ordem === 'cliente') grupos.sort((a, b) => String((a.gravacao || {}).cliente_nome || '').localeCompare(String((b.gravacao || {}).cliente_nome || ''), 'pt-BR') || String(b.recente).localeCompare(String(a.recente)));
         if (F.ordem === 'gravacao') grupos.sort((a, b) => chaveGrav(a.gravacao).localeCompare(chaveGrav(b.gravacao)));
-        return '<div class="rt-lista">' + grupos.map(grupoRoteirosHTML).join('') + '</div>';
+        /* Espectro: uma tabela por mês; os roteiros da mesma gravação continuam juntos */
+        return '<div class="rt-lista rt-tabela">' + RT_TABELA_CAB + grupos.map(grp => grp.itens.map(linhaRoteiroLista).join('')).join('') + '</div>';
       };
       cx.className = 'rt-meses';
       cx.innerHTML = [...porMes.keys()].sort().reverse().map(k => {
