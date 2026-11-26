@@ -492,3 +492,19 @@ html[data-identidade="espectro"]::view-transition-new(esp-feixe){animation:espFe
 html.modo-leve[data-identidade="espectro"]::view-transition-new(b7-pagina){-webkit-mask-image:none;mask-image:none;animation-name:espVtEntraLeve;}
 @keyframes espVtEntraLeve{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){ .esp-vt-feixe{display:none !important;} }
+
+/* atalho "Central · os seus sistemas" (js/central-n7.js) no pé do menu: fechado, só o ícone, igual aos itens;
+   aberto, a linha com o nome. Antes ele não encolhia e o texto vazava para fora do menu. */
+@media (min-width:761px){
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7{width:52px;height:52px;min-height:52px;margin:0 auto 6px;padding:0;justify-content:center;gap:0;
+    border-radius:18px;background:transparent;border:0;color:var(--esp-menu-icone);box-sizing:border-box;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 span{display:none;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 svg{flex:0 0 22px;width:22px;height:22px;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7:hover{background:var(--suave);color:var(--ink);}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7:focus-visible{outline:2px solid #7328A5;outline-offset:2px;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7{width:calc(100% - 32px);height:auto;min-height:52px;margin:0 16px 6px;padding:8px 12px;
+    justify-content:flex-start;gap:12px;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 span{display:flex;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 b{font-weight:400;font-size:13.5px;color:var(--ink);}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 small{font-size:11.5px;color:var(--ink-3);}
+}

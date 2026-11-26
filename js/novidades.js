@@ -27,7 +27,7 @@ window.B7 = window.B7 || {};
 B7.NOVIDADES_VERSOES = [
   { id: 'v-5.7.0', versao: '5.7.0', em: '2026-11-26T14:00:00-03:00',
     titulo: 'Troca de tela no estilo da marca nova',
-    itens: ['Ao trocar de tela, a anterior sai inteira e a nova entra na diagonal da marca, com uma faixa de luz no degradê da Branding7. Acabou o efeito das duas telas uma por cima da outra.'] },
+    itens: ['Ao trocar de tela, a anterior sai inteira e a nova entra na diagonal da marca, com uma faixa de luz no degradê da Branding7. Acabou o efeito das duas telas uma por cima da outra.', 'Com o menu fechado, o atalho da Central dos sistemas vira só o ícone, como os outros itens.'] },
   { id: 'v-5.6.0', versao: '5.6.0', em: '2026-11-26T14:00:00-03:00',
     titulo: 'Conversas, Painel e Projetos na identidade nova',
     itens: ['Conversas (Central do WhatsApp), o Painel da coordenação e Projetos/Arquivo ganharam o desenho novo da Branding7. Com isso, todas as telas principais da equipe estão na identidade nova.'] },
