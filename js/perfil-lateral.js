@@ -101,7 +101,7 @@ B7.PerfilLateral = (function () {
     const icDia = p => '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
     const ICD = { hoje: icDia('<circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.8 2.8L16.5 9"/>'), atrasadas: icDia('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
       gravacoes: icDia('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>') };
-    const num = (n, rot, ir, cls, ic) => '<button type="button" class="pf-num' + (cls || '') + '" data-ir-pf="' + ir + '">' + (ICD[ic] || '') + '<b>' + (dia ? n : '–') + '</b><small>' + rot + '</small></button>';
+    const num = (n, rot, ir, cls, ic) => '<button type="button" class="pf-num' + (cls || '') + '" data-ir-pf="' + ir + '" data-dia="' + ic + '">' + (ICD[ic] || '') + '<b>' + (dia ? n : '–') + '</b><small>' + rot + '</small></button>';
     return '<div class="pf-painel">' +
       '<div class="pf-topo' + (sup === 'supremo' && !outro ? ' pf-topo-prog' : '') + '">' + avatar(u, 'pf-av-g') +
         '<div class="pf-quem"><b>' + esc(u.nome || u.username) + '</b>' + cargosHTML(u, sup, outro) + '</div>' +
@@ -179,9 +179,16 @@ B7.PerfilLateral = (function () {
     if (foco) { const r = raiz.querySelector('#pf-recado'); if (r) { r.focus(); r.setSelectionRange(r.value.length, r.value.length); } }
   }
 
+  /* 5.20.0: a piscada ao abrir — quando o "Meu dia" chegava, o painel inteiro era redesenhado (repintar) e tudo
+     entrava de novo. Agora só os três números trocam. */
   async function lerDia(raiz) {
     try { dia = await B7.DB.rpc('meu_dia', {}); } catch (e) { dia = null; }
-    repintar(raiz);
+    if (!raiz || !raiz.isConnected) return;
+    raiz.querySelectorAll('[data-dia]').forEach(b => {
+      const v = dia ? dia[b.dataset.dia] : null, el = b.querySelector('b');
+      if (el) el.textContent = dia ? (v || 0) : '–';
+      if (b.dataset.dia === 'atrasadas') b.classList.toggle('at', !!v);
+    });
   }
 
   const ehCelular = () => window.matchMedia('(max-width: 760px)').matches;
