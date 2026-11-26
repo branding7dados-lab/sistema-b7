@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.11.0', versao: '5.11.0', em: '2026-11-26T14:00:00-03:00',
+    titulo: 'Notificações, perfil e assistente na identidade nova',
+    itens: ['O painel de notificações, o perfil lateral e o assistente de IA ganharam o desenho novo da Branding7.'] },
   { id: 'v-5.10.0', versao: '5.10.0', em: '2026-11-26T14:00:00-03:00',
     titulo: 'Super admin e menus na identidade nova',
     itens: ['O Super admin, o menu Criar, o menu do clique direito e a paleta de comandos ganharam o desenho novo da Branding7.'] },
