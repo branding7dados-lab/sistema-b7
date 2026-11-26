@@ -124,6 +124,191 @@ html[data-identidade="espectro"] .cfg-eq-agenda .eq-tipo{display:inline-flex;ali
 html[data-identidade="espectro"] .cfg-eq-agenda .eq-tipo.eq-folga{background:var(--ambar-bg);color:var(--ambar);}
 html[data-identidade="espectro"] .cfg-eq-agenda .eq-tipo.eq-festa{background:#FCE4EF;color:#E02F75;}
 html[data-identidade="espectro"] .cfg-eq-agenda .eq-tipo.eq-atestado{background:var(--erro-bg);color:var(--erro);}
+html[data-identidade="espectro"] .cfg-eq-agenda .cfg-g > .eq-sub{order:3;}
+html[data-identidade="espectro"] .cfg-eq-agenda .cfg-g > .eq-sub ~ .cfg-lista{order:4;}
 html[data-identidade="espectro"] .cfg-eq-agenda .eq-sub{margin:16px 0 0;font-size:11px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);}
 html[data-identidade="espectro"][data-theme="dark"] .cfg-eq-agenda .eq-tipo{background:var(--violeta-bg);color:var(--acento);}
 html[data-identidade="espectro"][data-theme="dark"] .cfg-eq-agenda .eq-tipo.eq-festa{background:rgba(224,47,117,.18);color:#F27BA8;}
+
+/* =================================================================== WhatsApp e Otto (#/whatsapp/config)
+   Quadro "Config-whatsapp": a casca das Configurações — rótulo em caixa-alta, título grande, coluna de
+   seções sem cartão (grupos 11px, itens 13.5px, ativo #F0E8F8/Violeta), cada bloco um cartão raio 26 /
+   24px com título 16 e apoio 13, linhas com fio em cima, situação em pílula (Conectado verde,
+   Reconectar âmbar). Os degradês antigos da tela (--sb-luz1/2) viram o Violeta Quantum. */
+html[data-identidade="espectro"] .asw.cwa{--sb-luz1:#7328A5;--sb-luz2:#7328A5;max-width:none;margin:0 0 100px;padding:14px 26px 0;gap:24px;}
+html[data-identidade="espectro"][data-theme="dark"] .asw.cwa{--sb-luz1:var(--acento);--sb-luz2:var(--acento);}
+/* topo: rótulo + título, sem a faixa em degradê */
+html[data-identidade="espectro"] .asw.cwa .cwa-topo{align-items:flex-end;gap:14px;padding:0;border-radius:0;background:none;box-shadow:none;color:var(--ink);overflow:visible;}
+html[data-identidade="espectro"] .asw.cwa .cwa-volta{align-self:center;width:40px;height:40px;border-radius:50%;background:var(--card);color:var(--ink);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-1);}
+html[data-identidade="espectro"] .asw.cwa .cwa-volta:hover{background:var(--suave);}
+html[data-identidade="espectro"] .asw.cwa .cwa-topo-ic{display:none;}
+html[data-identidade="espectro"] .asw.cwa .cwa-topo-t h1{font-family:inherit;font-size:34px;font-weight:400;line-height:1.1;letter-spacing:0;color:var(--ink);}
+html[data-identidade="espectro"] .asw.cwa .cwa-topo-t p{margin-top:6px;font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .asw.cwa .cwa-pil{gap:6px;height:28px;padding:0 12px;border:0;border-radius:999px;background:var(--suave);color:var(--ink-2);font:inherit;font-size:12px;font-weight:400;}
+html[data-identidade="espectro"] .asw.cwa .cwa-pil i{width:6px;height:6px;box-shadow:none;background:currentColor;}
+html[data-identidade="espectro"] .asw.cwa .cwa-pil.ok{background:var(--ok-bg);color:var(--ok);}
+html[data-identidade="espectro"] .asw.cwa .cwa-pil.meio{background:var(--ambar-bg);color:var(--ambar);}
+html[data-identidade="espectro"] .asw.cwa .cwa-pil.ruim{background:var(--erro-bg);color:var(--erro);}
+html[data-identidade="espectro"] .asw.cwa .cwa-pil.ok i,
+html[data-identidade="espectro"] .asw.cwa .cwa-pil.meio i,
+html[data-identidade="espectro"] .asw.cwa .cwa-pil.ruim i,
+html[data-identidade="espectro"] .asw.cwa .cwa-pil.off i{background:currentColor;box-shadow:none;}
+html[data-identidade="espectro"] .asw.cwa .cwa-pil:hover{filter:brightness(.97);}
+/* casca: coluna de seções de 240px sem cartão */
+html[data-identidade="espectro"] .asw.cwa .asw-casca{grid-template-columns:240px minmax(0,1fr);gap:24px;}
+html[data-identidade="espectro"] .asw.cwa .asw-nav{padding:0;border:0;border-radius:0;background:none;box-shadow:none;}
+html[data-identidade="espectro"] .asw.cwa .cwa-ng + .cwa-ng{margin-top:0;padding-top:0;border-top:0;}
+html[data-identidade="espectro"] .asw.cwa .cwa-ng-t{padding:14px 12px 6px;font-size:11px;font-weight:400;letter-spacing:.08em;color:var(--ink-3);}
+html[data-identidade="espectro"] .asw.cwa .cwa-ng:first-child .cwa-ng-t{padding-top:0;}
+html[data-identidade="espectro"] .asw.cwa .cwa-ng-t i.on{background:var(--ok);}
+html[data-identidade="espectro"] .asw.cwa .asw-nav button{gap:10px;padding:8px 12px;border-radius:12px;font:inherit;font-size:13.5px;font-weight:400;line-height:1.45;color:var(--ink-2);box-shadow:none;}
+html[data-identidade="espectro"] .asw.cwa .asw-nav button svg{display:none;}
+html[data-identidade="espectro"] .asw.cwa .asw-nav button b{padding:0;background:none;font-size:12px;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .asw.cwa .asw-nav button:hover{background:var(--suave);color:var(--ink);}
+html[data-identidade="espectro"] .asw.cwa .asw-nav button.on{background:#F0E8F8;color:#7328A5;box-shadow:none;}
+html[data-identidade="espectro"][data-theme="dark"] .asw.cwa .asw-nav button.on{background:var(--violeta-bg);color:var(--acento);}
+/* cabeçalho da seção */
+html[data-identidade="espectro"] .asw.cwa .asw-corpo{gap:16px;}
+html[data-identidade="espectro"] .asw.cwa .cwa-cab{padding:0;}
+html[data-identidade="espectro"] .asw.cwa .cwa-cab-ic{display:none;}
+html[data-identidade="espectro"] .asw.cwa .cwa-cab small{font-size:11px;font-weight:400;letter-spacing:.08em;color:var(--ink-3);}
+html[data-identidade="espectro"] .asw.cwa .cwa-cab h2{margin-top:4px;font-family:inherit;font-size:22px;font-weight:400;letter-spacing:0;color:var(--ink);}
+html[data-identidade="espectro"] .asw.cwa .cwa-cab p{font-size:13px;color:var(--ink-3);}
+/* blocos = cartões */
+html[data-identidade="espectro"] .asw.cwa .asw-bl{gap:0;padding:24px;border-radius:26px;border:1px solid var(--esp-cartao-borda);background:var(--card);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .asw.cwa .asw-bl > header{margin:0 0 10px;}
+html[data-identidade="espectro"] .asw.cwa .asw-bl h3{font-family:inherit;font-size:16px;font-weight:400;letter-spacing:0;line-height:1.45;color:var(--ink);}
+html[data-identidade="espectro"] .asw.cwa .asw-bl > header p{margin-top:2px;font-size:13px;line-height:1.45;color:var(--ink-3);}
+html[data-identidade="espectro"] .asw.cwa .asw-row{gap:24px;padding:14px 0;border-top:1px solid var(--borda);}
+html[data-identidade="espectro"] .asw.cwa .asw-row-t b{font-size:14px;font-weight:400;color:var(--ink);}
+html[data-identidade="espectro"] .asw.cwa .asw-row-t small{margin-top:2px;font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .asw.cwa .asw-lb{font-weight:400;color:var(--ink-3);}
+/* chave 44×26 Violeta */
+html[data-identidade="espectro"] .asw.cwa .asw-tg span{border:0;background:var(--borda-forte);}
+html[data-identidade="espectro"] .asw.cwa .asw-tg span:after{width:20px;height:20px;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+html[data-identidade="espectro"] .asw.cwa .asw-tg input:checked + span{background:#7328A5;}
+html[data-identidade="espectro"][data-theme="dark"] .asw.cwa .asw-tg input:checked + span{background:var(--acento);}
+/* visão geral: cada situação vira uma linha com pílula, como "Números da casa" */
+html[data-identidade="espectro"] .asw.cwa .cwa-cards{display:flex;flex-direction:column;gap:0;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"t pt acao";gap:4px 16px;align-items:center;width:100%;
+  padding:14px 0;border:0;border-top:1px solid var(--borda);border-radius:0;background:none;box-shadow:none;transform:none;color:var(--ink);font:inherit;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card:first-child{border-top:0;padding-top:0;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card:hover{transform:none;border-color:var(--borda);}
+html[data-identidade="espectro"] .asw.cwa .cwa-card:hover .cwa-card-t b{color:#7328A5;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card-ic{display:none;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card-t{grid-area:t;min-width:0;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card-t b{padding:0;font-size:14px;font-weight:400;color:var(--ink);}
+html[data-identidade="espectro"] .asw.cwa .cwa-card-t small{margin-top:2px;font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .asw.cwa .cwa-card .cwa-pt{grid-area:pt;position:static;display:inline-flex;align-items:center;gap:6px;width:auto;height:24px;padding:0 10px;border-radius:999px;
+  background:var(--suave);color:var(--ink-3);box-shadow:none;font-size:12px;font-style:normal;white-space:nowrap;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card .cwa-pt::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card .cwa-pt::after{content:"Conferindo";}
+html[data-identidade="espectro"] .asw.cwa .cwa-card.ok .cwa-pt{background:var(--ok-bg);color:var(--ok);box-shadow:none;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card.ok .cwa-pt::after{content:"Tudo certo";}
+html[data-identidade="espectro"] .asw.cwa .cwa-card.meio .cwa-pt{background:var(--ambar-bg);color:var(--ambar);box-shadow:none;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card.meio .cwa-pt::after{content:"Atenção";}
+html[data-identidade="espectro"] .asw.cwa .cwa-card.ruim .cwa-pt{background:var(--erro-bg);color:var(--erro);box-shadow:none;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card.ruim .cwa-pt::after{content:"Desconectado";}
+html[data-identidade="espectro"] .asw.cwa .cwa-card.ruim{border-color:var(--borda);}
+html[data-identidade="espectro"] .asw.cwa .cwa-card em{grid-area:acao;margin:0;display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:17px;border:1px solid var(--borda-forte);
+  font-size:13px;font-weight:400;color:var(--ink);white-space:nowrap;}
+html[data-identidade="espectro"] .asw.cwa .cwa-card.ruim em{background:#7328A5;border-color:#7328A5;color:#fff;}
+/* números da casa: bolinha da cor + nome, número e a situação em pílula */
+html[data-identidade="espectro"] .asw.cwa .cwa-nums{gap:0;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-l{gap:6px 16px;padding:14px 0;border:0;border-top:1px solid var(--borda);border-radius:0;background:none;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-l:first-child{border-top:0;padding-top:0;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-cor{width:10px;height:10px;box-shadow:none;align-self:start;margin-top:6px;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-t b{font-size:14px;font-weight:400;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-selo{font-size:11.5px;font-weight:400;background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-t small{font-size:13px;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-est{height:22px;padding:0 9px;border-radius:999px;background:var(--suave);color:var(--ink-3);font-size:12px;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-est i{width:6px;height:6px;background:currentColor;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-l.ok .cwa-num-est{background:var(--ok-bg);color:var(--ok);}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-l.ok .cwa-num-est i{background:currentColor;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-l.esp .cwa-num-est{background:var(--ambar-bg);color:var(--ambar);}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-l.ruim .cwa-num-est{background:var(--erro-bg);color:var(--erro);}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-l.ruim .cwa-num-est i{background:currentColor;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num-ac .b{min-height:34px;padding:0 14px;font-size:13px;}
+/* botões e números do formulário */
+html[data-identidade="espectro"] .asw.cwa .cwa-atalhos .b{min-height:34px;padding:0 16px;font-size:13px;}
+html[data-identidade="espectro"] .asw.cwa .cwa-num input{border-radius:14px;font:inherit;font-weight:400;}
+html[data-identidade="espectro"] .asw.cwa .cwa-tl-ic{background:var(--card);border-color:#7328A5;box-shadow:none;}
+html[data-identidade="espectro"] .asw.cwa .cwa-tl-p b{font-weight:400;}
+html[data-identidade="espectro"] .asw.cwa .asw-barra{border-radius:26px;}
+@media (max-width:760px){
+  html[data-identidade="espectro"] .asw.cwa{gap:16px;padding:8px 16px 0;}
+  html[data-identidade="espectro"] .asw.cwa .cwa-topo{flex-wrap:wrap;align-items:center;}
+  html[data-identidade="espectro"] .asw.cwa .cwa-topo-t h1{font-size:28px;}
+  html[data-identidade="espectro"] .asw.cwa .cwa-pils{justify-content:flex-start;width:100%;}
+  html[data-identidade="espectro"] .asw.cwa .asw-casca{grid-template-columns:1fr;gap:16px;}
+  html[data-identidade="espectro"] .asw.cwa .asw-bl{padding:18px;border-radius:22px;}
+  html[data-identidade="espectro"] .asw.cwa .cwa-card{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"t acao" "pt pt";justify-items:start;}
+}
+
+/* ---- Funções, pacotes e agenda: escuro e celular */
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-g.pm2{background:none;border:0;box-shadow:none;}
+@media (max-width:1100px){
+  html[data-identidade="espectro"] .pcc-grade{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:760px){
+  html[data-identidade="espectro"] .pm2 [data-pm2]{grid-template-columns:minmax(0,1fr);grid-template-rows:none;row-gap:0;}
+  html[data-identidade="espectro"] .pm2 [data-pm2]::before{grid-column:1;grid-row:2 / 5;border-radius:22px;}
+  html[data-identidade="espectro"] .pm2 [data-pm2] > .pm2-sel{grid-column:1;grid-row:1;flex-direction:row;gap:6px;margin:0 0 14px;padding:0;overflow-x:auto;scrollbar-width:none;
+    border:0;border-radius:0;background:none;box-shadow:none;}
+  html[data-identidade="espectro"] .pm2 [data-pm2] .pm2-chip{flex:none;width:auto;height:36px;padding:0 14px;border-radius:18px;background:var(--card);border:1px solid var(--esp-cartao-borda);}
+  html[data-identidade="espectro"] .pm2 [data-pm2] .pm2-p{padding:0 14px 0 4px;}
+  html[data-identidade="espectro"] .pm2 [data-pm2] > .pm2-cab{grid-column:1;grid-row:2;padding:16px 16px 4px;}
+  html[data-identidade="espectro"] .pm2 [data-pm2] > .pm2-lista{grid-column:1;grid-row:3;padding:0 0 4px;}
+  html[data-identidade="espectro"] .pm2 [data-pm2] > .pm-acoes{grid-column:1;grid-row:4;padding:6px 16px 16px;}
+  html[data-identidade="espectro"] .pm2 [data-pm2] .pm2-l{grid-template-columns:minmax(0,1fr) repeat(4,38px);gap:4px;padding:11px 16px;}
+  html[data-identidade="espectro"] .pm2 [data-pm2] .pm2-l.pm2-th[hidden]{padding:8px 16px;font-size:9.5px;letter-spacing:.02em;text-transform:none;}
+  html[data-identidade="espectro"] .pm2 [data-pm2] .pm2-th span:not(:first-child){text-align:center;white-space:normal;overflow-wrap:normal;word-break:normal;line-height:1.15;}
+  html[data-identidade="espectro"] .pm2 [data-pm2] .pm2-rad i{justify-self:center;}
+  html[data-identidade="espectro"] .pcc-grade{grid-template-columns:minmax(0,1fr);}
+  html[data-identidade="espectro"] .pcc-card{padding:20px;border-radius:22px;}
+  html[data-identidade="espectro"] .pcc-novo{min-height:0;}
+  html[data-identidade="espectro"] .eq-cal-cab h2{font-size:19px;}
+  html[data-identidade="espectro"] .eq-cal-grade{gap:4px;}
+  html[data-identidade="espectro"] .eq-cal-dia{min-height:54px;padding:4px;border-radius:10px;font-size:11px;}
+  html[data-identidade="espectro"] .eq-cal-ev{height:6px;padding:0;border-radius:3px;font-size:0;}
+}
+
+/* =================================================================== Saúde do sistema (janela, B7.Saude)
+   Quadro "Config-saude": quatro blocos sólidos raio 26 (Azul Matriz; o que pede atenção em Magenta Pulso)
+   com rótulo em caixa-alta 11px, número grande e apoio; as rotinas em linhas com a situação em pílula. */
+html[data-identidade="espectro"] #sd-corpo .ad-kpis{gap:16px;margin:0 0 16px;}
+html[data-identidade="espectro"] #sd-corpo .ad-kpi{gap:0;padding:22px;border:0;border-radius:26px;background:#001561;color:#fff;box-shadow:none;}
+html[data-identidade="espectro"] #sd-corpo .ad-kpi:hover{transform:none;box-shadow:none;}
+html[data-identidade="espectro"] #sd-corpo .ad-kpi.erro{background:#E02F75;}
+html[data-identidade="espectro"] #sd-corpo .ad-kpi-ic{display:none;}
+html[data-identidade="espectro"] #sd-corpo .ad-kpi-l{order:-1;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.78);}
+html[data-identidade="espectro"] #sd-corpo .ad-kpi b{margin-top:10px;font-family:inherit;font-size:40px;font-weight:400;letter-spacing:0;line-height:1.05;color:#fff;}
+html[data-identidade="espectro"] #sd-corpo .ad-kpi small{margin-top:8px;font-size:12.5px;color:rgba(255,255,255,.85);}
+html[data-identidade="espectro"] #sd-corpo .ad-bar{background:rgba(255,255,255,.2);}
+html[data-identidade="espectro"] #sd-corpo .ad-bar u{background:#fff;}
+html[data-identidade="espectro"] #sd-corpo .ad-cartao{padding:6px 22px 10px;border-radius:26px;border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] #sd-corpo .ad-cartao .ad-t{margin:16px 0 6px;font-size:11.5px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);}
+html[data-identidade="espectro"] #sd-corpo .ad-linha{align-items:center;gap:16px;padding:14px 0;border-top:1px solid var(--borda);}
+html[data-identidade="espectro"] #sd-corpo .ad-t + .ad-linha{border-top:1px solid var(--borda);}
+html[data-identidade="espectro"] #sd-corpo .ad-linha-tx{flex:1;}
+html[data-identidade="espectro"] #sd-corpo .ad-linha-tx b{font-size:14px;font-weight:400;}
+html[data-identidade="espectro"] #sd-corpo .ad-linha-tx small{font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] #sd-corpo .ad-linha-ic{width:36px;height:36px;border-radius:14px;}
+/* o ponto da rotina vira a pílula da situação, à direita */
+html[data-identidade="espectro"] #sd-corpo .ad-ponto{order:3;display:inline-flex;align-items:center;gap:6px;width:auto;height:24px;margin:0;padding:0 10px;border-radius:999px;
+  background:var(--suave);color:var(--ink-3);font-size:12px;font-style:normal;white-space:nowrap;}
+html[data-identidade="espectro"] #sd-corpo .ad-ponto::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+html[data-identidade="espectro"] #sd-corpo .ad-ponto::after{content:"Aguardando";position:static;inset:auto;border:0;opacity:1;animation:none;}
+html[data-identidade="espectro"] #sd-corpo .ad-ponto.ok{background:var(--ok-bg);color:var(--ok);}
+html[data-identidade="espectro"] #sd-corpo .ad-ponto.ok::after{content:"Em dia";}
+html[data-identidade="espectro"] #sd-corpo .ad-ponto.erro{background:var(--erro-bg);color:var(--erro);}
+html[data-identidade="espectro"] #sd-corpo .ad-ponto.erro::after{content:"Atenção";}
+html[data-identidade="espectro"] #sd-corpo .ad-banner{border-radius:22px;}
+html[data-identidade="espectro"][data-theme="dark"] #sd-corpo .ad-kpi{background:#0B1D6B;}
+html[data-identidade="espectro"][data-theme="dark"] #sd-corpo .ad-kpi.erro{background:#B8245F;}
+@media (max-width:760px){
+  html[data-identidade="espectro"] #sd-corpo .ad-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  html[data-identidade="espectro"] #sd-corpo .ad-kpi{padding:16px;border-radius:20px;}
+  html[data-identidade="espectro"] #sd-corpo .ad-kpi b{font-size:30px;}
+  html[data-identidade="espectro"] #sd-corpo .ad-cartao{padding:4px 16px 8px;border-radius:22px;}
+}

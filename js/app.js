@@ -422,10 +422,6 @@ B7.Rota = (function () {
         await Promise.race([feito, new Promise(r => setTimeout(r, 120))]);
         /* a entrada própria da tela não roda depois do morph (seria repetir) */
         document.querySelectorAll('#painel-dashboard .conteudo.entra').forEach(c => c.classList.remove('entra'));
-        /* 5.7.0 Espectro: a faixa de luz que varre a tela nova (só existe na foto nova; CSS em styles/espectro.css) */
-        if (html.getAttribute('data-identidade') === 'espectro' && !html.classList.contains('modo-leve') && !document.querySelector('.esp-vt-feixe')) {
-          const f = document.createElement('div'); f.className = 'esp-vt-feixe'; f.setAttribute('aria-hidden', 'true'); document.body.appendChild(f);
-        }
       });
     } catch (e) { html.classList.remove('b7-vt'); return false; }
     vtAtual = vt;
@@ -433,7 +429,7 @@ B7.Rota = (function () {
        rejeitada; sem este catch virava erro solto no console a cada clique rápido */
     vt.ready.catch(() => {}); vt.updateCallbackDone.catch(() => {});
     const fim = () => {
-      if (vtAtual === vt) { vtAtual = null; html.classList.remove('b7-vt'); document.querySelectorAll('.esp-vt-feixe').forEach(f => f.remove()); }
+      if (vtAtual === vt) { vtAtual = null; html.classList.remove('b7-vt'); }
     };
     vt.finished.then(fim, fim);
     return true;
