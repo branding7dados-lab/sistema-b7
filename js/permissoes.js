@@ -101,6 +101,39 @@ B7.Perm = (function () {
   ];
   const ROTA_MODULO = {};
   MODULOS.forEach(m => m.rotas.forEach(r => { ROTA_MODULO[r] = m.id; }));
+  /* 4.92.0: MÓDULOS DESLIGADOS PARA A AGÊNCIA INTEIRA (Configurações → Sistema da equipe → Módulos).
+     Vale para todo mundo, administrador inclusive: some do menu, das rotas, da busca, do "Criar" e dos
+     botões. Os dados ficam no banco; religar devolve tudo. Mora em sistema_config ('modulos_desligados')
+     e só administrador pleno grava (modulo_desligar, supabase/sql/zzz393_modulos_desligados.sql).
+     Guardado no aparelho para a tela já abrir certa, e conferido no banco a cada entrada. */
+  let desligMem = null;
+  const desligadosMapa = () => desligMem || (B7.pref ? B7.pref.ler('sis_modulos_desligados', null) : null) || {};
+  const desligado = id => !!id && Object.prototype.hasOwnProperty.call(desligadosMapa(), id);
+  function guardarDesligados(v) { desligMem = v && typeof v === 'object' ? v : {}; if (B7.pref) B7.pref.gravar('sis_modulos_desligados', desligMem); }
+  /* a lista mudou: o menu se remonta e, se a tela aberta é de um módulo que mudou, ela se redesenha */
+  function aplicarDesligados(antes) {
+    const depois = desligadosMapa();
+    if (JSON.stringify(Object.keys(antes).sort()) === JSON.stringify(Object.keys(depois).sort())) return;
+    if (B7.Nav && B7.Nav.montar && document.body && document.body.dataset.shell === 'interno') { try { B7.Nav.montar(); } catch (e) {} }
+    const m = ROTA_MODULO[String(location.hash || '').replace(/^#\//, '').split(/[/?]/)[0]];
+    if (m && (m in antes) !== (m in depois) && B7.Rota && B7.Rota.ir) { try { B7.Rota.ir(); } catch (e) {} }
+  }
+  async function sincronizarDesligados() {
+    if (!B7.sb) return desligadosMapa();
+    const antes = desligadosMapa();
+    const { data, error } = await B7.sb.from('sistema_config').select('valor').eq('chave', 'modulos_desligados').maybeSingle();
+    if (error) throw error;
+    guardarDesligados((data && data.valor) || {});
+    aplicarDesligados(antes);
+    return desligadosMapa();
+  }
+  async function desligarModulo(id, desligar, motivo) {
+    const antes = desligadosMapa();
+    const v = await B7.DB.rpc('modulo_desligar', { p_modulo: id, p_desligado: !!desligar, p_motivo: motivo || null });
+    guardarDesligados(v || {});
+    aplicarDesligados(antes);
+    return desligadosMapa();
+  }
   /* Rotas de CONTEXTO: toda a equipe interna abre, com ou sem o módulo
      "dono" — o detalhe de um cliente e o de uma gravação são o pano de
      fundo de uma peça, de uma demanda ou de um roteiro (o Designer já
@@ -125,9 +158,9 @@ B7.Perm = (function () {
   const SEM_FINANCEIRO = ['whatsapp', 'usuarios'];
   function modulosEfetivos() {
     if (semSessao() || papel() === 'cliente') return [];
-    if (souAdmin()) return MODULOS.map(m => m.id).filter(id => !(souFinanceiro() && SEM_FINANCEIRO.includes(id)));
+    if (souAdmin()) return MODULOS.map(m => m.id).filter(id => !(souFinanceiro() && SEM_FINANCEIRO.includes(id)) && !desligado(id));
     const doBanco = B7.Auth && B7.Auth.modulos ? B7.Auth.modulos() : null;
-    return doBanco || PADRAO_FUNCAO[funcao()] || [];
+    return (doBanco || PADRAO_FUNCAO[funcao()] || []).filter(id => !desligado(id));
   }
   const temModulo = id => modulosEfetivos().includes(id);
   /* zzz215: nível dentro do módulo — 'sem' | 'ver' | 'editar' | 'total'.
@@ -278,6 +311,7 @@ B7.Perm = (function () {
     const base = String(rota || '').replace(/^#\//, '').split('/')[0];
     if (papel() === 'cliente') return ROTAS.cliente.includes(base);
     if (base === 'painel') return painelElegivel();
+    if (desligado(ROTA_MODULO[base])) return false;   /* 4.92.0: desligado para a agência, admin inclusive */
     if (souAdmin() && souFinanceiro() && SEM_FINANCEIRO.includes(base)) return false;
     if (souAdmin()) return true;
     if (ROTAS_INTERNAS.includes(base)) return true;
@@ -373,5 +407,6 @@ B7.Perm = (function () {
 
   return { podeRota, podeConfig, inicio, redirecionaSeNegado, aplicarNavegacao, papel, semSessao,
            painelElegivel, painelVisoes, souCoordenadorElegivel, souDesignerElegivel, funcoesOperacionais, ROTAS, CONFIG,
-           MODULOS, PADRAO_FUNCAO, modulosEfetivos, temModulo, funcao, nivel, podeNivel, pode, aplicarAcoes, moduloDaRota, nivelDaRota };
+           MODULOS, PADRAO_FUNCAO, modulosEfetivos, temModulo, funcao, nivel, podeNivel, pode, aplicarAcoes, moduloDaRota, nivelDaRota,
+           desligado, desligados: desligadosMapa, sincronizarDesligados, desligarModulo };
 })();

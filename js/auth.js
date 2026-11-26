@@ -24,7 +24,7 @@ B7.Auth = (function () {
        3.0.0 → 3.0.1  correção ou ajuste
      A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
      programa do Windows. O aviso de atualização só compara se mudou. */
-  const VERSAO = '4.91.7';
+  const VERSAO = '4.92.0';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -178,6 +178,10 @@ B7.Auth = (function () {
       if (sessao && sessao.papel !== 'cliente') { try { if (B7.IA && B7.IA.sincronizar) B7.IA.sincronizar(); } catch (e) {} }
       /* zzz129: para quem cada recurso aparece (equipe) e os textos padrão (todos; o cliente recebe só os do Portal) */
       if (sessao && sessao.papel !== 'cliente') { try { if (B7.Recursos) B7.Recursos.sincronizar(); } catch (e) {} }
+      /* 4.92.0: módulos desligados para a agência (a tela já abriu com a cópia do aparelho; aqui confere no banco) */
+      if (sessao && sessao.papel !== 'cliente' && B7.Perm && B7.Perm.sincronizarDesligados) {
+        B7.Perm.sincronizarDesligados().catch(e => anotar('modulos', 'falhou: ' + ((e && e.message) || e)));
+      }
       if (sessao) { try { if (B7.Textos) B7.Textos.sincronizar(); } catch (e) {} }
       /* zzz130: modo manutenção (todos; o cliente só recebe o que vale para o Portal) e novidades (equipe) */
       if (sessao) { try { if (B7.Manutencao) B7.Manutencao.iniciar(); } catch (e) {} }

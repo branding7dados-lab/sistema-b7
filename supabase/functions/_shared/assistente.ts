@@ -2714,9 +2714,18 @@ export async function corrigirTexto(texto: string, tom: 'manter' | 'formal' | 'l
 /* 4.69.0: aviso no CELULAR (push do B7) quando um cliente espera resposta há mais de X min.
    Uma vez por espera (não repete até o cliente esperar de novo), no horário de atendimento,
    checado no máximo a cada 2 min (sem cron: quem chega primeiro pega a vez). */
+/** 4.92.0: um módulo desligado para a agência (Configurações → Módulos da agência; sistema_config 'modulos_desligados') */
+async function moduloDesligado(sb: SupabaseClient, id: string): Promise<boolean> {
+  const { data, error } = await sb.from('sistema_config').select('valor').eq('chave', 'modulos_desligados').maybeSingle();
+  if (error) { console.error('modulos_desligados', error.message); return false; }
+  return !!(data?.valor && typeof data.valor === 'object' && Object.prototype.hasOwnProperty.call(data.valor, id));
+}
+
 async function talvezAvisarCelular(sb: SupabaseClient, cfg: Config) {
   const min = Number((cfg as any).push_espera_min ?? 15);
   if (!min || min < 1) return;
+  /* 4.92.0: WhatsApp desligado na agência — o aviso abriria uma tela que ninguém mais vê */
+  if (await moduloDesligado(sb, 'whatsapp')) return;
   if (!dentroDoHorario(cfg.horario?.ativo ? cfg.horario : HORARIO_PADRAO)) return;
   const { data: vez } = await sb.from('wa_assistente').update({ push_ultimo: new Date().toISOString() }).eq('id', 1)
     .or('push_ultimo.is.null,push_ultimo.lt.' + new Date(Date.now() - 2 * 60_000).toISOString()).select('id');

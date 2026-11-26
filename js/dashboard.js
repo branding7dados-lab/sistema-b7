@@ -2235,11 +2235,27 @@ B7.Dashboard = (function () {
         (B7.Equipe ? L({ ic: 'usuarios', tom: 'rosa', t: 'Passar o trabalho de alguém', d: 'quando alguém sai ou vai ficar fora: tudo o que está em aberto com a pessoa vai para quem você escolher', botao: true, acao: 'Passar', attrs: ' data-repasse' }) : '') +
         L({ ic: 'usuarios', tom: 'azul', t: 'Sugestão de redistribuição', d: 'passar o que não começou de quem está sobrecarregado para quem está livre (avisa quem está de férias)', botao: true, attrs: ' data-redistribuir' })) : '');
 
+    /* 4.92.0: módulos da agência — liga/desliga para todo mundo (B7.Perm.desligarModulo, zzz393) */
+    function podeDesligarModulos() { return !!(B7.Perm && B7.Perm.desligarModulo && B7.Auth.ehAdmin() && !(B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro())); }
+    function linhasModulos() {
+      const P = B7.Perm, des = P.desligados();
+      return P.MODULOS.map(m => {
+        const info = des[m.id], ligado = !info, x = MODULO_INFO[m.id] || { ic: 'caixa', d: '' };
+        const quando = info && info.em ? new Date(info.em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+        const d = ligado ? esc(x.d) : '<span class="cfg-valor erro">Desligado</span> ' +
+          esc([info.por_nome ? 'por ' + info.por_nome : '', quando ? 'em ' + quando : ''].filter(Boolean).join(' ')) + (info.motivo ? ' · “' + esc(info.motivo) + '”' : '');
+        return L({ ic: x.ic, tom: ligado ? (x.tom || 'violeta') : 'cinza', t: esc(m.rotulo), d, cls: 'cfg-modulo',
+          attrs: ' data-modulo="' + m.id + '"', dir: chave('mod_' + m.id, ligado, (ligado ? 'Desligar ' : 'Religar ') + m.rotulo) });
+      }).join('');
+    }
     const secSisEquipe = !ehAdm ? '' :
       (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe (é o padrão de quem não escolheu a sua).',
         L({ ic: 'tema', tom: 'rosa', t: 'Cor, menu, botões e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' }) +
         /* zzz231: a abertura de todo mundo ou de uma pessoa só */
         (B7.AberturaAdm ? L({ ic: 'play', tom: 'violeta', t: 'Abertura do sistema', d: 'a animação de entrada para todos ou para uma pessoa', botao: true, attrs: ' data-abertura-adm' }) : '')) : '') +
+      (ehAdm && podeDesligarModulos() ? grupo('Módulos da agência',
+        'Desligar um módulo tira ele do menu, da busca e dos botões de todas as telas, para toda a equipe (você inclusive). Nada é apagado: religar devolve tudo como estava.',
+        '<div data-modulos>' + linhasModulos() + '</div>') : '') +
       (ehAdm && B7.Recursos ? grupo('Recursos',
         'Para quem cada recurso aparece. Serve para testar antes de liberar: não dá acesso a módulo nenhum. A equipe recebe a mudança ao reabrir o B7.',
         B7.Recursos.LISTA.map(r => L({ ic: r.ia ? 'ia' : 'raio', tom: r.ia ? 'violeta' : 'azul', t: esc(r.nome), d: esc(r.d), botao: true,
@@ -2308,7 +2324,7 @@ B7.Dashboard = (function () {
       ['equipe', 'Equipe', 'usuarios', 'azul', 'Recado, segurança, carga e o que a equipe vê', 'adm', secEquipe, true],
       ['agenda-equipe', 'Ausências e aniversários', 'calendario', 'rosa', 'Férias, folgas e os aniversários da equipe', 'adm',
         (ehAdm || (B7.Perm && B7.Perm.podeNivel('equipe', 'editar'))) && B7.Equipe ? '<div class="cfg-eq-agenda" data-eq-agenda></div>' : '', true],
-      ['sis-equipe', 'Sistema da equipe', 'tema', 'rosa', 'Aparência, recursos, IA e textos para todos', 'adm', secSisEquipe, true],
+      ['sis-equipe', 'Sistema da equipe', 'tema', 'rosa', 'Módulos, aparência, recursos, IA e textos para todos', 'adm', secSisEquipe, true],
       ['saude', 'Saúde e manutenção', 'raio', 'verde', 'Manutenção, diagnóstico, uso da IA e servidor', 'adm', secSaude, true]
     ].concat(ehSuper && B7.Super ? SUPER_AREAS.map(([k, r, icone, tom, d]) =>
       ['super-' + k, r, icone, tom, d.charAt(0).toUpperCase() + d.slice(1), 'super', hospede('super:' + k) + (k === 'uso' ? secBackup : ''), true]) : [])
@@ -2688,6 +2704,42 @@ B7.Dashboard = (function () {
     if (btNv) btNv.onclick = () => { B7.Novidades.abrir(); };
     const btNvA = p.querySelector('[data-novidades-adm]');
     if (btNvA) btNvA.onclick = () => B7.Novidades.abrirPublicar(() => { if (location.hash.indexOf('#/config') === 0) abrirConfig(); });
+
+    /* ---- 4.92.0: módulos da agência ---- */
+    const caixaMod = p.querySelector('[data-modulos]');
+    const ligarModulos = () => caixaMod && caixaMod.querySelectorAll('[data-modulo]').forEach(l => {
+      const sw = l.querySelector('.cfg-sw');
+      l.onclick = () => alternarModulo(l.dataset.modulo);
+      if (sw) sw.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); alternarModulo(l.dataset.modulo); } };
+    });
+    const redesenharModulos = () => { if (caixaMod) { caixaMod.innerHTML = linhasModulos(); ligarModulos(); } };
+    async function alternarModulo(id) {
+      const P = B7.Perm, mod = P.MODULOS.find(m => m.id === id), x = MODULO_INFO[id] || {};
+      if (!mod) return;
+      if (P.desligado(id)) {
+        try { await P.desligarModulo(id, false); B7.UI.toast(mod.rotulo + ' religado para toda a equipe.'); }
+        catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível religar.', { tipo: 'erro' }); }
+        return redesenharModulos();
+      }
+      const m = B7.UI.modal('<h3>Desligar ' + esc(mod.rotulo) + ' para toda a equipe?</h3>' +
+        '<p class="sub">Some do menu, da busca, do “Criar” e dos botões de todas as telas, para toda a equipe, você inclusive. ' +
+        'Quem abrir o endereço direto vê um aviso. Nada é apagado: religar devolve tudo como estava.</p>' +
+        (x.aviso ? '<p class="sub">' + esc(x.aviso) + '</p>' : '') +
+        '<label class="rot" for="mod-motivo">MOTIVO <span class="leve">— opcional, a equipe vê no aviso</span></label>' +
+        '<input class="campo" id="mod-motivo" maxlength="140" placeholder="Ex.: pausado até dezembro" data-foco>' +
+        '<div class="acoes"><button class="b" data-fecha>Cancelar</button><button class="b pri" data-ok>Desligar</button></div>', { extra: 'mod-janela' });
+      const ok = m.querySelector('[data-ok]');
+      ok.onclick = async () => {
+        ok.disabled = true;
+        try {
+          await P.desligarModulo(id, true, m.querySelector('#mod-motivo').value.trim());
+          m.fechar(); B7.UI.toast(mod.rotulo + ' desligado para toda a equipe.'); redesenharModulos();
+        } catch (e) { ok.disabled = false; B7.UI.toast((e && e.message) || 'Não foi possível desligar.', { tipo: 'erro' }); }
+      };
+    }
+    ligarModulos();
+    /* a lista do aparelho pode estar velha: confere no banco e redesenha */
+    if (caixaMod) B7.Perm.sincronizarDesligados().then(redesenharModulos).catch(() => {});
 
     /* ---- zzz129: liga/desliga de recursos ---- */
     p.querySelectorAll('[data-recurso]').forEach(bt => bt.onclick = () => {
@@ -3687,8 +3739,32 @@ B7.Dashboard = (function () {
 
   /* Quem chega numa rota administrativa sem ser admin vê isto — sem
      detalhe do que existe do outro lado. */
+  /* 4.92.0: Configurações → Módulos da agência — onde cada módulo aparece e o que muda ao desligar */
+  const MODULO_INFO = {
+    clientes: { ic: 'usuarios', tom: 'rosa', d: 'carteira de clientes e projetos avulsos', aviso: 'Clientes é a base de muitas telas: desligado, a carteira e os projetos avulsos somem, mas a página de cada cliente continua abrindo pelas outras telas.' },
+    linhas: { ic: 'letra', d: 'linhas editoriais do mês' },
+    roteiros: { ic: 'letra', tom: 'azul', d: 'roteiros e mural de trends' },
+    gravacoes: { ic: 'camera', tom: 'laranja', d: 'sessões de gravação' },
+    video: { ic: 'play', tom: 'violeta', d: 'edição de vídeo' },
+    legendas: { ic: 'letra', tom: 'azul', d: 'consertar legendas com IA' },
+    design: { ic: 'tema', tom: 'rosa', d: 'fila de peças de design' },
+    publicacoes: { ic: 'sino', tom: 'laranja', d: 'o que sai hoje em todos os clientes' },
+    aprovacoes: { ic: 'acesso', tom: 'verde', d: 'o que está com o cliente para aprovar (o Portal do cliente não muda)' },
+    semanas: { ic: 'versao', d: 'relatórios de 7 dias' },
+    kanban: { ic: 'filtro', tom: 'azul', d: 'quadro de demandas avulsas' },
+    calendario: { ic: 'casa', tom: 'verde', d: 'calendário da produção e Google Agenda' },
+    oportunidades: { ic: 'raio', tom: 'laranja', d: 'datas comemorativas por cliente' },
+    whatsapp: { ic: 'rede', tom: 'verde', d: 'Central de Conversas e botões “Enviar no WhatsApp”',
+      aviso: 'O Otto continua nos grupos: ele tem o próprio liga/desliga em Configurações → WhatsApp. Os avisos no celular de “cliente esperando resposta” param.' },
+    lixeira: { ic: 'lixo', tom: 'vermelho', d: 'o que foi excluído, para restaurar' },
+    equipe: { ic: 'usuarios', tom: 'violeta', d: 'agenda e recado fixo da equipe' },
+    operacoes: { ic: 'filtro', tom: 'violeta', d: 'grade do mês por cliente e serviço' },
+    site: { ic: 'rede', tom: 'azul', d: 'painel do site da agência' }
+  };
+
   function semPermissao(rota) {
     marcarNav('#/');
+    if (moduloDesligado(rota)) return;
     /* A mensagem muda com o papel: dizer "é do administrador" para um
        coordenador é verdade, mas para um cliente soa como se ele tivesse
        errado o caminho de uma área que existe para ele. */
@@ -3708,6 +3784,32 @@ B7.Dashboard = (function () {
         pedir + '<button class="b' + (pedir ? '' : ' pri') + '" onclick="location.hash=\'#/\'">Voltar ao início</button>') +
     '</div>';
     if (pedir) B7.PedidoAcesso.ligarSemAcesso(painel());
+  }
+
+  /* 4.92.0: a tela de um módulo desligado para a agência — para todo mundo, administrador inclusive.
+     Diz o que é, quem desligou, quando e por quê; o administrador religa daqui mesmo. */
+  function moduloDesligado(rota) {
+    const P = B7.Perm, A = B7.Auth;
+    if (!P || !P.desligado || (A && A.ehCliente && A.ehCliente())) return false;
+    const id = P.moduloDaRota(rota);
+    if (!id || !P.desligado(id)) return false;
+    const info = P.desligados()[id] || {}, mod = P.MODULOS.find(m => m.id === id) || { rotulo: id };
+    const quando = info.em ? new Date(info.em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+    const quem = [info.por_nome ? 'Desligado por ' + info.por_nome : 'Desligado', quando ? 'em ' + quando : ''].filter(Boolean).join(' ');
+    const religa = !!(A && A.ehAdmin && A.ehAdmin() && !(A.ehFinanceiro && A.ehFinanceiro()));
+    painel().innerHTML = '<div class="conteudo entra">' +
+      estadoB7(IC.roteiros || '', mod.rotulo + ' está desligado na agência.',
+        (info.motivo ? '“' + info.motivo + '”. ' : '') + quem + '. Nada foi apagado: quando religar, volta tudo como estava.',
+        (religa ? '<button class="b pri" data-religar>Religar ' + esc(mod.rotulo) + '</button>' : '') +
+        '<button class="b' + (religa ? '' : ' pri') + '" onclick="location.hash=\'#/\'">Voltar ao início</button>') +
+      '</div>';
+    const bt = painel().querySelector('[data-religar]');
+    if (bt) bt.onclick = async () => {
+      bt.disabled = true;
+      try { await P.desligarModulo(id, false); B7.UI.toast(mod.rotulo + ' religado para toda a equipe.'); B7.Rota.ir(); }
+      catch (e) { bt.disabled = false; B7.UI.toast((e && e.message) || 'Não foi possível religar.', { tipo: 'erro' }); }
+    };
+    return true;
   }
 
   return { abrir, marcarNav, semPermissao, abrirClientes, abrirCliente, abrirGravacoes, abrirRoteiros, abrirConfig,
