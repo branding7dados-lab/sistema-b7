@@ -52,9 +52,16 @@ B7.Retro = (function () {
     const entregas = n(d.entregas);
     const Mes = mes.charAt(0).toUpperCase() + mes.slice(1);
 
+    const nome = (d.voce || {}).nome, cm = d.cliente_do_mes;
+    const resumo = [[entregas, plural(entregas, 'peça', 'peças')], [n(t.posts), plural(n(t.posts), 'post no ar', 'posts no ar')],
+      [n(t.clientes), plural(n(t.clientes), 'cliente', 'clientes')]].filter(x => x[0]).map(x => [fmt(x[0]), x[1]]);
+    if (cm && n(cm.total) && cm.nome) resumo.push([String(cm.nome), 'cliente do mês']);
     L.push({ tema: 'capa', html:
-      '<div class="rtv-capa"><span class="rtv-selo">Retrospectiva B7</span>' +
-      '<h2 class="rtv-mega">' + esc(Mes) + '<small>' + d.ano + '</small></h2>' +
+      '<div class="rtv-capa"><span class="rtv-selo">Sua retrospectiva · ' + esc(Mes) + ' ' + d.ano + '</span>' +
+      '<h2 class="rtv-mega">' + (entregas
+        ? (nome ? esc(nome) + ', a' : 'A') + ' B7 fez ' + fmt(entregas) + ' ' + plural(entregas, 'peça', 'peças') + '<br>em ' + esc(mes) + (d.parcial ? ' até agora.' : '.')
+        : esc(Mes) + ' de ' + d.ano + '.') + '</h2>' +
+      (resumo.length ? '<div class="rtv-resumo">' + resumo.map(x => '<span><b>' + esc(x[0]) + '</b>' + esc(x[1]) + '</span>').join('') + '</div>' : '') +
       '<p class="rtv-lead">' + (d.parcial ? 'O mês ainda não acabou, mas já dá para contar uma boa história.' : 'Um mês inteiro de trabalho. Bora relembrar?') + '</p>' +
       '<span class="rtv-dica">Toque para avançar</span></div>' });
 
