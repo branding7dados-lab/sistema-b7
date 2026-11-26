@@ -109,7 +109,8 @@ const itens = pg => pg.$$eval('.wz-it', l => l.map(e => ({ nome: e.querySelector
   /* o mesmo grupo nos dois números: abrir o do Design e responder */
   await pg.click('.wz-it[data-num="n-des"][data-jid="120@g.us"]'); await pg.waitForTimeout(600);
   const via = await pg.$eval('.wz-cab', e => e.innerText).catch(() => '');
-  ok(/via\s+Designers/.test(via), 'cabeçalho mostra "via Designers"');
+  /* identidade Espectro: o número vira uma etiqueta à direita do nome (.wz-cab-num) em vez de "via …" */
+  ok(/via\s+Designers/.test(via) || /^\s*Designers\s*$/.test(await pg.$eval('.wz-cab .wz-cab-num', e => e.innerText).catch(() => '')), 'cabeçalho mostra "via Designers"');
   await pg.fill('#wz-texto', 'Segue a arte!'); await pg.keyboard.press('Enter'); await pg.waitForTimeout(800);
   const env = enviados.find(e => e.acao === 'enviar_texto');
   ok(env && env.numero === 'n-des' && env.jid === '120@g.us', 'resposta saiu pelo número da conversa (' + JSON.stringify(env && { numero: env.numero, jid: env.jid }) + ')');

@@ -239,6 +239,8 @@ body.recolhida .wz-nav-n{position:absolute;top:4px;right:6px;min-width:16px;heig
 body.wz-tela-cheia #b7-chat-fab{display:none !important;}
 @media (max-width:760px){ .wz-b.mostra .wz-b-acoes{display:flex !important;} .wz-b.mostra{box-shadow:0 0 0 2px color-mix(in srgb,var(--acento) 40%,transparent);} }
 .wz [hidden]{display:none !important;}
+/* cabeçalho da tela e número no topo da conversa: só na identidade Espectro (styles/espectro/conversas.css) */
+.wz-pg-cab,.wz-cab-num{display:none;}
 
 /* ---------- 4.53.5: modo escuro (antes ficava com fundo claro e balões ilegíveis) ---------- */
 html[data-theme="dark"] .wz-msgs{background:

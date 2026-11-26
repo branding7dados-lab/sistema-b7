@@ -1,1 +1,314 @@
 /* Espectro · config — redesenho fiel ao artefato. Tudo sob html[data-identidade="espectro"]. */
+/* Quadros "Config-*": rótulo "Você › Perfil" + título 42 com a busca 260×48 à direita ·
+   coluna de seções de 240px (grupos em caixa-alta 11px, itens 13.5px, ativo #F0E8F8/Violeta) ·
+   cada grupo é um cartão raio 26 / 24px de respiro, título 16 e apoio 13 · linhas com fio
+   em cima, 14px de respiro, título 14 / apoio 13 e o controle à direita · chave 44×26. */
+
+/* ---------------------------------------------------------------- casca (computador) */
+html[data-identidade="espectro"] .cfg-v2{max-width:none;}
+html[data-identidade="espectro"] .cfg-trilha{margin:0 0 8px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);line-height:1.45;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-titulo{margin:0;padding:0;font-size:42px !important;line-height:1;letter-spacing:0;color:var(--ink);animation:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-titulo::after{display:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-sub,
+html[data-identidade="espectro"] .cfg-v2 .cfg-eu,
+html[data-identidade="espectro"] .cfg-v2 .cfg-assina{display:none;}
+
+/* busca das configurações: o campo de 260×48 da linha do título */
+html[data-identidade="espectro"] .cfg-v2 .cfg-busca{display:flex;align-items:center;gap:10px;width:100%;height:48px;margin:0;padding:0 18px;border-radius:24px;box-sizing:border-box;
+  background:var(--card);border:1px solid rgba(10,16,51,.06);color:var(--ink-3);box-shadow:0 8px 24px rgba(10,16,51,.04);transition:border-color .18s, box-shadow .18s;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-busca svg{position:static;flex:none;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-busca input{flex:1;min-width:0;height:auto;padding:0;border:0;border-radius:0;outline:0;background:transparent;box-shadow:none;font:inherit;font-size:14px;color:var(--ink);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-busca input::placeholder{color:var(--ink-3);opacity:1;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-busca input:focus{box-shadow:none;border:0;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-busca:focus-within{border-color:#7328A5;box-shadow:0 0 0 3px rgba(115,40,165,.18);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-busca{border-color:var(--esp-cartao-borda);box-shadow:none;}
+
+@media (min-width:1024px){
+  /* o título e a busca ocupam a linha de cima; a coluna de seções e o conteúdo, a de baixo */
+  html[data-identidade="espectro"] .cfg-v2 .cfg-grade{display:grid;grid-template-columns:240px minmax(0,1fr) 260px;grid-template-areas:"topo topo busca" "nav main main";
+    column-gap:24px;row-gap:24px;align-items:start;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-lado{display:contents;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-topo{grid-area:topo;margin:4px 0 0;min-width:0;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-busca{grid-area:busca;align-self:end;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-nav{grid-area:nav;position:sticky;top:12px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-main{grid-area:main;}
+  html[data-identidade="espectro"] .cfg-v2.cfg-procurando .cfg-nav{display:block;}
+}
+
+/* ---------------------------------------------------------------- coluna de seções */
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-g{display:block;margin:0;padding:14px 12px 6px;font-family:inherit;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);line-height:1.45;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-g::before{display:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-g:first-child{padding-top:0;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-lista{display:flex;flex-direction:column;gap:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i{display:block;width:100%;padding:8px 12px;border:0;border-radius:12px;background:none;text-align:left;cursor:pointer;
+  font:inherit;font-size:13.5px;line-height:1.45;color:var(--ink-2);animation:none;transition:background-color .18s, color .18s;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i::before,
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i::after,
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i .cfg-ic,
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i .cfg-seta,
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-tx small{display:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-tx{display:block;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-tx b{font-size:inherit;font-weight:400;color:inherit;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i:hover{background:var(--suave);color:var(--ink);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i.on{background:#F0E8F8;color:#7328A5;box-shadow:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i.on .cfg-nav-tx b{color:inherit;font-weight:400;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-nav-i.on{background:var(--violeta-bg);color:var(--acento);}
+
+/* ---------------------------------------------------------------- seção aberta */
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel{animation:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel-cab{display:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel-corpo{display:flex;flex-direction:column;gap:16px;column-count:auto !important;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel-corpo > *{margin:0;}
+html[data-identidade="espectro"] .cfg-v2.cfg-procurando .cfg-painel + .cfg-painel{margin-top:16px;}
+
+/* grupo = cartão */
+html[data-identidade="espectro"] .cfg-v2 .cfg-g{display:flex;flex-direction:column;margin:0;padding:24px;border-radius:26px;box-sizing:border-box;
+  background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);animation:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-t{order:0;margin:0;font-family:inherit;font-size:16px;font-weight:400;letter-spacing:0;text-transform:none;line-height:1.45;color:var(--ink);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-nota{order:1;margin:2px 0 0;font-size:13px;line-height:1.45;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-lista{order:2;margin:10px 0 0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;overflow:visible;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-t + .cfg-lista{margin-top:10px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g > .cfg-lista:first-child{margin-top:0;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g > .cfg-lista:first-child > :first-child,
+html[data-identidade="espectro"] .cfg-v2 .cfg-g > .cfg-lista:first-child > :first-child > .cfg-l{border-top:0;padding-top:0;}
+
+/* linha: fio em cima, título 14 / apoio 13, controle à direita */
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l{position:relative;display:flex;align-items:center;gap:24px;width:100%;min-height:0;margin:0;padding:14px 0;
+  border:0;border-top:1px solid var(--borda);border-radius:0;background:none;text-align:left;color:var(--ink);font:inherit;animation:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l::before{display:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-ic{display:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l-tx b{font-size:14px;font-weight:400;line-height:1.45;color:var(--ink);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l-tx small{font-size:13px;line-height:1.45;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l-abaixo{padding:0 0 14px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel button.cfg-l:hover,
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-alterna:hover,
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel button.cfg-l:active,
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-alterna:active{background:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel button.cfg-l:not(:has(.cfg-acao)):hover .cfg-l-tx b{color:#7328A5;}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-painel button.cfg-l:not(:has(.cfg-acao)):hover .cfg-l-tx b{color:var(--acento);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel button.cfg-l:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);border-radius:12px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-seta{display:block;flex:none;width:16px;height:16px;opacity:1;fill:none;stroke:var(--ink-3);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transform:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel button.cfg-l:hover .cfg-seta{stroke:#7328A5;transform:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l:has(.cfg-acao) .cfg-seta{display:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-perigo .cfg-l-tx b{color:var(--ink);}
+
+/* valor à direita */
+html[data-identidade="espectro"] .cfg-v2 .cfg-valor{flex:none;font-size:13px;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-valor.ok{color:var(--ok);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-valor.erro{color:var(--erro);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-versao{font-size:12.5px;padding:3px 10px;border-radius:999px;background:var(--suave);color:var(--ink-2);}
+
+/* botão de ação (Sair, Testar, Buscar…): o secundário de 34px do quadro */
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-acao{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:0;height:34px;padding:0 16px;border-radius:17px;
+  background:var(--card);border:1px solid var(--borda);color:var(--ink);font-size:13px;font-weight:400;white-space:nowrap;box-shadow:none;transition:border-color .18s, color .18s, transform .12s;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel button.cfg-l:hover .cfg-acao{background:var(--card);border-color:#7328A5;color:#7328A5;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-perigo .cfg-acao{color:var(--erro);border-color:var(--borda);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel button.cfg-l.cfg-perigo:hover .cfg-acao{background:var(--erro-bg);border-color:transparent;color:var(--erro);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-painel .cfg-acao{background:rgba(255,255,255,.04);border-color:var(--borda-forte);}
+
+/* chave liga/desliga 44×26, Violeta Quantum ligada */
+html[data-identidade="espectro"] .cfg-v2 .cfg-sw,
+html[data-identidade="espectro"] .cfg-meu-perfil .chave{position:relative;flex:none;width:44px;height:26px;border-radius:13px;background:var(--borda);box-shadow:none;border:0;transition:background-color .18s;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .18s var(--b7-ease);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-sw.on,
+html[data-identidade="espectro"] .cfg-meu-perfil .chave[aria-checked="true"]{background:#7328A5;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-sw.on i{transform:translateX(18px);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-alterna:active .cfg-sw i{width:20px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-alterna:active .cfg-sw.on i{transform:translateX(18px);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-sw:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-sw:not(.on),
+html[data-identidade="espectro"][data-theme="dark"] .cfg-meu-perfil .chave:not([aria-checked="true"]){background:rgba(255,255,255,.14);}
+
+/* lista de escolha e passo (−/+) no formato de campo do quadro */
+html[data-identidade="espectro"] .cfg-v2 .cfg-sel{flex:none;height:44px;min-width:200px;max-width:260px;padding:0 38px 0 18px;border-radius:22px;border:1px solid var(--borda-forte);background-color:var(--card);
+  color:var(--ink);font:inherit;font-size:14px;box-shadow:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-sel:focus{outline:none;border-color:#7328A5;box-shadow:0 0 0 3px rgba(115,40,165,.18);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-passo{display:inline-flex;align-items:center;gap:4px;flex:none;height:44px;padding:0 5px;border-radius:22px;border:1px solid var(--borda-forte);background:var(--card);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-passo button{width:34px;height:34px;border:0;border-radius:17px;background:var(--suave);color:var(--ink);font:inherit;font-size:16px;cursor:pointer;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-passo button:hover{background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-passo b{min-width:26px;text-align:center;font-size:14px;font-weight:400;}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-passo button:hover{background:var(--violeta-bg);color:var(--acento);}
+
+/* seletor com pílula: trilho suave, opção ativa em cartão */
+html[data-identidade="espectro"] .cfg-v2 .cfg-seg:not(.cfg-temas){background:var(--suave);padding:4px;border-radius:16px;border:0;box-shadow:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-seg:not(.cfg-temas) .cfg-seg-pill{background:var(--card);border-radius:12px;box-shadow:0 1px 3px rgba(10,16,51,.12);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-seg:not(.cfg-temas) button{min-height:34px;border-radius:12px;font-size:13px;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-seg:not(.cfg-temas) button.on{color:var(--ink);}
+
+/* tema: três cartões com miniatura (raio 22, ativo com borda 2px Violeta) */
+html[data-identidade="espectro"] .cfg-v2 .cfg-seg.cfg-temas{gap:14px;max-width:none;margin-top:4px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-temas button{gap:10px;padding:12px;border-radius:22px;background:var(--card);border:1px solid var(--borda);align-items:stretch;text-align:left;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-temas button.on{border:2px solid #7328A5;padding:11px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm{aspect-ratio:auto;height:120px;border-radius:16px;border:1px solid var(--borda);background:#F4F3FA;box-shadow:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-temas button.on .cfg-tm{border-color:var(--borda);box-shadow:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-temas button:hover .cfg-tm{transform:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-lado{width:34%;background:#001561;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-topo{left:calc(34% + 10px);right:10px;top:10px;height:30px;bottom:auto;border-radius:6px;background:#fff;border:1px solid #ECEDF4;box-sizing:border-box;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-a{left:calc(34% + 10px);right:10px;top:48px;height:46px;bottom:auto;border-radius:6px;background:#fff;border:1px solid #ECEDF4;box-sizing:border-box;box-shadow:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-b{display:none !important;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-dark{background:#02030C;border-color:rgba(255,255,255,.11);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-dark .cfg-tm-lado{background:#001561;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-dark :is(.cfg-tm-topo,.cfg-tm-a){background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.11);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-auto{background:linear-gradient(90deg,#F4F3FA 50%,#02030C 50%);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-auto::after{display:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-auto .cfg-tm-lado{background:#001561;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-auto :is(.cfg-tm-topo,.cfg-tm-a){background:linear-gradient(90deg,#fff 50%,rgba(255,255,255,.06) 50%);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-ok{background:#7328A5;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-tm-rot{font-size:14px;font-weight:400;color:var(--ink);}
+
+/* cores rápidas: "Mais opções" e "Usar a da equipe" no formato de botão secundário */
+html[data-identidade="espectro"] .cfg-v2 .cfg-cor-mais,
+html[data-identidade="espectro"] .cfg-v2 .cfg-cor-link{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 16px;border-radius:17px;background:var(--card);border:1px solid var(--borda);
+  color:var(--ink);font:inherit;font-size:13px;font-weight:400;cursor:pointer;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-cor-mais:hover,
+html[data-identidade="espectro"] .cfg-v2 .cfg-cor-link:hover{border-color:#7328A5;color:#7328A5;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-cor-mais svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-cor-nota{font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 :is(.cfg-cor-mais, .cfg-cor-link){background:rgba(255,255,255,.04);border-color:var(--borda-forte);}
+
+/* ---------------------------------------------------------------- Perfil e Notificações (desenhados pelo Perfil) */
+html[data-identidade="espectro"] .cfg-v2 .cfg-meu-perfil,
+html[data-identidade="espectro"] .cfg-v2 .cfg-g.cfg-meu-perfil{display:flex;flex-direction:column;gap:16px;margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-cartao{margin:0;padding:24px;border-radius:26px;background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-cartao.leitura{background:var(--card);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-tit{margin:0;font-family:inherit;font-size:16px;font-weight:400;letter-spacing:0;line-height:1.45;color:var(--ink);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-cartao > .ajuda,
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-cartao > p.ajuda{margin:2px 0 14px;font-size:13px;line-height:1.45;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-cartao.leitura > .ajuda{margin:12px 0 0;}
+html[data-identidade="espectro"] .cfg-meu-perfil .perfil-linha{padding:14px 0;border-top:1px solid var(--borda);font-size:14px;}
+html[data-identidade="espectro"] .cfg-meu-perfil .perfil-linha span{color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-meu-perfil .perfil-opcao{padding:14px 0;border-bottom:0;border-top:1px solid var(--borda);}
+html[data-identidade="espectro"] .cfg-meu-perfil .perfil-opcao-tx b,
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-teste-tx b{font-size:14px;font-weight:400;}
+html[data-identidade="espectro"] .cfg-meu-perfil .perfil-opcao-tx small,
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-teste-tx small{font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-sub{margin:8px 0 2px;font-family:inherit;font-size:16px;font-weight:400;letter-spacing:0;color:var(--ink);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-sub-ajuda{margin:0 0 10px;font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-grupo{margin:0;padding:0 24px;border-radius:26px;background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-grupo summary{padding:18px 0;font-size:14px;font-weight:400;}
+html[data-identidade="espectro"] .cfg-meu-perfil :is(input[type="text"], input[type="email"], input[type="tel"], input[type="password"], input:not([type]), select).campo{height:44px;min-height:44px;padding:0 18px;border-radius:22px;border:1px solid var(--borda-forte);font-size:14px;}
+
+/* ---------------------------------------------------------------- Pessoas e acessos (desenhado por Usuários dentro da seção) */
+/* Quadro "Config-pessoas": um cartão raio 26 com as contas em linhas (nome e @usuário · função · acesso · Editar) */
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-cab{margin:0 0 16px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-cab p{margin:0;font-size:15px;color:var(--ink);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-acoes .b{min-height:34px;padding:0 16px;font-size:13px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-acoes .b svg{width:16px;height:16px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-grupos{gap:14px;margin:0 0 16px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g{padding:14px 16px;border-radius:22px;border:1px solid var(--esp-cartao-borda);background:var(--card);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g:hover{transform:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g.on{border:2px solid #7328A5;padding:13px 15px;background:var(--card);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g-ic,
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-ic{border-radius:14px;background:#F0E8F8;color:#7328A5;box-shadow:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g-ic.parceiros{background:var(--ambar-bg);color:var(--ambar);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g-ic.clientes{background:rgba(0,21,97,.08);color:#001561;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g-tx b{font-size:14px;font-weight:400;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g-tx small{font-size:12px;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu5-bloco{padding:24px;border-radius:26px;border:1px solid var(--esp-cartao-borda);background:var(--card);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu5-bloco h3{font-size:16px;font-weight:400;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu5-bloco h3 b{font-size:12px;font-weight:400;background:#7328A5;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu5-conf summary h3 b{background:var(--ambar);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-ajuda{margin:0 0 12px;font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu3-busca input{height:44px;border-radius:22px;border-color:var(--borda-forte);}
+
+/* a grade de cartões vira a lista do quadro */
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-grade{display:block;padding:4px;border-radius:26px;background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card{display:grid;grid-template-columns:36px minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto 34px;
+  grid-template-areas:"av id tags mods pe menu" "av id tags al pe menu";column-gap:14px;row-gap:0;align-items:center;
+  padding:12px 18px;border:0;border-top:1px solid var(--borda);border-radius:0;background:none;box-shadow:none;animation:none;transform:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card:first-child{border-top:0;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card:hover{transform:none;box-shadow:none;background:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card:focus-visible{outline:none;box-shadow:inset 0 0 0 2px rgba(115,40,165,.3);border-radius:18px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-topo{display:contents;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card .lu3-av{grid-area:av;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card .lu3-av .av-pessoa,
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card .lu-avatar{width:36px;height:36px;border-radius:16px;font-size:14px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-id{grid-area:id;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-id b{font-size:14px;font-weight:400;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-id b em{font-size:10.5px;font-weight:400;border-radius:999px;padding:1px 8px;background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-id span{font-size:12px;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card .menu{grid-area:menu;margin:0;justify-self:end;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-tags{grid-area:tags;min-height:0;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-tag{height:24px;padding:0 10px;font-size:12px;font-weight:400;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-mods,
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-emp{grid-area:mods;min-width:0;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-mods-cab{display:block;margin:0;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-mods-cab .lu4-rot,
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-emp .lu4-rot,
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-pontos{display:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-mods-cab b,
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-emp b{font-size:13.5px;font-weight:400;color:var(--ink);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-alertas{grid-area:al;margin-top:4px;align-self:start;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card:has(.lu4-alertas) :is(.lu4-mods, .lu4-emp){align-self:end;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card:not(:has(.lu4-alertas)){grid-template-areas:"av id tags mods pe menu";}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-al{font-size:11.5px;font-weight:400;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-pe{grid-area:pe;display:flex;justify-content:flex-end;margin:0;padding:0;border:0;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-pe .lu3-acesso{display:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-abrir{display:inline-flex;align-items:center;height:34px;padding:0 16px;border-radius:17px;opacity:1;transform:none;
+  background:var(--card);border:1px solid var(--borda);color:var(--ink);font-size:13px;font-weight:400;white-space:nowrap;transition:border-color .18s, color .18s;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-abrir svg{display:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card:hover .lu4-abrir{border-color:#7328A5;color:#7328A5;}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-hospede .lu4-abrir{background:rgba(255,255,255,.04);border-color:var(--borda-forte);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-hospede :is(.lu6-g-ic, .lu6-ic){background:var(--violeta-bg);color:var(--acento);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-hospede .lu6-g-ic.parceiros{background:var(--ambar-bg);color:var(--ambar);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-hospede .lu6-g-ic.clientes{background:rgba(120,150,255,.14);color:#AFC2FF;}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-hospede .lu6-g.on{border-color:var(--acento);}
+@media (max-width:760px){
+  html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card{grid-template-columns:36px minmax(0,1fr) 34px;
+    grid-template-areas:"av id menu" "av tags menu" "av mods menu" "av al menu";row-gap:6px;padding:14px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-pe{display:none;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g{padding:12px 6px;border-radius:18px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g.on{padding:11px 5px;}
+}
+
+/* ---------------------------------------------------------------- celular e tablet: lista de seções → seção */
+@media (max-width:1023px){
+  html[data-identidade="espectro"] .cfg-v2 .cfg-topo{margin:4px 0 18px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-trilha{display:none;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-titulo{font-size:34px !important;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-busca{margin:0 0 6px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-nav{padding:6px;border-radius:26px;background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);margin-top:10px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-nav-g{padding:14px 12px 6px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-nav-g:first-child{padding-top:10px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i{position:relative;padding:11px 12px;font-size:14px;color:var(--ink);}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i .cfg-seta{display:block;position:absolute;right:12px;top:50%;width:16px;height:16px;margin-top:-8px;fill:none;stroke:var(--ink-3);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i.on{background:none;color:var(--ink);}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-nav-i:hover{background:var(--suave);}
+  /* dentro de uma seção: "‹ Configurações", rótulo do grupo e nome da seção */
+  html[data-identidade="espectro"] .cfg-v2.cfg-dentro .cfg-voltar{margin:0 0 10px -4px;padding:6px 8px;border-radius:12px;font-size:13.5px;font-weight:400;color:#7328A5;}
+  html[data-identidade="espectro"][data-theme="dark"] .cfg-v2.cfg-dentro .cfg-voltar{color:var(--acento);}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-voltar svg{width:18px;height:18px;stroke-width:1.8;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-painel-cab{display:block;margin:0 0 18px;padding:0;border:0;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-painel-bloco{display:block;margin:0 0 8px;font-size:11.5px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-painel-bloco::before{display:none;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-painel-cab h2{margin:0;font-family:inherit;font-size:30px;font-weight:400;letter-spacing:0;line-height:1.05;color:var(--ink);}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-painel-cab p{margin:6px 0 0;font-size:13px;color:var(--ink-3);}
+  html[data-identidade="espectro"] .cfg-v2.cfg-procurando .cfg-painel-cab{display:none;}
+}
+@media (max-width:760px){
+  html[data-identidade="espectro"] .cfg-v2 .cfg-titulo{font-size:30px !important;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-g,
+  html[data-identidade="espectro"] .cfg-meu-perfil .pf-cartao{padding:18px;border-radius:22px;}
+  html[data-identidade="espectro"] .cfg-meu-perfil .pf-grupo{padding:0 18px;border-radius:22px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l{gap:14px;flex-wrap:wrap;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l-tx{flex:1 1 160px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-sel{min-width:0;max-width:100%;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-seg.cfg-temas{gap:8px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-temas button{padding:8px;border-radius:18px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-temas button.on{padding:7px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-tm{height:84px;border-radius:12px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-tm-topo{left:calc(34% + 6px);right:6px;top:6px;height:20px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-tm-a{left:calc(34% + 6px);right:6px;top:32px;height:36px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-tm-rot{font-size:12.5px;}
+}
+
+/* ---------------------------------------------------------------- escuro: cartões em vidro, como no Panorama */
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 :is(.cfg-g:not(.cfg-meu-perfil), .cfg-busca),
+html[data-identidade="espectro"][data-theme="dark"] .cfg-meu-perfil :is(.pf-cartao, .pf-grupo),
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-hospede :is(.lu5-bloco, .lu4-grade, .lu6-g){
+  background:rgba(255,255,255,.06);border-color:var(--esp-cartao-borda);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-temas button{background:rgba(255,255,255,.04);border-color:var(--borda);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-temas button.on{border-color:var(--acento);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-sel{background-color:rgba(255,255,255,.06);}

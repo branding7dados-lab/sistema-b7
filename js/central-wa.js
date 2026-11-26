@@ -327,7 +327,7 @@ B7.CentralWA = (function () {
         /* 4.85.0: foto e nome abrem os dados do grupo / o perfil (renomear fica no menu ⋯) */
         '<button class="wz-cab-av" data-wz="info" aria-label="' + (c.tipo === 'grupo' ? 'Dados do grupo' : 'Perfil do contato') + '">' + avatar(c, 'p') + '</button>' +
         '<div class="wz-cab-tx"><b class="wz-cab-nome" data-wz="info" role="button" tabindex="0" title="' + (c.tipo === 'grupo' ? 'Ver os dados do grupo' : 'Ver o perfil') + '">' + esc(c.nome || num(c.jid)) + '</b><small>' + (c.tipo === 'grupo' ? 'Grupo' : esc(fone(c.jid))) + (cli ? ' · cliente ' + esc(cli.nome) : '') +
-          (varios() && numDe(c) ? ' · <span class="wz-via">via ' + B7.WaNumeros.ponto(numDe(c)) + ' ' + esc(numDe(c).nome) + '</span>' : '') + '</small></div>' +
+          (varios() && numDe(c) ? '<span class="wz-via"> · via ' + B7.WaNumeros.ponto(numDe(c)) + ' ' + esc(numDe(c).nome) + '</span>' : '') + '</small></div>' +
         (varios() && numDe(c) ? '<span class="wz-cab-num" style="--c:' + esc(numDe(c).cor || '#7328A5') + '"><i></i>' + esc(numDe(c).nome) + '</span>' : '') +
         '<div class="wz-cab-acoes"><button class="wz-ic wz-so-pc' + (S.lado ? ' on' : '') + '" data-wz="lado" title="Painel do cliente">' + I.lado + '</button>' +
           '<div class="menu"><button class="wz-ic" data-menu aria-label="Opções da conversa">' + I.mais + '</button><div class="lista">' +
@@ -359,7 +359,7 @@ B7.CentralWA = (function () {
           '<button data-ia="leve"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c2 1.6 5 1.6 7 0M9 10h.01M15 10h.01"/></svg></i><span><b>Mais leve</b></span></button>' +
           '<button data-ia="curto"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16M4 15h9"/></svg></i><span><b>Mais curto</b></span></button></div></div>' +
         '<div class="wz-ia-aviso" id="wz-ia-aviso" hidden></div>' +
-        '<textarea id="wz-texto" rows="1" placeholder="Digite uma mensagem"></textarea>' +
+        '<textarea id="wz-texto" rows="1" placeholder="Mensagem"></textarea>' +
         '<button class="wz-env" id="wz-env" aria-label="Gravar áudio">' + I.mic + '</button>' +
       '</footer>' +
       '<input type="file" id="wz-arq-fig" accept="image/*" hidden><input type="file" id="wz-arq-midia" accept="image/*,video/*" multiple hidden><input type="file" id="wz-arq-doc" multiple hidden><input type="file" id="wz-arq-cam" accept="image/*" capture="environment" hidden>';
