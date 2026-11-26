@@ -151,6 +151,14 @@ B7.Super = (function () {
   /* número com ícone; com "ir", leva à aba que resolve */
   const kpi = (v, r, icone, tom, ir) => (ir ? '<button type="button" data-ir-aba="' + ir + '"' : '<div') + ' class="sa-kpi' + (tom ? ' ' + tom : '') + '">' +
     ic(icone) + '<span class="sa-kpi-tx"><b>' + v + '</b><span>' + r + '</span></span>' + (ir ? '</button>' : '</div>');
+  /* Espectro (quadros Config-super-*): números em cartões de cor cheia,
+     tabelas com cabeçalho em caixa-alta e linhas com fio em cima */
+  const esp = () => document.documentElement.getAttribute('data-identidade') === 'espectro';
+  const tile = (rot, v, sub, cor, ir) => (ir ? '<button type="button" data-ir-aba="' + ir + '"' : '<div') + ' class="sa-tile sa-t-' + cor + '"><i class="sa-tile-luz" aria-hidden="true"></i>' +
+    '<span>' + rot + '</span><b>' + v + '</b>' + (sub ? '<small>' + sub + '</small>' : '') + (ir ? '</button>' : '</div>');
+  const tiles = lista => '<div class="sa-tiles sa-tiles-' + lista.length + '">' + lista.join('') + '</div>';
+  const tabCab = (cols, cls) => '<div class="sa-tab-cab ' + cls + '" aria-hidden="true">' + cols.map(c => '<span>' + c + '</span>').join('') + '</div>';
+  const pil = (tom, r) => '<span class="sa-pilula ' + tom + '">' + r + '</span>';
   const bloco = (icone, titulo, sub, corpo, cls) => '<section class="sa-bloco' + (cls ? ' ' + cls : '') + '"><header class="sa-bloco-cab">' + ic(icone) +
     '<div><h2>' + titulo + '</h2>' + (sub ? '<small>' + sub + '</small>' : '') + '</div></header>' + corpo + '</section>';
   const vazio = (t, icone) => '<p class="sa-vazio">' + SVG(IC[icone || 'ok']) + '<span>' + t + '</span></p>';
@@ -172,14 +180,24 @@ B7.Super = (function () {
     const semDois = d.admins.filter(a => !a.com_2fa);
     const eu = B7.Auth.usuario() ? B7.Auth.usuario().id : null;
     const admins = d.admins.slice().sort((a, b) => (b.superadmin === 'supremo') - (a.superadmin === 'supremo') || (!!b.superadmin - !!a.superadmin) || String(a.nome).localeCompare(b.nome));
-    cx.innerHTML = '<div class="sa-kpis">' +
+    const grade = gradePainel(d, admins, eu);
+    const historico = bloco('historico', 'O que aconteceu', '30 dias · ninguém consegue apagar este histórico', feed(d.acoes || []));
+    if (esp()) cx.innerHTML = tiles([
+        tile('Administradores', d.admins.length, semDois.length ? semDois.length + ' sem 2 etapas' : 'todos com 2 etapas', 'matriz', semDois.length ? 'seguranca' : ''),
+        tile('Pedidos abertos', d.aprovacoes_pendentes, 'para aprovar', 'magenta', 'aprovacoes'),
+        tile('Aparelhos novos', d.alertas.length, 'administradores · 14 dias', 'matriz', 'seguranca'),
+        tile('Chamados de admin', d.chamados_admin.length, d.paradas.length + (d.paradas.length === 1 ? ' conta parada' : ' contas paradas'), 'roxo')]) + historico + grade;
+    else cx.innerHTML = '<div class="sa-kpis">' +
         kpi(d.admins.length, 'administradores', 'pessoas') +
         kpi(d.aprovacoes_pendentes, d.aprovacoes_pendentes === 1 ? 'aprovação esperando' : 'aprovações esperando', 'caixa', d.aprovacoes_pendentes ? 'alerta' : '', 'aprovacoes') +
         kpi(semDois.length, 'sem 2 etapas', 'escudo', semDois.length ? 'alerta' : 'ok', 'seguranca') +
         kpi(d.alertas.length, 'aparelhos novos', 'aparelho', d.alertas.length ? 'alerta' : '', 'seguranca') +
         kpi(d.chamados_admin.length, 'chamados de admin', 'chamado') +
-        kpi(d.paradas.length, 'contas paradas', 'relogio') + '</div>' +
-      '<div class="sa-grade">' +
+        kpi(d.paradas.length, 'contas paradas', 'relogio') + '</div>' + grade + historico;
+    ligarPainel(cx);
+  }
+  function gradePainel(d, admins, eu) {
+    return '<div class="sa-grade">' +
         bloco('pessoas', 'Administradores', 'quem manda no sistema', '<div class="sa-lista">' + admins.map(a => {
           const pode = !((a.superadmin === 'supremo' && nivel() !== 'supremo') || a.id === eu);
           return '<div class="sa-pessoa">' + av(a) + '<div class="sa-pessoa-tx"><b>' + esc(a.nome) + selo(a.superadmin) + (a.id === eu ? ' <span class="sa-voce">você</span>' : '') + '</b>' +
@@ -197,8 +215,9 @@ B7.Super = (function () {
               '<small>' + esc(x.descricao || '') + ' · ' + esc(quando(x.em)) + '</small></span></div>').join('') +
             d.paradas.map(x => '<div class="sa-item">' + ic('relogio') + '<span class="sa-item-tx"><b>' + esc(x.nome) + (x.eh_admin ? ' · administrador' : '') + '</b>' +
               '<small>conta parada · último acesso ' + esc(quando(x.ultimo)) + '</small></span></div>').join('') + '</div>')) +
-      '</div>' +
-      bloco('historico', 'O que aconteceu', '30 dias · ninguém consegue apagar este histórico', feed(d.acoes || []));
+      '</div>';
+  }
+  function ligarPainel(cx) {
     cx.querySelectorAll('[data-derrubar]').forEach(b => b.onclick = () => derrubar(b.dataset.derrubar, b.dataset.nome));
     const mais = cx.querySelector('[data-sa-mais]');
     if (mais) mais.onclick = () => { cx.querySelectorAll('.sa-dia[hidden]').forEach(x => { x.hidden = false; }); mais.remove(); };
@@ -214,9 +233,15 @@ B7.Super = (function () {
       const alvo = a.alvo_nome && !(SOBRE_SI.includes(a.acao) && a.alvo_nome === a.autor_nome) ? ' <b>' + esc(a.alvo_nome) + '</b>' : '';
       return '<b>' + esc(a.autor_nome || 'Sistema') + '</b>' + (a.autor_super ? '<span class="sa-ev-coroa" title="super admin">' + SVG(IC.coroa) + '</span>' : '') + ' ' + esc(v) + alvo;
     };
+    /* Espectro: linha com o quando embaixo e a etiqueta de tom à direita */
+    const ROT_TOM = { ruim: 'Crítico', atencao: 'Sensível' };
+    const ev = (a, dia) => esp()
+      ? '<div class="sa-ev ' + (TOM_ACAO[a.acao] || '') + '"><div class="sa-ev-tx"><p>' + frase(a) + '</p><small>' + esc(dia.toLowerCase()) + ', ' + hora(a.created_at) + '</small></div>' +
+          pil(TOM_ACAO[a.acao] || 'ok', ROT_TOM[TOM_ACAO[a.acao]] || 'Ok') + '</div>'
+      : '<div class="sa-ev ' + (TOM_ACAO[a.acao] || '') + '"><span class="sa-ev-dot"></span>' +
+          '<p>' + frase(a) + '</p><time>' + hora(a.created_at) + '</time></div>';
     return '<div class="sa-feed">' + dias.map((g, i) => '<div class="sa-dia"' + (i >= 4 ? ' hidden' : '') + '><h3>' + esc(g.r) + '</h3>' + g.itens.map(a =>
-        '<div class="sa-ev ' + (TOM_ACAO[a.acao] || '') + '"><span class="sa-ev-dot"></span>' +
-          '<p>' + frase(a) + '</p><time>' + hora(a.created_at) + '</time></div>').join('') + '</div>').join('') + '</div>' +
+        ev(a, g.r)).join('') + '</div>').join('') + '</div>' +
       (dias.length > 4 ? '<button type="button" class="b fina contorno sa-mais" data-sa-mais>Ver os outros ' + (dias.length - 4) + ' dias</button>' : '') +
       '<p class="sa-legenda"><span><span class="sa-ev-coroa">' + SVG(IC.coroa) + '</span>super admin</span><span><span class="sa-ev-dot ruim"></span>exclusões e travas</span><span><span class="sa-ev-dot atencao"></span>acessos sensíveis</span></p>';
   }
@@ -239,8 +264,13 @@ B7.Super = (function () {
     const pend = (data || []).filter(a => a.estado === 'pendente'), resto = (data || []).filter(a => a.estado !== 'pendente');
     const ROT_EST = { aprovado: ['aprovado', 'ok'], recusado: ['recusado', 'ruim'], executado: ['feito', 'ok'], falhou: ['aprovado, mas falhou', 'ruim'] };
     cx.innerHTML = bloco('caixa', 'Esperando você' + (pend.length ? ' <span class="sa-conta">' + pend.length + '</span>' : ''),
-        'o pedido só acontece quando um super admin aprova', pend.length ? '<div class="sa-lista">' + pend.map(a =>
-        '<div class="sa-pedido" data-id="' + esc(a.id) + '">' + ic(IC_PEDIDO[a.acao] || 'caixa', IC_PEDIDO[a.acao] === 'lixo' ? 'ruim' : 'violeta') +
+        'o pedido só acontece quando um super admin aprova', pend.length ? '<div class="sa-lista">' + (esp() ? tabCab(['Pedido', 'De', 'Quando', ''], 'sa-tab-pedidos') : '') + pend.map(a => esp()
+        /* Espectro: Pedido | De | Quando | Aprovar · Recusar */
+        ? '<div class="sa-pedido sa-tab-pedidos" data-id="' + esc(a.id) + '"><div class="sa-pedido-tx"><b>' + esc(a.resumo || a.acao) + '</b>' + (a.motivo ? '<q>' + esc(a.motivo) + '</q>' : '') + '</div>' +
+          '<span class="sa-pedido-de">' + av({ nome: nomes[a.pedido_por] || '?' }) + '<span>' + esc(nomes[a.pedido_por] || 'alguém') + '</span></span>' +
+          '<span class="sa-tab-apoio">' + esc(quando(a.created_at)) + '</span>' +
+          '<div class="sa-pedido-bts"><button type="button" class="b fina pri" data-sim>Aprovar</button><button type="button" class="b fina sa-bt-leve" data-nao>Recusar</button></div></div>'
+        : '<div class="sa-pedido" data-id="' + esc(a.id) + '">' + ic(IC_PEDIDO[a.acao] || 'caixa', IC_PEDIDO[a.acao] === 'lixo' ? 'ruim' : 'violeta') +
           '<div class="sa-pedido-tx"><b>' + esc(a.resumo || a.acao) + '</b><small>pedido por ' + esc(nomes[a.pedido_por] || 'alguém') + ' · ' + esc(quando(a.created_at)) + '</small>' +
           (a.motivo ? '<q>' + esc(a.motivo) + '</q>' : '') + '</div><div class="sa-pedido-bts"><button type="button" class="b fina contorno" data-nao>Recusar</button><button type="button" class="b fina pri" data-sim>Aprovar</button></div></div>').join('') + '</div>'
         : vazio('Nada esperando aprovação.')) +
@@ -278,10 +308,10 @@ B7.Super = (function () {
     const pinta = () => {
       const mudou = JSON.stringify(rasc) !== JSON.stringify(lim);
       cx.innerHTML = bloco('limites', 'O que um administrador comum pode fazer', 'super admin é sempre livre · vale no servidor, não só na tela',
-        '<div class="sa-lista">' + Object.keys(ROT_LIM).map(k => '<div class="sa-lim">' + ic(ROT_LIM[k][2]) + '<div class="sa-lim-tx"><b>' + ROT_LIM[k][0] + '</b><small>' + ROT_LIM[k][1] + '</small></div>' +
+        '<div class="sa-lista">' + (esp() ? tabCab(['O que o administrador faz'].concat(OPC.map(o => o[1])), 'sa-tab-lim') : '') + Object.keys(ROT_LIM).map(k => '<div class="sa-lim sa-tab-lim">' + ic(ROT_LIM[k][2]) + '<div class="sa-lim-tx"><b>' + ROT_LIM[k][0] + '</b><small>' + ROT_LIM[k][1] + '</small></div>' +
           '<div class="sa-seg" role="radiogroup" aria-label="' + esc(ROT_LIM[k][0]) + '">' + OPC.map(([v, r]) => (k === 'entrar_como' && v === 'aprovacao')
             ? '<button type="button" class="nao" disabled aria-hidden="true">—</button>'
-            : '<button type="button" role="radio" aria-checked="' + (rasc[k] === v) + '" data-k="' + k + '" data-v="' + v + '" class="' + (rasc[k] === v ? 'on v-' + v : '') + '">' + r + '</button>').join('') + '</div></div>').join('') + '</div>' +
+            : '<button type="button" role="radio" aria-checked="' + (rasc[k] === v) + '" data-k="' + k + '" data-v="' + v + '" class="' + (rasc[k] === v ? 'on v-' + v : '') + '"' + (esp() ? ' aria-label="' + r + '"><i class="sa-sw" aria-hidden="true"><i></i></i>' : '>' + r) + '</button>').join('') + '</div></div>').join('') + '</div>' +
         '<div class="sa-explica"><span><i class="v-livre"></i><b>Livre</b> o administrador faz sozinho</span><span><i class="v-aprovacao"></i><b>Pede aprovação</b> vira um pedido na aba Aprovações</span><span><i class="v-bloqueado"></i><b>Só super admin</b> o administrador não consegue</span></div>') +
         '<div class="sa-barra-salvar' + (mudou ? ' mostra' : '') + '"><span>' + (mudou ? 'Você mudou os limites.' : 'Nenhuma mudança.') + '</span>' +
           '<button type="button" class="b fina contorno" id="sa-lim-desfazer"' + (mudou ? '' : ' disabled') + '>Desfazer</button>' +
@@ -309,7 +339,9 @@ B7.Super = (function () {
           '<span class="sa-pilula ' + (a.com_2fa ? 'ok' : 'ruim') + '">' + (a.com_2fa ? 'Ligada' : 'Falta ligar') + '</span></div>').join('') + '</div>') +
       bloco('aparelho', 'Aparelhos novos', 'administradores · últimos 14 dias',
         '<p class="sa-nota">Quando um administrador entra de um aparelho ou de uma rede que ainda não tinha usado, os super admins recebem aviso no sino.</p>' +
-        (d.alertas.length ? '<div class="sa-lista">' + d.alertas.map(x => '<div class="sa-item">' + ic('aparelho', 'atencao') + '<span class="sa-item-tx"><b>' + esc(primeiro(x.nome)) + ' · ' + esc(x.descricao || '') + '</b><small>' + esc(quando(x.em)) + '</small></span></div>').join('') + '</div>'
+        (d.alertas.length && esp() ? '<div class="sa-lista">' + tabCab(['Evento', 'Quem', 'Onde', 'Quando'], 'sa-tab-reg') + d.alertas.map(x => '<div class="sa-item sa-tab-reg"><span>Aparelho novo</span><span>' + esc(primeiro(x.nome)) + '</span>' +
+            '<span class="sa-tab-apoio">' + esc(x.descricao || '—') + '</span><span class="sa-tab-apoio">' + esc(quando(x.em)) + '</span></div>').join('') + '</div>'
+          : d.alertas.length ? '<div class="sa-lista">' + d.alertas.map(x => '<div class="sa-item">' + ic('aparelho', 'atencao') + '<span class="sa-item-tx"><b>' + esc(primeiro(x.nome)) + ' · ' + esc(x.descricao || '') + '</b><small>' + esc(quando(x.em)) + '</small></span></div>').join('') + '</div>'
           : vazio('Nenhum aparelho novo nos últimos 14 dias.'))) + '</div>' +
       bloco('sair', 'Derrubar todas as sessões', 'para quando uma senha vazou ou algo estranho aconteceu',
         '<div class="sa-perigo-linha"><p>Todo mundo (menos você) sai do B7 na hora e precisa entrar de novo com a senha. Os aparelhos de confiança deixam de ser confiáveis.</p>' +
@@ -333,22 +365,31 @@ B7.Super = (function () {
     const credito = br && br.plano ? br.plano.find(p => p.tipo === 'free' || p.creditos != null) : null;
     const ia = Object.entries(u.ia_por_recurso || {}).sort((a, b) => b[1] - a[1]);
     const iaMax = ia.length ? ia[0][1] : 1;
-    cx.innerHTML = '<div class="sa-kpis">' + kpi(mil(u.ia_30d.pedidos), 'pedidos à IA em 30 dias', 'ia') + kpi(mil(u.ia_hoje), 'pedidos à IA hoje', 'relogio') +
+    const pct = (v, max) => Math.min(100, Math.round((v / max) * 100)) + '%';
+    cx.innerHTML = (esp() ? tiles([
+        tile('Banco de dados', bytes(u.banco_bytes), 'de ' + bytes(500e6) + ' · ' + pct(u.banco_bytes, 500e6), 'magenta'),
+        tile('Arquivos', bytes(arq), 'de ' + bytes(1e9) + ' · ' + pct(arq, 1e9), 'roxo'),
+        tile('Pedidos à IA', mil(u.ia_30d.pedidos), '30 dias · ' + mil(u.ia_hoje) + ' hoje · ' + mil(u.ia_30d.erros) + ' com erro', 'roxo'),
+        tile('Contas ativas', mil(u.contas_ativas), mil(u.avisos_30d) + ' avisos em 30 dias', 'matriz')]) :
+      '<div class="sa-kpis">' + kpi(mil(u.ia_30d.pedidos), 'pedidos à IA em 30 dias', 'ia') + kpi(mil(u.ia_hoje), 'pedidos à IA hoje', 'relogio') +
         kpi(mil(u.ia_30d.erros), 'pedidos com erro', 'alerta', u.ia_30d.erros ? 'alerta' : 'ok') + kpi(mil(Math.round(Number(u.ia_30d.tokens || 0) / 1000)) + ' mil', 'tokens da IA em 30 dias', 'grafico') +
-        kpi(mil(u.avisos_30d), 'avisos enviados em 30 dias', 'sino') + kpi(mil(u.contas_ativas), 'contas ativas', 'pessoas') + '</div>' +
+        kpi(mil(u.avisos_30d), 'avisos enviados em 30 dias', 'sino') + kpi(mil(u.contas_ativas), 'contas ativas', 'pessoas') + '</div>') +
       '<div class="sa-grade">' +
         bloco('banco', 'Espaço', 'limites do plano gratuito do Supabase',
           barra(u.banco_bytes, 500e6, 'Banco de dados', 'banco') + barra(arq, 1e9, 'Arquivos', 'caixa') +
           '<div class="sa-pastas">' + (u.arquivos || []).map(x => '<div><span>' + esc(ROT_PASTA[x.pasta] || x.pasta) + '</span><small>' + mil(x.n) + ' arquivos</small><b>' + bytes(x.bytes) + '</b></div>').join('') + '</div>') +
-        bloco('ia', 'IA por área', '30 dias', ia.length ? '<div class="sa-barras">' + ia.map(([k, n]) =>
+        bloco('ia', 'IA por área', '30 dias' + (esp() ? ' · ' + mil(Math.round(Number(u.ia_30d.tokens || 0) / 1000)) + ' mil tokens' : ''), ia.length ? '<div class="sa-barras">' + ia.map(([k, n]) =>
           '<div><span>' + esc(ROT_IA[k] || k) + '</span><i><em style="width:' + Math.max(2, Math.round(n / iaMax * 100)) + '%"></em></i><b>' + mil(n) + '</b></div>').join('') + '</div>'
           : vazio('Nenhum pedido à IA em 30 dias.', 'ia')) +
       '</div><div class="sa-grade">' +
         bloco('email', 'E-mails (Brevo)', 'códigos da verificação em 2 etapas e avisos', !br ? vazio('Não deu para consultar a Brevo agora.', 'alerta') : !br.configurado ? vazio('O envio de e-mail não está configurado.', 'alerta') :
           (credito ? '<div class="sa-grande"><b>' + mil(credito.creditos) + '</b><span>e-mails restantes' + (credito.tipo === 'free' ? ' hoje' : '') + '</span></div><p class="sa-nota">Plano ' + esc(credito.tipo === 'free' ? 'gratuito (300 por dia)' : credito.tipo) + '.</p>' : '<p>Conta conectada.</p>')) +
+        (esp() ? bloco('baixar', 'Backups', 'só super admin baixa · o banco continua sendo o Supabase: isto é segurança extra',
+          '<div class="sa-lista"><div class="sa-item"><span class="sa-item-tx"><b>Backup completo</b><small>clientes, gravações, roteiros e cenas</small></span>' +
+          '<button type="button" class="b fina contorno" id="sa-backup">' + SVG(IC.baixar) + 'Baixar</button></div></div>', 'sa-bloco-backup') :
         bloco('baixar', 'Backup completo', 'só super admin baixa',
           '<p class="sa-nota">Um arquivo com clientes, gravações, roteiros e cenas. O banco continua sendo o Supabase: isto é segurança extra.</p>' +
-          '<button type="button" class="b pri" id="sa-backup">' + SVG(IC.baixar) + 'Baixar backup</button>') + '</div>';
+          '<button type="button" class="b pri" id="sa-backup">' + SVG(IC.baixar) + 'Baixar backup</button>')) + '</div>';
     cx.querySelector('#sa-backup').onclick = () => { if (B7.Backup && B7.Backup.exportar) B7.Backup.exportar(); };
   }
 
@@ -358,14 +399,21 @@ B7.Super = (function () {
     if (minha !== vez) return;
     const est = n => '<span class="sa-estrelas" aria-label="' + String(n).replace('.', ',') + ' de 5">' + '★★★★★'.slice(0, Math.round(n)) + '<span class="apagada">' + '★★★★★'.slice(Math.round(n)) + '</span></span>';
     const nota = v => v == null ? '—' : String(v).replace('.', ',');
-    cx.innerHTML = '<div class="sa-kpis">' + kpi(nota(ia.nota_ia), 'nota do assistente · ' + ia.n_ia + (ia.n_ia === 1 ? ' avaliação' : ' avaliações'), 'ia') +
+    const qt = n => n + (n === 1 ? ' avaliação' : ' avaliações');
+    cx.innerHTML = (esp() ? tiles([
+        tile('Nota da equipe', nota(ia.nota_equipe), 'de 5 · ' + qt(ia.n_equipe), 'roxo'),
+        tile('Nota do assistente', nota(ia.nota_ia), 'de 5 · ' + qt(ia.n_ia), 'roxo'),
+        tile('Resolvidos pelo assistente', ia.resolvidos_ia + ' de ' + ia.com_ia, '90 dias', 'matriz')]) :
+      '<div class="sa-kpis">' + kpi(nota(ia.nota_ia), 'nota do assistente · ' + ia.n_ia + (ia.n_ia === 1 ? ' avaliação' : ' avaliações'), 'ia') +
         kpi(nota(ia.nota_equipe), 'nota da equipe · ' + ia.n_equipe + (ia.n_equipe === 1 ? ' avaliação' : ' avaliações'), 'estrela') +
-        kpi(ia.resolvidos_ia + ' de ' + ia.com_ia, 'resolvidos pelo assistente', 'ok') + '</div>' +
+        kpi(ia.resolvidos_ia + ' de ' + ia.com_ia, 'resolvidos pelo assistente', 'ok') + '</div>') +
       bloco('pessoas', 'Quem atendeu', '90 dias · a nota vai para quem deu a última resposta no chamado', eq.length ? '<div class="sa-lista">' + eq.map(p =>
         '<details class="sa-aval"><summary>' + av(p) + '<span class="sa-aval-tx"><b>' + esc(p.nome) + '</b><small>' + p.n + (p.n === 1 ? ' avaliação' : ' avaliações') + '</small></span>' +
           est(p.media) + '<b class="sa-aval-n">' + String(p.media).replace('.', ',') + '</b><span class="sa-seta">' + SVG('<path d="M9 6l6 6-6 6"/>') + '</span></summary>' +
-          '<div class="sa-aval-lista">' + (p.ultimas || []).slice(0, 8).map(x => '<div class="sa-item"><span class="sa-nota-ch">' + x.nota + '/5</span><span class="sa-item-tx"><b>#' + x.numero + ' · ' + esc(x.titulo) + '</b>' +
-            (x.comentario ? '<small>"' + esc(x.comentario) + '"</small>' : '<small>sem comentário</small>') + '</span></div>').join('') + '</div></details>').join('') + '</div>'
+          '<div class="sa-aval-lista">' + (esp() ? tabCab(['Chamado', 'Nota', 'Comentário'], 'sa-tab-aval') + (p.ultimas || []).slice(0, 8).map(x =>
+            '<div class="sa-item sa-tab-aval"><b>#' + x.numero + ' · ' + esc(x.titulo) + '</b>' + est(x.nota) + '<span class="sa-tab-apoio">' + (x.comentario ? esc(x.comentario) : 'sem comentário') + '</span></div>').join('') :
+            (p.ultimas || []).slice(0, 8).map(x => '<div class="sa-item"><span class="sa-nota-ch">' + x.nota + '/5</span><span class="sa-item-tx"><b>#' + x.numero + ' · ' + esc(x.titulo) + '</b>' +
+            (x.comentario ? '<small>"' + esc(x.comentario) + '"</small>' : '<small>sem comentário</small>') + '</span></div>').join('')) + '</div></details>').join('') + '</div>'
         : vazio('Ainda não há avaliações de atendimentos da equipe. Elas aparecem quando alguém dá nota a um chamado encerrado.', 'estrela'));
   }
 
@@ -377,7 +425,7 @@ B7.Super = (function () {
     const outros = d.admins.filter(a => a.superadmin !== 'supremo');
     const FUN = [['coordenador', 'Coordenador'], ['designer', 'Designer'], ['videomaker', 'Videomaker']];
     const opcoes = vazioRot => '<option value="">' + vazioRot + '</option>' + outros.map(a => '<option value="' + esc(a.id) + '">' + esc(a.nome) + (a.superadmin ? ' (super admin)' : '') + '</option>').join('');
-    cx.innerHTML = '<p class="sa-aviso-topo">' + SVG(IC.alerta) + '<span>Tudo aqui é sério e só o programador vê. Cada ação pede confirmação e fica no histórico.</span></p>' +
+    cx.innerHTML = '<p class="sa-aviso-topo">' + SVG(IC.alerta) + '<span>' + (esp() ? '<b>Zona de risco</b>' : '') + 'Tudo aqui é sério e só o programador vê. Cada ação pede confirmação e fica no histórico.</span></p>' +
       bloco('alerta', 'Emergência', emerg ? '<b class="sa-ruim">ligada agora</b>' : 'trava o sistema para todos, menos os super admins',
         emerg ? '<div class="sa-perigo-linha"><p><b>O sistema está travado</b> para a equipe, os administradores e os clientes. Só os super admins usam.</p>' +
             '<button type="button" class="b pri" id="sa-emerg-off">Desligar a emergência</button></div>'

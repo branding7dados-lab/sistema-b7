@@ -281,9 +281,12 @@ B7.Topo = (function () {
   }
 
   /* ------------------------------------------------------------ Criar */
+  /* atalhos de teclado que já existem (js/app.js: N e C) */
+  const ATALHO_CRIAR = { gravacao: 'N', cliente: 'C' };
   function itemAcao(a) {
     return (a.separar ? '<hr>' : '') +
-      '<button type="button" class="tp-item" role="menuitem" data-criar="' + a.id + '">' +
+      '<button type="button" class="tp-item" role="menuitem" data-criar="' + a.id + '" title="' + esc(a.daTela ? 'nesta tela · ' + a.dica : a.dica) + '"' +
+        (ATALHO_CRIAR[a.id] ? ' data-atalho="' + ATALHO_CRIAR[a.id] + '"' : '') + '>' +
         '<span class="tp-item-ic">' + a.ic + '</span>' +
         '<span class="tp-item-tx"><b>' + esc(a.rotulo) + '</b><small>' + esc(a.daTela ? 'nesta tela · ' + a.dica : a.dica) + '</small></span>' +
       '</button>';
