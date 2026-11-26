@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.14.0', versao: '5.14.0', em: '2026-11-26T14:00:00-03:00',
+    titulo: 'Aberturas e carregamentos novos',
+    itens: ['O B7 abre com as animações novas da marca: Faísca (a padrão), Corte Espectro e Pulso. Ao recarregar, entram os carregamentos novos: Corte do B7, Lâmpada, Faixa, Três pontos, Anel e Hexágono. Dá para escolher em Configurações → Abertura e sons.'] },
   { id: 'v-5.13.0', versao: '5.13.0', em: '2026-11-26T14:00:00-03:00',
     titulo: 'Ficha A4, apresentação, teleprompter e TV na identidade nova',
     itens: ['A ficha A4 do roteiro, o modo apresentação, o teleprompter e o Painel de TV ganharam o desenho novo da Branding7.'] },
