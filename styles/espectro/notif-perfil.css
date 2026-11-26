@@ -102,123 +102,129 @@ html[data-identidade="espectro"] .sino-esq > span{width:34px;height:34px;border-
 }
 
 /* =====================================================================
-   PERFIL — gaveta de 400 px à direita sobre véu desfocado; topo no Azul
-   Matriz com o padrão da lâmpada; Status em etiquetas; Meu dia em linhas;
-   Tema num trilho; Atalhos em lista simples
+   PERFIL — "cartão da conta" (5.20.0, desenho próprio a pedido do Yury, que não quis a gaveta do quadro).
+   Um cartão flutuante que sai do nome no pé do menu (js/perfil-lateral.js posiciona ao lado dele):
+   topo no degradê do Espectro com a textura da lâmpada, status em pílulas na cor de cada estado,
+   "Meu dia" em três blocos com o número grande em Grimblade, tema num trilho e atalhos com o ícone
+   num quadradinho. Sem véu escurecendo a tela; clicar fora fecha. No celular, o mesmo conteúdo na folha.
    ===================================================================== */
-html[data-identidade="espectro"] .pf-veu{position:fixed;inset:0;z-index:699;background:rgba(4,8,32,.4);
-  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:espPfVeu .3s var(--b7-ease) both;}
-html[data-identidade="espectro"] .pf-veu.saindo{opacity:0;transition:opacity .15s ease;}
-@keyframes espPfVeu{from{opacity:0}to{opacity:1}}
-html[data-identidade="espectro"] .pf-pop{left:auto !important;right:0;top:0;bottom:0 !important;width:400px;max-width:100vw;
-  max-height:none !important;height:100dvh;padding:0;border:0;border-radius:0;background:var(--card);
-  box-shadow:-30px 0 70px rgba(0,0,0,.25);animation:espPfEntra .55s cubic-bezier(.16,1,.3,1) both;}
-html[data-identidade="espectro"] .pf-pop.saindo{opacity:0;transform:translateX(40px);}
-@keyframes espPfEntra{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
-html[data-identidade="espectro"][data-theme="dark"] .pf-pop{background:#11143A;box-shadow:-30px 0 80px rgba(0,0,0,.55);}
-html[data-identidade="espectro"] .pf-pop .pf-painel{padding-bottom:24px;}
-html[data-identidade="espectro"] .pf-pop .pf-painel > :not(.pf-topo){margin-left:24px;margin-right:24px;}
+html[data-identidade="espectro"] .pf-veu{position:fixed;inset:0;z-index:699;background:transparent;}
+html[data-identidade="espectro"] .pf-pop{width:360px;padding:8px;border-radius:28px;background:var(--card);border:1px solid var(--esp-cartao-borda);
+  box-shadow:0 30px 80px rgba(10,16,51,.22), 0 2px 6px rgba(10,16,51,.06);transform-origin:0 100%;
+  animation:espPfEntra .38s cubic-bezier(.16,1,.3,1) both;}
+html[data-identidade="espectro"] .pf-pop.saindo{opacity:0;transform:translateX(-8px) scale(.97);transition:opacity .15s ease, transform .15s ease;}
+@keyframes espPfEntra{from{opacity:0;transform:translateX(-10px) scale(.96)}to{opacity:1;transform:none}}
+html[data-identidade="espectro"][data-theme="dark"] .pf-pop{background:#11143A;border-color:rgba(255,255,255,.08);box-shadow:0 30px 80px rgba(0,0,0,.55);}
+html[data-identidade="espectro"] :is(.pf-pop, .pf-folha) .pf-painel > :not(.pf-topo){margin-left:12px;margin-right:12px;}
+html[data-identidade="espectro"] .pf-pop .pf-painel{padding-bottom:6px;}
 
-/* topo */
+/* topo: o degradê da marca com a lâmpada */
 html[data-identidade="espectro"] .pf-topo,
-html[data-identidade="espectro"] .pf-topo.pf-topo-prog{position:relative;overflow:hidden;gap:14px;padding:28px 24px;border-radius:0;background:#001561;color:#fff;}
-html[data-identidade="espectro"] .pf-topo::before{content:"";position:absolute;right:-60px;top:-40px;width:300px;height:300px;opacity:.5;pointer-events:none;
-  background:url('../../assets/brand/espectro/padrao-lampada-violeta.svg') center/contain no-repeat;
-  -webkit-mask:radial-gradient(circle at 55% 45%, #000 25%, transparent 70%);mask:radial-gradient(circle at 55% 45%, #000 25%, transparent 70%);}
+html[data-identidade="espectro"] .pf-topo.pf-topo-prog{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;padding:20px 18px;border-radius:22px;
+  background:var(--b7-espectro);color:#fff;}
+html[data-identidade="espectro"] .pf-topo::before{content:"";position:absolute;inset:0;opacity:.35;mix-blend-mode:soft-light;pointer-events:none;
+  background:url('../../assets/brand/espectro/padrao-lampada-violeta.svg') center/cover no-repeat;-webkit-mask:none;mask:none;width:auto;height:auto;right:0;top:0;}
 html[data-identidade="espectro"] .pf-topo > *{position:relative;}
-html[data-identidade="espectro"] .pf-topo .pf-av-g{width:60px;height:60px;}
-html[data-identidade="espectro"] .pf-topo .pf-av-g .pf-av-in{border-radius:26px;font-size:60px;}
+html[data-identidade="espectro"] .pf-topo .pf-av-g{width:56px;height:56px;flex:none;}
+html[data-identidade="espectro"] .pf-topo .pf-av-g .pf-av-in{border-radius:20px;font-size:56px;box-shadow:0 0 0 3px rgba(255,255,255,.45);}
 html[data-identidade="espectro"] :is(.pf-topo, .pf-card) .pf-av-in{font-weight:400;letter-spacing:0;text-shadow:none;}
 html[data-identidade="espectro"] :is(.pf-topo, .pf-card) .pf-av-in span{font-size:.4em;}
 html[data-identidade="espectro"] :is(.pf-topo, .pf-card) .pf-av-in::before,
 html[data-identidade="espectro"] :is(.pf-topo, .pf-card) .pf-av-in::after{display:none;}
-html[data-identidade="espectro"] .pf-topo .pf-av-in:not(.com-foto){background:var(--esp-v,#7328A5);}
+html[data-identidade="espectro"] .pf-topo .pf-av-in:not(.com-foto){background:rgba(255,255,255,.18);color:#fff;}
 html[data-identidade="espectro"] .pf-card .pf-av-in:not(.com-foto){background:var(--b7-espectro-curto);}
-html[data-identidade="espectro"] .pf-topo .pf-ponto{width:14px;height:14px;box-shadow:0 0 0 3px #001561;}
-html[data-identidade="espectro"] .pf-quem b{font-size:22px;font-weight:400;line-height:1.2;color:#fff;}
+html[data-identidade="espectro"] .pf-topo .pf-ponto{width:14px;height:14px;box-shadow:0 0 0 3px #FFFFFF;}
+html[data-identidade="espectro"] .pf-quem{min-width:0;flex:1;}
+html[data-identidade="espectro"] .pf-quem b{display:block;font-size:22px;font-weight:400;line-height:1.15;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 html[data-identidade="espectro"] .pf-quem small,
-html[data-identidade="espectro"] .pf-topo .pf-funcoes{font-size:13px;color:#C3C7E0;opacity:1;margin-top:2px;}
+html[data-identidade="espectro"] .pf-topo .pf-funcoes{display:block;font-size:12.5px;color:rgba(255,255,255,.82);opacity:1;margin-top:3px;}
 html[data-identidade="espectro"] .pf-topo .pf-cargos:empty{display:none;}
-html[data-identidade="espectro"] .pf-topo .pf-quem b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-html[data-identidade="espectro"] .pf-editar{position:absolute !important;top:10px;right:12px;height:26px;padding:0 11px;border-radius:13px;background:rgba(255,255,255,.14);color:#fff;font-size:12px;font-weight:400;}
-html[data-identidade="espectro"] .pf-editar:hover{background:rgba(255,255,255,.24);}
+html[data-identidade="espectro"] .pf-topo :is(.pf-cargo-prog, .pf-cargo-super){background:rgba(255,255,255,.16);color:#fff;border-color:transparent;}
+html[data-identidade="espectro"] .pf-editar{position:absolute !important;top:12px;right:12px;height:28px;padding:0 12px;border-radius:14px;border:0;
+  background:rgba(255,255,255,.16);color:#fff;font-size:12px;font-weight:400;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
+html[data-identidade="espectro"] .pf-editar:hover{background:rgba(255,255,255,.28);}
 
 /* rótulos de seção */
-html[data-identidade="espectro"] .pf-rot{margin-top:16px;margin-bottom:8px;font-size:11px;font-weight:400;letter-spacing:.14em;color:var(--ink-3);}
-html[data-identidade="espectro"] .pf-topo + .pf-rot{margin-top:18px;}
+html[data-identidade="espectro"] .pf-rot{margin-top:16px;margin-bottom:8px;font-size:11px;font-weight:400;letter-spacing:.14em;color:var(--ink-3);text-transform:uppercase;}
 
-/* Status: etiquetas de 24 px; a escolhida na cor do estado */
+/* Status: pílulas; a escolhida na cor do estado, com a bolinha acesa */
 html[data-identidade="espectro"] .pf-st{display:flex;flex-wrap:wrap;gap:6px;}
-html[data-identidade="espectro"] .pf-st button{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;border:0;
-  background:var(--neutro-bg);color:var(--neutro);font-size:12px;font-weight:400;white-space:nowrap;}
+html[data-identidade="espectro"] .pf-st button{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:15px;border:1px solid var(--borda);
+  background:transparent;color:var(--ink-2);font-size:12.5px;font-weight:400;white-space:nowrap;transition:background .15s, color .15s, border-color .15s;}
 html[data-identidade="espectro"] .pf-st button:last-child{grid-column:auto;}
-html[data-identidade="espectro"] .pf-st button i{width:6px;height:6px;background:currentColor;}
-html[data-identidade="espectro"] .pf-st button:hover{border:0;color:var(--ink);}
+html[data-identidade="espectro"] .pf-st button i{width:7px;height:7px;border-radius:50%;background:var(--pf-cor);}
+html[data-identidade="espectro"] .pf-st button:hover{border-color:var(--borda-forte);color:var(--ink);}
+html[data-identidade="espectro"] .pf-st button.on{border-color:transparent;}
 html[data-identidade="espectro"] .pf-st button.on[data-st="disponivel"]{background:var(--ok-bg);color:var(--ok);}
-html[data-identidade="espectro"] .pf-st button.on[data-st="gravacao"]{background:rgba(var(--esp-v-rgb,115,40,165),.1);color:var(--esp-v,#7328A5);}
+html[data-identidade="espectro"] .pf-st button.on[data-st="gravacao"]{background:rgba(var(--esp-v-rgb,115,40,165),.12);color:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"] .pf-st button.on[data-st="reuniao"]{background:var(--ambar-bg);color:var(--ambar);}
-html[data-identidade="espectro"] .pf-st button.on[data-st="ausente"]{background:var(--ink-3);color:var(--card);}
+html[data-identidade="espectro"] .pf-st button.on[data-st="ausente"]{background:var(--neutro-bg);color:var(--ink-2);}
 html[data-identidade="espectro"] .pf-st button.on[data-st="nao_perturbe"]{background:var(--erro-bg);color:var(--erro);}
+html[data-identidade="espectro"] .pf-st button.on i{box-shadow:0 0 0 3px color-mix(in srgb, var(--pf-cor) 25%, transparent);}
 html[data-identidade="espectro"][data-theme="dark"] .pf-st button.on[data-st="gravacao"]{background:var(--acento-suave);color:var(--acento);}
 /* a bolinha do avatar nas cores do Espectro */
-html[data-identidade="espectro"] .pf-ponto[data-st="disponivel"]{--pf-cor:var(--ok) !important;}
-html[data-identidade="espectro"] .pf-ponto[data-st="gravacao"]{--pf-cor:var(--esp-v,#7328A5) !important;}
-html[data-identidade="espectro"] .pf-ponto[data-st="reuniao"]{--pf-cor:var(--ambar) !important;}
-html[data-identidade="espectro"] .pf-ponto[data-st="ausente"]{--pf-cor:var(--ink-4) !important;}
-html[data-identidade="espectro"] .pf-ponto[data-st="nao_perturbe"]{--pf-cor:var(--erro) !important;}
+html[data-identidade="espectro"] .pf-ponto[data-st="disponivel"], html[data-identidade="espectro"] .pf-st [data-st="disponivel"]{--pf-cor:var(--ok) !important;}
+html[data-identidade="espectro"] .pf-ponto[data-st="gravacao"], html[data-identidade="espectro"] .pf-st [data-st="gravacao"]{--pf-cor:var(--esp-v,#7328A5) !important;}
+html[data-identidade="espectro"] .pf-ponto[data-st="reuniao"], html[data-identidade="espectro"] .pf-st [data-st="reuniao"]{--pf-cor:var(--ambar) !important;}
+html[data-identidade="espectro"] .pf-ponto[data-st="ausente"], html[data-identidade="espectro"] .pf-st [data-st="ausente"]{--pf-cor:var(--ink-4) !important;}
+html[data-identidade="espectro"] .pf-ponto[data-st="nao_perturbe"], html[data-identidade="espectro"] .pf-st [data-st="nao_perturbe"]{--pf-cor:var(--erro) !important;}
 html[data-identidade="espectro"] .pf-card .pf-ponto{box-shadow:0 0 0 2.5px var(--card);}
 html[data-identidade="espectro"][data-theme="dark"] .pf-card .pf-ponto{box-shadow:0 0 0 2.5px #0C0E2A;}
 
-html[data-identidade="espectro"] .pf-pop .pf-recado{width:calc(100% - 48px);}
-html[data-identidade="espectro"] .pf-recado{height:40px;margin-top:10px;padding:0 14px;border-radius:14px;border:1px solid var(--borda);background:var(--card);
+html[data-identidade="espectro"] :is(.pf-pop, .pf-folha) .pf-recado{width:calc(100% - 24px);box-sizing:border-box;}
+html[data-identidade="espectro"] .pf-recado{height:40px;margin-top:10px;padding:0 15px;border-radius:15px;border:1px solid var(--borda);background:var(--suave);
   font-size:13px;color:var(--ink);}
 html[data-identidade="espectro"] .pf-recado::placeholder{color:var(--ink-4);}
-html[data-identidade="espectro"] .pf-recado:focus{border-color:var(--esp-v,#7328A5);box-shadow:0 0 0 3px rgba(var(--esp-v-rgb,115,40,165),.18);}
-html[data-identidade="espectro"][data-theme="dark"] .pf-recado{background:rgba(255,255,255,.04);}
+html[data-identidade="espectro"] .pf-recado:focus{background:var(--card);border-color:var(--esp-v,#7328A5);box-shadow:0 0 0 3px rgba(var(--esp-v-rgb,115,40,165),.18);}
+html[data-identidade="espectro"][data-theme="dark"] .pf-recado{background:rgba(255,255,255,.05);}
 html[data-identidade="espectro"] .pf-dica{margin-top:8px;font-size:12px;line-height:1.45;color:var(--ink-3);}
 
-/* Meu dia: linhas com ícone violeta e filete */
-html[data-identidade="espectro"] .pf-dia{display:flex;flex-direction:column;gap:0;}
-html[data-identidade="espectro"] .pf-num{flex-direction:row;align-items:center;gap:10px;width:100%;padding:10px 0;border-radius:0;background:none;
-  border-bottom:1px solid var(--borda);font-size:13.5px;color:var(--ink);text-align:left;}
-html[data-identidade="espectro"] .pf-num:hover{background:none;color:var(--esp-v,#7328A5);}
-html[data-identidade="espectro"] .pf-num svg{flex:none;width:18px;height:18px;color:var(--esp-v,#7328A5);}
-html[data-identidade="espectro"] .pf-num b{font-size:13.5px;font-weight:400;line-height:1.45;margin-right:-6px;}
-html[data-identidade="espectro"] .pf-num small{font-size:13.5px;color:inherit;}
-html[data-identidade="espectro"] .pf-num.at b,
-html[data-identidade="espectro"] .pf-num.at svg{color:var(--erro);}
+/* Meu dia: três blocos, o número grande */
+html[data-identidade="espectro"] .pf-dia{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px;}
+html[data-identidade="espectro"] .pf-num{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:auto;min-width:0;padding:12px;border:0;border-radius:18px;
+  background:var(--suave);color:var(--ink);text-align:left;cursor:pointer;transition:background .15s, transform .12s;}
+html[data-identidade="espectro"] .pf-num:hover{background:rgba(var(--esp-v-rgb,115,40,165),.1);}
+html[data-identidade="espectro"] .pf-num:active{transform:scale(.97);}
+html[data-identidade="espectro"] .pf-num svg{flex:none;width:16px;height:16px;margin-bottom:6px;color:var(--esp-v,#7328A5);}
+html[data-identidade="espectro"] .pf-num b{font-family:'Grimblade', system-ui, sans-serif;font-size:26px;font-weight:400;line-height:1;margin:0;color:var(--ink);}
+html[data-identidade="espectro"] .pf-num small{font-size:11.5px;line-height:1.3;color:var(--ink-3);}
+html[data-identidade="espectro"] .pf-num.at{background:rgba(255,90,87,.1);}
+html[data-identidade="espectro"] .pf-num.at :is(b, svg){color:#E5484D;}
+html[data-identidade="espectro"][data-theme="dark"] .pf-num{background:rgba(255,255,255,.05);}
 html[data-identidade="espectro"][data-theme="dark"] .pf-num svg{color:var(--acento);}
-html[data-identidade="espectro"][data-theme="dark"] .pf-num:hover{color:var(--acento);}
+html[data-identidade="espectro"][data-theme="dark"] .pf-num.at{background:rgba(255,90,87,.14);}
+html[data-identidade="espectro"][data-theme="dark"] .pf-num.at :is(b, svg){color:#FF8A87;}
 
-/* Tema: trilho com a opção ativa em cartão */
+/* Tema: trilho de largura toda, a opção ativa em cartão */
 html[data-identidade="espectro"] .pf-tema-l{display:block;}
-html[data-identidade="espectro"] .pf-tema{margin:0;display:inline-flex;padding:4px;gap:4px;border-radius:22px;background:var(--suave);}
-html[data-identidade="espectro"] .pf-tema button{height:34px;padding:0 16px;border-radius:17px;font-size:13px;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .pf-tema{margin:0;display:flex;padding:4px;gap:4px;border-radius:18px;background:var(--suave);}
+html[data-identidade="espectro"] .pf-tema button{flex:1;justify-content:center;height:34px;padding:0 12px;border-radius:14px;font-size:13px;font-weight:400;color:var(--ink-3);}
 html[data-identidade="espectro"] .pf-tema button:hover{color:var(--ink);}
 html[data-identidade="espectro"] .pf-tema button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(10,16,51,.12);}
-html[data-identidade="espectro"][data-theme="dark"] .pf-tema button.on{background:rgba(255,255,255,.1);box-shadow:none;}
+html[data-identidade="espectro"][data-theme="dark"] .pf-tema{background:rgba(255,255,255,.05);}
+html[data-identidade="espectro"][data-theme="dark"] .pf-tema button.on{background:rgba(255,255,255,.12);box-shadow:none;}
 
-/* Atalhos: lista simples, ícone 16 */
-html[data-identidade="espectro"] .pf-lista{gap:0;margin-top:0;}
-html[data-identidade="espectro"] .pf-it{gap:10px;margin:0 -10px;width:calc(100% + 20px);padding:7px 10px;border-radius:12px;font-size:13.5px;font-weight:400;color:var(--ink);}
+/* Atalhos: o ícone num quadradinho da marca */
+html[data-identidade="espectro"] .pf-lista{display:flex;flex-direction:column;gap:2px;margin-top:0;}
+html[data-identidade="espectro"] .pf-it{display:flex;align-items:center;gap:12px;margin:0 -6px;width:calc(100% + 12px);padding:5px 6px;border-radius:14px;font-size:13.5px;font-weight:400;color:var(--ink);}
 html[data-identidade="espectro"] button.pf-it:hover{background:var(--suave);}
-html[data-identidade="espectro"] .pf-it svg{width:16px;height:16px;color:var(--ink);}
-html[data-identidade="espectro"] .pf-it > span{font-size:12px;font-weight:400;color:var(--ink-4);}
-html[data-identidade="espectro"] .pf-ent .pf-ent-ic{width:16px;flex:none;margin-left:0;visibility:hidden;font-size:12px;}
-html[data-identidade="espectro"] .pf-chave{width:34px;height:20px;background:var(--borda-forte);}
+html[data-identidade="espectro"] .pf-it > svg{flex:none;width:30px;height:30px;padding:7px;box-sizing:border-box;border-radius:10px;background:rgba(var(--esp-v-rgb,115,40,165),.09);color:var(--esp-v,#7328A5);}
+html[data-identidade="espectro"][data-theme="dark"] .pf-it > svg{background:rgba(255,255,255,.07);color:var(--acento);}
+html[data-identidade="espectro"] .pf-it > span{margin-left:auto;font-size:12px;font-weight:400;color:var(--ink-4);}
+html[data-identidade="espectro"] .pf-ent .pf-ent-ic{flex:none;width:30px;height:30px;margin-left:0;border-radius:10px;display:flex;align-items:center;justify-content:center;visibility:visible;
+  font-size:14px;background:rgba(var(--esp-v-rgb,115,40,165),.09);}
+html[data-identidade="espectro"] .pf-chave{margin-left:auto;width:34px;height:20px;background:var(--borda-forte);}
 html[data-identidade="espectro"] .pf-chave.on{background:var(--esp-v,#7328A5);}
-html[data-identidade="espectro"] .pf-sep{display:none;}
-html[data-identidade="espectro"] .pf-sair,
-html[data-identidade="espectro"] .pf-sair svg{color:var(--ink) !important;}
-html[data-identidade="espectro"] .pf-sair:hover,
-html[data-identidade="espectro"] .pf-sair:hover svg{color:var(--erro) !important;}
+html[data-identidade="espectro"] .pf-sep{display:block;height:1px;margin:6px 0;background:var(--borda);}
+html[data-identidade="espectro"] .pf-sair{color:var(--ink) !important;}
+html[data-identidade="espectro"] .pf-sair > svg{background:rgba(255,90,87,.1) !important;color:#E5484D !important;}
+html[data-identidade="espectro"] .pf-sair:hover{color:#E5484D !important;}
 
 /* celular: o mesmo conteúdo na folha que sobe de baixo */
 @media (max-width:760px){
   html[data-identidade="espectro"] .pf-folha{padding:0 4px 8px;}
-  html[data-identidade="espectro"] .pf-folha .pf-topo{border-radius:22px;padding:22px 18px;}
+  html[data-identidade="espectro"] .pf-folha .pf-topo{padding:20px 16px;}
   html[data-identidade="espectro"] .pf-folha .pf-quem b{font-size:20px;}
-  html[data-identidade="espectro"] .pf-folha .pf-it{margin:0 -6px;width:calc(100% + 12px);padding:9px 6px;}
-  html[data-identidade="espectro"] .pf-tema{display:flex;}
-  html[data-identidade="espectro"] .pf-tema button{flex:1;justify-content:center;}
+  html[data-identidade="espectro"] .pf-folha .pf-it{padding:7px 6px;}
 }
+@media (prefers-reduced-motion: reduce){ html[data-identidade="espectro"] .pf-pop{animation:none;} }
