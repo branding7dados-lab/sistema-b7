@@ -152,9 +152,15 @@ B7.Colaboradores = (function () {
         ' aria-label="Ver as entregas de ' + esc(p.nome) + '">' +
       '<header class="cl-topo">' +
         '<span class="cl-av">' + B7.UI.avatarPessoa(p, 'lu-avatar') + '</span>' +
-        '<div class="cl-id"><b>' + esc(p.nome) + '</b><small>' + linhaStatus(p) + '</small></div>' +
+        '<div class="cl-id"><b>' + esc(p.nome) + '</b><small>' + linhaStatus(p) + '</small>' +
+          /* Espectro (styles/espectro/gestao.css): a função em texto sob o nome e os três números do quadro;
+             ficam com [hidden] para o visual antigo seguir como era */
+          '<small class="cl-papel" hidden>' + esc([p.funcao].concat(p.funcoes_adicionais || []).filter((f, n, a) => f && ROT_FUNCAO[f] && a.indexOf(f) === n).map(f => ROT_FUNCAO[f])
+            .concat(p.grupo === 'parceiro' ? ['parceiro'] : []).join(' · ')) + '</small></div>' +
         '<span class="cl-sit ' + r.situacao + '">' + ROT_SITUACAO[r.situacao] + '</span>' +
       '</header>' +
+      '<div class="cl-nums" hidden><div><b>' + r.naMao + '</b><span>na fila</span></div><div><b>' + r.entregues + '</b><span>' + (estado.periodo === 'mes' ? 'no mês' : 'no período') + '</span></div>' +
+        '<div class="' + (r.pontual != null && r.pontual < 70 ? 'baixo' : '') + '"><b>' + (r.pontual != null ? r.pontual + '%' : '—') + '</b><span>no prazo</span></div></div>' +
       '<div class="cl-tags">' + tags(p) + '</div>' +
       '<div class="cl-meio">' +
         '<div class="cl-num"><b>' + r.entregues + '</b><span>' + (r.entregues === 1 ? 'entrega' : 'entregas') +

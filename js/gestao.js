@@ -108,7 +108,7 @@ B7.Gestao = (function () {
     const dq = (svg, tx, ir) => '<' + (ir ? 'button type="button" data-ir="' + ir + '"' : 'p') + ' class="gt-dq">' + svg + '<span>' + tx + '</span></' + (ir ? 'button' : 'p') + '>';
     const verdes = (dados.clientes || []).filter(c => c.cor === 'verde').length;
     return iaBloco() + '<div class="gt-kpis gt-kpis-cor">' +
-      card('violeta', 'Clientes ativos', num(k.clientes), (dados.clientes || []).length ? verdes + (verdes === 1 ? ' com a saúde no verde' : ' com a saúde no verde') : '', '#/clientes') +
+      card('violeta', 'Clientes ativos', num(k.clientes), (dados.clientes || []).length ? verdes + ' com a saúde no verde' : '', '#/clientes') +
       card('matriz', 'Peças entregues', num(k.entregas_mes), varia == null || ritmo == null ? 'no mês' : 'ritmo ' + Math.abs(ritmo) + '% ' + (ritmo >= 0 ? 'acima' : 'abaixo') + ' do mês passado') +
       card('matriz', 'Entregas atrasadas', num(k.atrasos), k.atrasos ? 'design e vídeo com prazo vencido' : 'nada atrasado', '#/kanban') +
       card('coral', 'Clientes em risco', num(k.saude_vermelho || 0), 'Ver aba', '#/gestao?aba=' + (B7.GestaoExtra ? 'riscos' : 'saude')) +
@@ -160,23 +160,30 @@ B7.Gestao = (function () {
   function pedidos() {
     const k = dados.kpis || {}, l = dados.pedidos || [], pc = dados.pedidos_por_cliente || [];
     const dataBR = iso => iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
-    return '<div class="gt-kpis tres">' +
-      '<div class="gt-kpi"><b>' + num(k.pedidos_mes) + '</b><span>pedidos no mês</span></div>' +
-      '<div class="gt-kpi' + (k.pedidos_abertos ? ' atencao' : '') + '"><b>' + num(k.pedidos_abertos) + '</b><span>em aberto</span></div>' +
-      '<div class="gt-kpi"><b>' + (k.pedidos_tempo_medio == null ? '—' : String(k.pedidos_tempo_medio).replace('.', ',') + ' d') + '</b><span>tempo médio até ficar pronto</span><small>últimos 90 dias</small></div></div>' +
-      (pc.length ? '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Quem mais pede <small>90 dias</small></h2></div><div class="gt-ranking">' +
-        pc.slice(0, 8).map(x => '<div><span>' + esc(x.cliente) + '</span><i style="--w:' + (100 * x.total / pc[0].total).toFixed(0) + '%"></i><b>' + x.total + '</b></div>').join('') + '</div></section>' : '') +
-      '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Pedidos recentes</h2></div>' + (l.length ? '<div class="gt-peds">' + l.map(p =>
+    /* Espectro: dois cartões lado a lado — os pedidos e, ao lado, os números e quem mais pede */
+    return '<div class="gt-duo gt-duo-meio">' +
+      '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Pedidos de clientes</h2><p class="gt-sub">Chegam pelo portal</p></div>' + (l.length ? '<div class="gt-peds">' + l.map(p =>
         '<button type="button" class="gt-ped" ' + (p.kanban_id ? 'data-ir="#/kanban/' + esc(p.kanban_id) + '"' : 'disabled') + '>' +
+          (B7.UI.avatarCliente ? B7.UI.avatarCliente(p.cliente, p.logo || null, 'sm') : '') +
           '<span class="gt-ped-tx"><b>' + esc(p.titulo) + '</b><small>' + esc(p.cliente) + ' · ' + esc(dataBR(p.created_at)) + (p.para_quando ? ' · para ' + esc(dataBR(p.para_quando + 'T12:00:00')) : '') +
             (p.dias != null ? ' · pronto em ' + String(p.dias).replace('.', ',') + ' d' : '') + '</small></span>' +
           '<span class="gt-sit ' + esc(p.situacao) + '">' + esc(SIT[p.situacao] || p.situacao) + '</span></button>').join('') + '</div>'
-        : '<p class="gt-vazio">Nenhum pedido ainda. Os clientes pedem pelo portal, em "Pedidos".</p>') + '</section>';
+        : '<p class="gt-vazio">Nenhum pedido ainda. Os clientes pedem pelo portal, em "Pedidos".</p>') + '</section>' +
+      '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Quem mais pede</h2><p class="gt-sub">Últimos 90 dias</p></div>' +
+        '<div class="gt-nums">' +
+          '<div><b>' + num(k.pedidos_mes) + '</b><span>pedidos no mês</span></div>' +
+          '<div class="' + (k.pedidos_abertos ? 'atencao' : '') + '"><b>' + num(k.pedidos_abertos) + '</b><span>em aberto</span></div>' +
+          '<div><b>' + (k.pedidos_tempo_medio == null ? '—' : String(k.pedidos_tempo_medio).replace('.', ',') + ' d') + '</b><span>até ficar pronto</span></div></div>' +
+        (pc.length ? '<div class="gt-ranking">' +
+          pc.slice(0, 8).map(x => '<div><span>' + esc(x.cliente) + '</span><i style="--w:' + (100 * x.total / pc[0].total).toFixed(0) + '%"></i><b>' + x.total + '</b></div>').join('') + '</div>'
+          : '<p class="gt-vazio">Ninguém pediu nada nos últimos 90 dias.</p>') + '</section></div>';
   }
 
   /* ---------------------------------------------------------- recados
      zzz268: avisos da B7 que aparecem no Início do portal do cliente */
-  const TIPOS_REC = [['info', '📣 Aviso'], ['novidade', '✨ Novidade'], ['feriado', '🗓️ Feriado / horário'], ['atencao', '⚠️ Atenção']];
+  const TIPOS_REC = [['info', 'Aviso'], ['novidade', 'Novidade'], ['feriado', 'Feriado / horário'], ['atencao', 'Atenção']];
+  const IC_REC = { info: '<path d="M4 5h16v11H9l-5 4z"/>', novidade: '<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9z"/>',
+    feriado: '<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/>', atencao: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>' };
   async function recados(cx) {
     cx.innerHTML = B7.UI.skeleton('lista', { n: 3 });
     let l = [], cli = [];
@@ -188,20 +195,24 @@ B7.Gestao = (function () {
     } catch (e) { cx.innerHTML = '<div class="cb-aviso erro">Não foi possível carregar os recados.</div>'; return; }
     const nomeCli = id => id ? ((cli.find(c => c.id === id) || {}).nome || 'um cliente') : 'Todos os clientes';
     const hoje = new Date().toISOString().slice(0, 10);
-    cx.innerHTML = '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Novo recado</h2></div>' +
-      '<div class="gt-rec-form">' +
-        '<select class="campo" id="gt-rec-tipo">' + TIPOS_REC.map(([k, r]) => '<option value="' + k + '">' + r + '</option>').join('') + '</select>' +
-        '<select class="campo" id="gt-rec-cli"><option value="">Todos os clientes</option>' + cli.map(c => '<option value="' + esc(c.id) + '">' + esc(c.nome) + '</option>').join('') + '</select>' +
-        '<input class="campo" id="gt-rec-tit" maxlength="100" placeholder="Título (ex.: Recesso de fim de ano)">' +
-        '<textarea class="campo" id="gt-rec-tx" rows="2" maxlength="600" placeholder="Detalhes (opcional)"></textarea>' +
-        '<label class="gt-rec-ate">Mostrar até <input class="campo" type="date" id="gt-rec-ate" min="' + hoje + '"></label>' +
-        '<button type="button" class="b pri" data-rec-pub>Publicar no portal</button></div></section>' +
-      '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>No ar</h2></div>' + (l.length ? l.map(r =>
-        '<div class="gt-rec"><div><b>' + esc((TIPOS_REC.find(t => t[0] === r.tipo) || TIPOS_REC[0])[1]) + ' · ' + esc(r.titulo) + '</b>' +
-          '<small>' + esc(nomeCli(r.client_id)) + (r.ate ? ' · até ' + esc(r.ate.split('-').reverse().join('/')) : ' · sem data para sair') + '</small>' +
+    /* Espectro: os recados no ar à esquerda, o novo recado ao lado */
+    const tipoDe = r => TIPOS_REC.find(t => t[0] === r.tipo) || TIPOS_REC[0];
+    cx.innerHTML = '<div class="gt-duo gt-duo-meio">' +
+      '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Recados no ar</h2><p class="gt-sub">Aparecem no Início do portal do cliente</p></div>' + (l.length ? '<div class="gt-recs">' + l.map(r =>
+        '<div class="gt-rec"><span class="gt-rec-ic ' + esc(tipoDe(r)[0]) + '" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + IC_REC[tipoDe(r)[0]] + '</svg></span>' +
+          '<div><b>' + esc(r.titulo) + '</b>' +
+          '<small>' + esc(tipoDe(r)[1]) + ' · ' + esc(nomeCli(r.client_id)) + (r.ate ? ' · até ' + esc(r.ate.split('-').reverse().join('/')) : ' · sem data para sair') + '</small>' +
           (r.texto ? '<p>' + esc(r.texto) + '</p>' : '') + '</div>' +
-          '<button type="button" class="b fina contorno" data-rec-arq="' + esc(r.id) + '">Tirar do ar</button></div>').join('')
-        : '<p class="gt-vazio">Nenhum recado no ar. Os clientes veem os recados no Início do portal.</p>') + '</section>';
+          '<button type="button" class="b fina contorno" data-rec-arq="' + esc(r.id) + '">Tirar do ar</button></div>').join('') + '</div>'
+        : '<p class="gt-vazio">Nenhum recado no ar. Os clientes veem os recados no Início do portal.</p>') + '</section>' +
+      '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Novo recado</h2><p class="gt-sub">Publica no portal na hora</p></div>' +
+      '<div class="gt-rec-form">' +
+        '<select class="campo" id="gt-rec-tipo" aria-label="Tipo do recado">' + TIPOS_REC.map(([k, r]) => '<option value="' + k + '">' + r + '</option>').join('') + '</select>' +
+        '<select class="campo" id="gt-rec-cli" aria-label="Para quem"><option value="">Todos os clientes</option>' + cli.map(c => '<option value="' + esc(c.id) + '">' + esc(c.nome) + '</option>').join('') + '</select>' +
+        '<input class="campo" id="gt-rec-tit" maxlength="100" placeholder="Título (ex.: Recesso de fim de ano)">' +
+        '<textarea class="campo" id="gt-rec-tx" rows="3" maxlength="600" placeholder="Detalhes (opcional)"></textarea>' +
+        '<label class="gt-rec-ate">Mostrar até <input class="campo" type="date" id="gt-rec-ate" min="' + hoje + '"></label>' +
+        '<button type="button" class="b pri" data-rec-pub>Publicar no portal</button></div></section></div>';
     cx.querySelector('[data-rec-pub]').onclick = async e => {
       const bt = e.currentTarget, tit = cx.querySelector('#gt-rec-tit').value.trim();
       if (tit.length < 3) return B7.UI.toast('Escreva o título do recado', { tipo: 'erro' });
