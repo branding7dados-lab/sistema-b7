@@ -1,1 +1,247 @@
 /* Espectro · semanas — redesenho fiel ao artefato. Tudo sob html[data-identidade="espectro"]. */
+/* Quadros "Status semanas" (lista) e "Status semanal" (documento pronto para enviar):
+   rótulo 11.5 + título 42 · abas em cápsula (34px) à esquerda e ações à direita ·
+   tabela num cartão raio 26 (colunas Cliente / Semana / Resumo / Situação / Abrir) ·
+   no documento: folha branca raio 6 com a faixa do espectro de 10px no topo. */
+
+/* =============================================================== LISTA */
+/* ------------------------------------------------------------ cabeçalho */
+html[data-identidade="espectro"] .ss-tela .trilha.ss-so-largo{display:none;}
+html[data-identidade="espectro"] .ss-tela .cab-conteudo.ss-cab{display:flex;flex-direction:row;align-items:flex-end;gap:10px;margin:4px 0 22px;animation:none;}
+html[data-identidade="espectro"] .ss-tela .ss-cab > div{flex:1;min-width:0;}
+html[data-identidade="espectro"] .ss-tela .ss-sobre{margin:0 0 8px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);line-height:1.45;font-weight:400;}
+html[data-identidade="espectro"] .ss-tela .ss-cab h1{margin:0;font-size:42px !important;line-height:1;letter-spacing:0;font-weight:400;color:var(--ink);}
+html[data-identidade="espectro"] .ss-tela .ss-cab .ss-apoio{display:none;}
+
+/* ------------------------------------------- abas (esquerda) + ações (direita) */
+html[data-identidade="espectro"] .ss-barra{display:flex;align-items:center;gap:8px;margin:0 0 16px;}
+html[data-identidade="espectro"] .ss-tela .filtro.ss-abas{display:inline-flex;flex:none;align-items:center;gap:4px;padding:4px;margin:0 auto 0 0;border-radius:22px;background:var(--suave);border:0;box-shadow:none;}
+html[data-identidade="espectro"] .ss-tela .ss-abas button{height:34px;min-height:34px;padding:0 16px;border:0;border-radius:17px;background:transparent;font:inherit;font-size:13px;font-weight:400;color:var(--ink-3);cursor:pointer;white-space:nowrap;box-shadow:none;
+  transition:background-color .18s, color .18s, transform .12s;}
+html[data-identidade="espectro"] .ss-tela .ss-abas button:hover{color:var(--ink);}
+html[data-identidade="espectro"] .ss-tela .ss-abas button:active{transform:scale(.97);}
+html[data-identidade="espectro"] .ss-tela .ss-abas button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(10,16,51,.12);}
+html[data-identidade="espectro"] .ss-tela .ss-abas button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .ss-tela.ss-buscando .ss-abas button.on{background:transparent;box-shadow:none;color:var(--ink-3);}
+
+html[data-identidade="espectro"] .ss-tela .ss-busca{position:relative;flex:0 1 260px;margin:0 !important;}
+html[data-identidade="espectro"] .ss-tela .ss-busca svg{left:14px;width:16px;height:16px;color:var(--ink-3);}
+html[data-identidade="espectro"] .ss-tela .ss-busca .campo{height:34px;min-height:34px;padding:0 16px 0 38px;border-radius:17px;font-size:13px;
+  background:var(--card);border:1px solid var(--borda);color:var(--ink);box-shadow:none;}
+html[data-identidade="espectro"] .ss-tela .ss-busca .campo::placeholder{color:var(--ink-3);opacity:1;}
+html[data-identidade="espectro"] .ss-tela .ss-busca .campo:focus{border-color:#7328A5;box-shadow:0 0 0 3px rgba(115,40,165,.18);}
+
+html[data-identidade="espectro"] .ss-tela .ss-novo{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;height:34px;min-height:34px;padding:0 16px;border-radius:17px;border:0;
+  background:#7328A5;color:#FFFFFF;font-size:13px;font-weight:400;white-space:nowrap;box-shadow:0 8px 22px rgba(115,40,165,.32);}
+html[data-identidade="espectro"] .ss-tela .ss-novo:hover{background:#520083;}
+html[data-identidade="espectro"] .ss-tela .ss-novo-mais{margin:0;font-size:18px;font-weight:400;line-height:1;}
+
+/* ------------------------------------------------------------ grupos */
+html[data-identidade="espectro"] .ss-tela .lista-status-agrupada{display:flex;flex-direction:column;gap:20px;}
+html[data-identidade="espectro"] .ss-tela .grupo-mes-corpo{display:flex;flex-direction:column;gap:16px;}
+/* mês: um rótulo discreto, no estilo do sobretítulo */
+html[data-identidade="espectro"] .ss-tela .grupo-mes>summary{padding:0 2px 10px;gap:8px;font-size:11.5px;}
+html[data-identidade="espectro"] .ss-tela .grupo-mes>summary b{flex:0 1 auto;font-family:inherit;font-size:11.5px !important;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);}
+html[data-identidade="espectro"] .ss-tela .grupo-mes>summary .grupo-cont{font-family:inherit;font-size:11.5px;font-weight:400;padding:0;background:none;color:var(--ink-4);letter-spacing:.04em;}
+html[data-identidade="espectro"] .ss-tela .grupo-mes>summary:before{width:7px;height:7px;border-color:var(--ink-3);}
+
+/* semana: o cartão da tabela (raio 26, respiro de 4) */
+html[data-identidade="espectro"] .ss-tela .grupo-semana,
+html[data-identidade="espectro"] .ss-tela .ss-tabela{background:var(--card);border:1px solid var(--esp-cartao-borda);border-radius:26px;padding:4px;box-shadow:0 18px 48px rgba(10,16,51,.06);overflow:hidden;box-sizing:border-box;}
+html[data-identidade="espectro"][data-theme="dark"] .ss-tela .grupo-semana,
+html[data-identidade="espectro"][data-theme="dark"] .ss-tela .ss-tabela{box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .ss-tela .grupo-semana>summary{padding:12px 18px 12px 18px;gap:10px;row-gap:8px;font-size:13px;}
+html[data-identidade="espectro"] .ss-tela .grupo-semana>summary:before{border-color:var(--ink-3);}
+html[data-identidade="espectro"] .ss-tela .gs-tx b{font-size:15px;font-weight:400;color:var(--ink);}
+html[data-identidade="espectro"] .ss-tela .gs-tx .grupo-cont{font-size:12px;color:var(--ink-3);}
+html[data-identidade="espectro"] .ss-tela .grupo-semana>summary .gs-exportar{height:34px;min-height:34px;padding:0 16px;border-radius:17px;gap:8px;font-size:13px;font-weight:400;
+  background:var(--card);color:var(--ink);border:1px solid var(--borda);box-shadow:none;}
+html[data-identidade="espectro"] .ss-tela .grupo-semana>summary .gs-exportar:hover{border-color:#7328A5;color:var(--acento);}
+html[data-identidade="espectro"] .ss-tela .gs-exportar svg{width:16px;height:16px;}
+html[data-identidade="espectro"] .ss-tela .gs-prog .gs-barra{height:4px;background:var(--suave);}
+html[data-identidade="espectro"] .ss-tela .gs-barra .env{background:#13855A;}
+html[data-identidade="espectro"] .ss-tela .gs-barra .pro{background:#7328A5;opacity:.45;}
+html[data-identidade="espectro"][data-theme="dark"] .ss-tela .gs-barra .env{background:var(--ok);}
+html[data-identidade="espectro"][data-theme="dark"] .ss-tela .gs-barra .pro{background:var(--acento);}
+html[data-identidade="espectro"] .ss-tela .gs-prog-n{font-size:12px;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .ss-tela .gs-prog-n.completo{color:var(--ok);}
+
+/* ------------------------------------------------------------ tabela */
+html[data-identidade="espectro"] .ss-tela .ss-th,
+html[data-identidade="espectro"] .ss-tela .item-status{display:grid !important;
+  grid-template-columns:28px minmax(0,1.5fr) minmax(0,.8fr) minmax(0,1.6fr) minmax(0,.7fr) 34px 72px;column-gap:14px;align-items:center;}
+html[data-identidade="espectro"] .ss-tela .ss-th{padding:10px 18px;font-size:11.5px;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);}
+html[data-identidade="espectro"] .ss-tela .grupo-semana .ss-th{border-top:1px solid var(--borda);}
+html[data-identidade="espectro"] .ss-tela .ss-th span:first-child{grid-column:span 2;}
+html[data-identidade="espectro"] .ss-tela .ss-th span:last-child{grid-column:span 2;}
+
+html[data-identidade="espectro"] .ss-tela .lista-status,
+html[data-identidade="espectro"] .ss-tela .ss-plana{display:block;gap:0;margin:0;border:0;border-radius:0;background:none;box-shadow:none;overflow:visible;}
+html[data-identidade="espectro"] .ss-tela .item-status{padding:12px 18px !important;border:0;border-top:1px solid var(--borda);border-radius:0;background:none;font-size:13.5px;color:var(--ink);box-shadow:none;}
+html[data-identidade="espectro"] .ss-tela .item-status::before{display:none !important;}
+html[data-identidade="espectro"] .ss-tela .item-status:hover{transform:none;background:color-mix(in srgb, #7328A5 4%, transparent);}
+html[data-identidade="espectro"] .ss-tela .item-status:focus-visible{outline:2px solid var(--acento);outline-offset:-2px;}
+html[data-identidade="espectro"] .ss-tela .item-status .avatar{width:28px !important;height:28px !important;border-radius:12px !important;font-size:11px;font-weight:400;flex:none;}
+html[data-identidade="espectro"] .ss-tela .is-tx{display:contents;}
+html[data-identidade="espectro"] .ss-tela .is-tx b{margin-left:-4px;font-size:13.5px !important;font-weight:400 !important;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+html[data-identidade="espectro"] .ss-tela .is-per,
+html[data-identidade="espectro"] .ss-tela .grupo-semana .is-per{display:block;margin:0;font-size:13.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+html[data-identidade="espectro"] .ss-tela .is-meta{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;min-width:0;overflow:hidden;font-size:13.5px;color:var(--ink-3);}
+html[data-identidade="espectro"] .ss-tela .is-atencao{flex:none;height:22px;display:inline-flex;align-items:center;margin-left:4px;padding:0 9px;border-radius:999px;font-size:11.5px;font-weight:400;letter-spacing:0;background:var(--ambar-bg);color:var(--ambar);}
+
+/* situação: pílula de 24 com ponto */
+html[data-identidade="espectro"] .ss-tela .is-situacao{justify-self:start;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px !important;border-radius:999px;
+  font-size:12px !important;font-weight:400;letter-spacing:0 !important;text-transform:none !important;white-space:nowrap;background:var(--neutro-bg);color:var(--neutro);}
+html[data-identidade="espectro"] .ss-tela .is-situacao:before{content:"" !important;width:6px;height:6px;border-radius:50%;background:currentColor;margin:0 !important;flex:none;}
+html[data-identidade="espectro"] .ss-tela .is-situacao.pronto{background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"] .ss-tela .is-situacao.enviado{background:var(--ok-bg) !important;color:var(--ok) !important;}
+html[data-identidade="espectro"][data-theme="dark"] .ss-tela .is-situacao.pronto{background:var(--acento-suave);color:var(--acento);}
+html[data-identidade="espectro"] .ss-tela .is-sit-longo{display:none;}
+
+/* prévia (olho) + "Abrir" — o botão branco de 34 do quadro */
+html[data-identidade="espectro"] .ss-tela .is-previa{width:34px;height:34px;margin-right:-6px;border-radius:17px;color:var(--ink-3);}
+html[data-identidade="espectro"] .ss-tela .is-previa:hover{background:var(--suave);color:var(--acento);}
+html[data-identidade="espectro"] .ss-tela .is-previa svg{width:17px;height:17px;}
+html[data-identidade="espectro"] .ss-tela .is-abrir{justify-self:end;display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 16px;border-radius:17px;box-sizing:border-box;
+  background:var(--card);color:var(--ink);border:1px solid var(--borda);font-size:13px;white-space:nowrap;transition:border-color .18s, color .18s;}
+html[data-identidade="espectro"] .ss-tela .is-abrir::before{content:"Abrir";}
+html[data-identidade="espectro"] .ss-tela .is-abrir svg.is-seta{display:none;}
+html[data-identidade="espectro"] .ss-tela .item-status:hover .is-abrir{border-color:#7328A5;color:var(--acento);}
+
+html[data-identidade="espectro"] .ss-tela .estado-b7{border-radius:26px;}
+
+/* ------------------------------------------------------------ celular */
+@media (max-width:760px){
+  html[data-identidade="espectro"] .ss-tela .cab-conteudo.ss-cab{margin:0 0 16px;align-items:flex-end !important;}
+  html[data-identidade="espectro"] .ss-tela .ss-cab h1{font-size:32px !important;}
+  html[data-identidade="espectro"] .ss-tela .ss-cab p.ss-sobre{display:block;}
+  html[data-identidade="espectro"] .ss-barra{flex-wrap:wrap;row-gap:10px;}
+  html[data-identidade="espectro"] .ss-tela .ss-busca{order:3;flex:1 1 100%;}
+  html[data-identidade="espectro"] .ss-tela .ss-novo{width:auto !important;height:34px !important;padding:0 16px !important;border-radius:17px !important;}
+  html[data-identidade="espectro"] .ss-tela .ss-novo-tx{display:inline;}
+  html[data-identidade="espectro"] .ss-tela .ss-th{display:none !important;}
+  html[data-identidade="espectro"] .ss-tela .item-status{grid-template-columns:28px minmax(0,1fr) auto auto;row-gap:2px;padding:12px 14px !important;}
+  html[data-identidade="espectro"] .ss-tela .item-status .avatar{grid-row:span 2;}
+  html[data-identidade="espectro"] .ss-tela .is-tx b{grid-column:2;margin-left:-4px;}
+  html[data-identidade="espectro"] .ss-tela .is-per,
+  html[data-identidade="espectro"] .ss-tela .grupo-semana .is-per{display:none;}
+  html[data-identidade="espectro"] .ss-tela .is-meta{grid-column:2 / -1;grid-row:2;margin-left:-4px;font-size:12px;}
+  html[data-identidade="espectro"] .ss-tela .is-situacao{grid-column:3;grid-row:1;}
+  html[data-identidade="espectro"] .ss-tela .is-previa{grid-column:4;grid-row:1;margin:0;}
+  html[data-identidade="espectro"] .ss-tela .is-abrir{display:none;}
+  html[data-identidade="espectro"] .ss-tela .grupo-semana>summary{padding:12px 14px;}
+  html[data-identidade="espectro"] .ss-tela .grupo-semana>summary .gs-exportar{width:34px;padding:0;}
+}
+
+/* ============================================================== EDITOR */
+/* ------------------------------------------------------------ cabeçalho */
+html[data-identidade="espectro"] .sem-editor .sem-volta{font-size:12.5px;font-weight:400;color:var(--ink-3);margin:0 0 10px -2px;}
+html[data-identidade="espectro"] .sem-editor .sem-volta:hover{color:var(--ink);}
+html[data-identidade="espectro"] .sem-editor .sem-cab{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 10px;margin:0 0 16px;}
+html[data-identidade="espectro"] .sem-editor .sem-cab-tx{flex:1 1 100%;min-width:0;}
+html[data-identidade="espectro"] .sem-editor .sem-cab .sem-av{display:none;}
+html[data-identidade="espectro"] .sem-editor .sem-cab small{display:block;margin:0 0 8px;font-size:11.5px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);line-height:1.45;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-identidade="espectro"] .sem-editor .sem-cab .sem-sit{font-style:normal;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .sem-editor .sem-cab h1{margin:0;font-family:var(--b7-fonte);font-size:42px !important;font-weight:400;line-height:1;letter-spacing:0;color:var(--ink);white-space:nowrap;}
+html[data-identidade="espectro"] .sem-editor .sem-cab .sem-per{display:none;}
+
+/* ações: uma linha à direita, pílulas de 34 (branca · violeta · mais) */
+html[data-identidade="espectro"] .sem-editor .sem-acoes{flex:1 1 100%;width:100%;margin:0;display:flex;justify-content:flex-end;align-items:center;gap:8px;}
+html[data-identidade="espectro"] .sem-editor .sem-acoes .b{flex:none;height:34px;min-height:34px;padding:0 16px;border-radius:17px;gap:8px;font-size:13px;font-weight:400;white-space:nowrap;}
+html[data-identidade="espectro"] .sem-editor .sem-acoes [data-exportar]{order:1;background:var(--card);color:var(--ink);border:1px solid var(--borda);box-shadow:none;}
+html[data-identidade="espectro"] .sem-editor .sem-acoes [data-exportar]:hover{border-color:#7328A5;color:var(--acento);}
+html[data-identidade="espectro"] .sem-editor .sem-acoes [data-nova-demanda]{order:2;background:#7328A5;color:#FFFFFF;border:0;box-shadow:0 8px 22px rgba(115,40,165,.32);}
+html[data-identidade="espectro"] .sem-editor .sem-acoes [data-nova-demanda]:hover{background:#520083;}
+html[data-identidade="espectro"] .sem-editor .sem-acoes .menu{order:3;flex:none;}
+html[data-identidade="espectro"] .sem-editor .sem-acoes .menu > .ico{width:34px;height:34px;min-height:34px;border-radius:17px;background:var(--card);border:1px solid var(--borda);color:var(--ink);}
+
+/* ------------------------------------------------------------ blocos */
+html[data-identidade="espectro"] .sem-editor .bloco{border-radius:26px;border:1px solid var(--esp-cartao-borda);background:var(--card);box-shadow:0 18px 48px rgba(10,16,51,.06);}
+html[data-identidade="espectro"][data-theme="dark"] .sem-editor .bloco{box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .sem-editor .rot,
+html[data-identidade="espectro"] .sem-editor .sem-opcoes-tit{font-size:11.5px;font-weight:400;letter-spacing:.14em;color:var(--ink-3);}
+html[data-identidade="espectro"] .sem-editor .sem-info .sem-opcoes{border-radius:16px;background:var(--fundo);}
+html[data-identidade="espectro"] .sem-editor .sem-info .op-mini{font-size:13.5px;font-weight:400;}
+html[data-identidade="espectro"] .sem-editor .sem-info .op-mini small{font-size:12px;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .sem-editor .sem-info .op-mini input[type=checkbox]:checked{background:#7328A5;}
+html[data-identidade="espectro"] .sem-editor .sem-linha-editorial{border-left:1px solid var(--esp-cartao-borda);}
+html[data-identidade="espectro"] .sem-editor .sem-linha-editorial .si-ic{color:var(--ok);}
+html[data-identidade="espectro"] .sem-editor .sem-revisao{border-color:color-mix(in srgb, var(--ambar) 35%, transparent);background:var(--ambar-bg);box-shadow:none;}
+html[data-identidade="espectro"] .sem-editor .sr-cab b,
+html[data-identidade="espectro"] .sem-editor .sr-tit{font-weight:400;}
+html[data-identidade="espectro"] .sem-editor .sr-cab p{font-size:12.5px;color:var(--ink-2);}
+html[data-identidade="espectro"] .sem-editor .sr-item{border-top-color:color-mix(in srgb, var(--ambar) 22%, transparent);}
+
+/* ------------------------------------------------------------ dias */
+html[data-identidade="espectro"] .sem-editor .sd-cab b{font-family:var(--b7-fonte);font-weight:400;font-size:11.5px;letter-spacing:.14em;color:var(--ink-2);}
+html[data-identidade="espectro"] .sem-editor .sd-data{font-weight:400;font-size:12.5px;color:var(--ink-3);}
+html[data-identidade="espectro"] .sem-editor .sd-cab span{font-weight:400;}
+html[data-identidade="espectro"] .sem-editor .sd-hoje{font-weight:400;background:#7328A5 !important;}
+html[data-identidade="espectro"] .sem-editor .sem-dia:not(.vazio) .sd-ponto{background:#7328A5;border-color:#7328A5;box-shadow:0 0 0 3px rgba(115,40,165,.14);}
+html[data-identidade="espectro"] .sem-editor .sd-cab .sd-add{width:34px;height:34px;border-radius:17px;border-color:var(--borda);}
+html[data-identidade="espectro"] .sem-editor .sd-cab .sd-add:hover{background:#7328A5;border-color:#7328A5;color:#FFFFFF;}
+html[data-identidade="espectro"] .sem-editor .sd-item{border-radius:18px;border:1px solid var(--esp-cartao-borda);background:var(--card);box-shadow:0 8px 24px rgba(10,16,51,.04);}
+html[data-identidade="espectro"] .sem-editor .si-tx b{font-weight:400;font-size:13.5px;}
+html[data-identidade="espectro"] .sem-editor .si-estado{font-size:12px;color:var(--ink-3);}
+html[data-identidade="espectro"] .sem-editor .si-origem{font-weight:400;}
+
+/* ------------------------------------------------------------ prévia = a folha do quadro */
+html[data-identidade="espectro"] .sem-editor .sem-preview{border-radius:26px;border:1px solid var(--esp-cartao-borda);background:var(--card);box-shadow:0 18px 48px rgba(10,16,51,.06);overflow:hidden;}
+html[data-identidade="espectro"][data-theme="dark"] .sem-editor .sem-preview{box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .sem-editor .sp-topo{padding:12px 14px 12px 18px;border-bottom:1px solid var(--borda);background:var(--card);}
+html[data-identidade="espectro"] .sem-editor .sp-topo > span{font-size:11.5px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);}
+html[data-identidade="espectro"] .sem-editor .sp-topo .b{margin-left:auto;height:34px;min-height:34px;padding:0 16px;border-radius:17px;font-size:13px;font-weight:400;background:var(--card);color:var(--ink);border:1px solid var(--borda);}
+html[data-identidade="espectro"] .sem-editor .sp-palco{background:var(--fundo);}
+html[data-identidade="espectro"] .sem-editor .sp-in .pag45{border-radius:6px;box-shadow:0 20px 50px rgba(10,16,51,.14);}
+
+@media (max-width:820px){
+  html[data-identidade="espectro"] .sem-editor .sem-cab h1{font-size:32px !important;}
+  html[data-identidade="espectro"] .sem-editor .sem-cab small{white-space:normal;}
+  html[data-identidade="espectro"] .sem-editor .sem-acoes{flex-wrap:nowrap;}
+  html[data-identidade="espectro"] .sem-editor .sem-acoes .b{flex:1 1 auto;justify-content:center;}
+}
+
+/* ========================================================== DOCUMENTO
+   A peça do cliente (prévia e exportação). Só o Status semanal — o Resumo
+   do mês (.rm45) usa a mesma base e não é desta tela. */
+html[data-identidade="espectro"] .pag45:not(.rm45){--ink:#0A1033;--ink-2:#3D4466;--grey:#5F6584;--line:#ECEDF4;--lilac:#F4F3FA;
+  --magenta:#E02F75;--roxo:#520083;--violeta:#7328A5;--marinho:#001561;
+  --grad:linear-gradient(120deg,#001561 0%,#520083 30%,#7328A5 55%,#E02F75 80%,#FF5A57 100%);
+  color:#0A1033;font-family:'Grimblade','Inter',system-ui,sans-serif;}
+html[data-identidade="espectro"] .pag45:not(.rm45) *{font-family:'Grimblade','Inter',system-ui,sans-serif !important;font-weight:400 !important;}
+
+/* cabeçalho claro: faixa do espectro no topo, marca à esquerda, semana à direita, título grande */
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-cabeca{position:relative;flex-wrap:wrap;align-items:center;gap:0;padding:50px 62px 6px;background:#FFFFFF;color:#0A1033;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-cabeca::before{content:"";position:absolute;left:0;right:0;top:0;height:14px;
+  background:linear-gradient(120deg,#001561 0%,#520083 30%,#7328A5 55%,#E02F75 80%,#FF5A57 100%);}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-brilho,
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-olho{display:none;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-logo{order:1;width:auto;height:40px;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-cabeca-in{position:static;order:2;flex:1 1 100%;margin-top:38px;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-cabeca h1{font-size:48px;line-height:1.05;letter-spacing:0;color:#0A1033;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-periodo{position:absolute;top:58px;right:62px;padding:0;background:none;border-radius:0;
+  font-size:17.5px;letter-spacing:0;text-transform:none;color:#5F6584;}
+
+/* cliente e dias nos cartões claros do quadro (#F4F3FA, raio 22) */
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-cliente{margin:22px 62px 0;padding:12px 18px;border-radius:22px;background:#F4F3FA;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-cliente small,
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-selo small{letter-spacing:.14em;color:#5F6584;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-cli-logo{border-radius:14px;border-color:#ECEDF4;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-cli-logo-vazio{background:#7328A5;color:#FFFFFF;border:0;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-selo span{color:#7328A5;background:#F0E8F8;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-dia{border-color:#ECEDF4;background:#FFFFFF;border-radius:22px;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-data{background:#F4F3FA;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-data .dow{color:#5F6584;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-data .dt{color:#7328A5;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-dia-vazio{border-style:dashed;background:transparent;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-dia-vazio .ps-data{background:transparent;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-dia-vazio .ps-data .dt{color:#5F6584;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-dia.sem-data .ps-data{background:#5F6584;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-dia.sem-data .ps-data .dt{color:#FFFFFF;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-nota-geral{border-radius:22px;background:#F4F3FA;color:#3D4466;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-atencao{border-radius:16px;background:#FBF0D6;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-tipo,
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-formato{letter-spacing:.06em;}
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-leg-linha > b,
+html[data-identidade="espectro"] .pag45:not(.rm45) .ps-rodape .esq span{letter-spacing:.14em;color:#5F6584;}

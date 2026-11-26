@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.4.0', versao: '5.4.0', em: '2026-11-26T14:00:00-03:00',
+    titulo: 'Aprovações, Semanas e Legendas na identidade nova',
+    itens: ['Aprovações, Semanas (e o documento da semana) e Legendas ganharam o desenho novo da Branding7.'] },
   { id: 'v-5.3.0', versao: '5.3.0', em: '2026-11-26T14:00:00-03:00',
     titulo: 'Vídeo, Design e Produção na identidade nova',
     itens: ['Produção de vídeo, Design, Produção (quadro) e o painel de quem edita vídeo ganharam o desenho novo da Branding7.'] },
