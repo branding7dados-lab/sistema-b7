@@ -1,0 +1,6 @@
+/* Espectro — ícones "Linha Espectro" (5.18.0): direção A, escolhida pelo Yury. Desenhados em js/nav.js (IC_ESP).
+   Traço de 1,8 fino e arredondado, cantos macios e um corte de 60° discreto. O item ativo continua como no
+   artefato: Violeta Quantum sólido com o ícone branco (regra em styles/espectro.css).
+   Toda regra começa com html[data-identidade="espectro"]. */
+html[data-identidade="espectro"] .esp-ic{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;overflow:visible;}
+html[data-identidade="espectro"] .esp-ic .c{fill:currentColor;stroke:none;}

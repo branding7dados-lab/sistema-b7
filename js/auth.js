@@ -24,7 +24,7 @@ B7.Auth = (function () {
        3.0.0 → 3.0.1  correção ou ajuste
      A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
      programa do Windows. O aviso de atualização só compara se mudou. */
-  const VERSAO = '5.17.0';
+  const VERSAO = '5.18.0';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -448,6 +448,14 @@ B7.Auth = (function () {
     if (B7.Identidade && B7.Identidade.ligada()) {
       const mc = tela.querySelector('.login-marca'); if (mc) mc.src = 'assets/brand/espectro/simbolo-mono-branco.svg';
       const h1 = tela.querySelector('.login-caixa h1'); if (h1) h1.textContent = 'Entrar no B7';
+      /* 5.18.0 quadros "Login · computador" e "Login · celular" (Fundamentos): a frase do quadro, ícones dentro dos
+         campos (o rótulo só aparece no celular), a linha Google | Núcleo 7 e a versão no pé (celular) */
+      const sub = tela.querySelector('.login-sub'); if (sub) sub.textContent = 'A produção de hoje está te esperando.';
+      const rotU = tela.querySelector('label[for="lg-user"]'); if (rotU) rotU.textContent = 'Usuário ou e-mail';
+      const rotS = tela.querySelector('label[for="lg-senha"]'); if (rotS) rotS.textContent = 'Senha';
+      const ent = tela.querySelector('.login-entrar');
+      if (ent) ent.insertAdjacentHTML('afterend', '<div class="esp-lg-alt"><a class="b contorno lg-n7" href="https://adm.nucleosete.com.br/central">Núcleo 7</a></div>' +
+        '<p class="esp-lg-versao">Sistema B7 · versão ' + esc(VERSAO) + '</p>');
       tela.insertAdjacentHTML('beforeend', '<img class="esp-login-logo" src="assets/brand/espectro/horizontal-branco.svg" alt="" aria-hidden="true">' +
         '<p class="esp-login-assinatura" aria-hidden="true">Criatividade que transforma negócios em marcas.</p>');
     }
