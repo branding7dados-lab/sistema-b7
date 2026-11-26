@@ -18,7 +18,9 @@ B7.CentralWA = (function () {
   const eu = () => (B7.Auth && B7.Auth.usuario()) || {};
   const souAdmin = () => !!(B7.Auth && (B7.Auth.ehAdminReal ? B7.Auth.ehAdminReal() : B7.Auth.ehAdmin && B7.Auth.ehAdmin()));
   const PAL = ['#E8452C', '#1B8F6A', '#5E47DE', '#C21C83', '#2E8BFF', '#F0A443', '#0EA5A4', '#9333EA', '#D97706', '#DB2777'];
-  const corDe = s => { let h = 0; for (const ch of String(s || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return PAL[h % PAL.length]; };
+  /* identidade Espectro: avatares e nomes só nas cores da marca */
+  const PAL_ESP = ['#7328A5', '#001561', '#E02F75', '#520083', '#FF5A57'];
+  const corDe = s => { let h = 0; for (const ch of String(s || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const pal = document.documentElement.dataset.identidade === 'espectro' ? PAL_ESP : PAL; return pal[h % pal.length]; };
   const ini = s => { const p = String(s || '?').replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/).filter(Boolean); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0] || '')[1] || '')).toUpperCase(); };
   const num = jid => String(jid || '').split('@')[0];
   /* 4.52.6: @lid é um código interno do WhatsApp, não é telefone */
@@ -128,7 +130,8 @@ B7.CentralWA = (function () {
     if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['WhatsApp']);
     /* 4.55.0: acende o WhatsApp no menu lateral (cada tela marca o seu item) */
     if (B7.Dashboard && B7.Dashboard.marcarNav) B7.Dashboard.marcarNav('#/whatsapp');
-    painel.innerHTML = '<div class="wz" id="wz"><div class="wz-carrega"><i></i><span>Abrindo as conversas…</span></div></div>';
+    painel.innerHTML = '<header class="wz-pg-cab"><p class="wz-pg-sobre" id="wz-pg-sobre">WhatsApp do B7</p><h1>Conversas</h1></header>' +
+      '<div class="wz" id="wz"><div class="wz-carrega"><i></i><span>Abrindo as conversas…</span></div></div>';
     raiz = painel.querySelector('#wz');
     let pode = false;
     try { const r = await sb().rpc('pode_ver_wa'); pode = !!r.data; } catch (e) {}
@@ -211,6 +214,8 @@ B7.CentralWA = (function () {
     pintarFiltros(); pintarLista(); pintarChat(); pintarLado();
   }
   function pintarNums() {
+    const sobre = document.getElementById('wz-pg-sobre');
+    if (sobre && S.nums.length) sobre.textContent = S.nums.length + (S.nums.length === 1 ? ' número ligado' : ' números ligados');
     const cx = raiz && raiz.querySelector('#wz-nums-cx'); if (!cx || !B7.WaNumeros) return;
     const n = {}; S.conversas.forEach(c => { if (!c.arquivada && c.nao_lidas > 0) n[c.numero_id] = (n[c.numero_id] || 0) + 1; });
     cx.innerHTML = B7.WaNumeros.barraHtml(S.nums, S.num, n);
@@ -322,7 +327,8 @@ B7.CentralWA = (function () {
         /* 4.85.0: foto e nome abrem os dados do grupo / o perfil (renomear fica no menu ⋯) */
         '<button class="wz-cab-av" data-wz="info" aria-label="' + (c.tipo === 'grupo' ? 'Dados do grupo' : 'Perfil do contato') + '">' + avatar(c, 'p') + '</button>' +
         '<div class="wz-cab-tx"><b class="wz-cab-nome" data-wz="info" role="button" tabindex="0" title="' + (c.tipo === 'grupo' ? 'Ver os dados do grupo' : 'Ver o perfil') + '">' + esc(c.nome || num(c.jid)) + '</b><small>' + (c.tipo === 'grupo' ? 'Grupo' : esc(fone(c.jid))) + (cli ? ' · cliente ' + esc(cli.nome) : '') +
-          (varios() && numDe(c) ? ' · <span class="wz-via">via ' + B7.WaNumeros.ponto(numDe(c)) + ' ' + esc(numDe(c).nome) + '</span>' : '') + '</small></div>' +
+          (varios() && numDe(c) ? '<span class="wz-via"> · via ' + B7.WaNumeros.ponto(numDe(c)) + ' ' + esc(numDe(c).nome) + '</span>' : '') + '</small></div>' +
+        (varios() && numDe(c) ? '<span class="wz-cab-num" style="--c:' + esc(numDe(c).cor || '#7328A5') + '"><i></i>' + esc(numDe(c).nome) + '</span>' : '') +
         '<div class="wz-cab-acoes"><button class="wz-ic wz-so-pc' + (S.lado ? ' on' : '') + '" data-wz="lado" title="Painel do cliente">' + I.lado + '</button>' +
           '<div class="menu"><button class="wz-ic" data-menu aria-label="Opções da conversa">' + I.mais + '</button><div class="lista">' +
             '<button data-wz="renomear">' + (c.tipo === 'grupo' ? 'Renomear grupo (só no B7)' : 'Renomear contato') + '</button>' +
@@ -353,7 +359,7 @@ B7.CentralWA = (function () {
           '<button data-ia="leve"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c2 1.6 5 1.6 7 0M9 10h.01M15 10h.01"/></svg></i><span><b>Mais leve</b></span></button>' +
           '<button data-ia="curto"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16M4 15h9"/></svg></i><span><b>Mais curto</b></span></button></div></div>' +
         '<div class="wz-ia-aviso" id="wz-ia-aviso" hidden></div>' +
-        '<textarea id="wz-texto" rows="1" placeholder="Digite uma mensagem"></textarea>' +
+        '<textarea id="wz-texto" rows="1" placeholder="Mensagem"></textarea>' +
         '<button class="wz-env" id="wz-env" aria-label="Gravar áudio">' + I.mic + '</button>' +
       '</footer>' +
       '<input type="file" id="wz-arq-fig" accept="image/*" hidden><input type="file" id="wz-arq-midia" accept="image/*,video/*" multiple hidden><input type="file" id="wz-arq-doc" multiple hidden><input type="file" id="wz-arq-cam" accept="image/*" capture="environment" hidden>';

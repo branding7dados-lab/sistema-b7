@@ -58,6 +58,7 @@ B7.PainelCoord = (function () {
   };
   const nomeLinha = l => l.nome || ((B7.UI.MESES[(l.mes || 1) - 1] || '') + ' ' + (l.ano || ''));
   const plural = (n, um, varios) => n + ' ' + (n === 1 ? um : varios);
+  const espectro = () => document.documentElement.dataset.identidade === 'espectro';
 
   const IC_POST = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.8"/><path d="M8 9h8M8 12.5h8M8 16h5"/></svg>';
   const IC_LINHA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h14M5 9.5h14M5 14.5h9M5 19.5h6"/></svg>';
@@ -372,12 +373,13 @@ B7.PainelCoord = (function () {
       const gs = grupos();
       const vis = gs.slice(0, MAX_LINHAS), fora = gs.slice(MAX_LINHAS);
       corpo = gs.length
-        ? '<div class="pn-att-lista">' + vis.map(g => U().linhaAtencao(g.linha)).join('') + '</div>' +
+        ? (espectro() ? '<div class="pnc-fila-cab" aria-hidden="true"><span>Item</span><span>Situação</span><span>Contexto</span><span></span></div>' : '') +
+          '<div class="pn-att-lista">' + vis.map(g => U().linhaAtencao(g.linha)).join('') + '</div>' +
           (fora.length ? '<p class="pn-nota">E mais: ' + esc(fora.map(g => g.rotulo).join(' · ')) + '.</p>' : '')
         : U().blocoVazio('Tudo em dia por aqui.', 'Nenhuma publicação atrasada, nenhum ajuste do cliente e nenhuma revisão esperando.');
       if (comErro.length) corpo += U().blocoErro('Parte das informações não carregou — a lista pode estar incompleta.', comErro);
     }
-    cx.innerHTML = '<div class="pn-sec-cab"><h2 id="pnc-t-atencao">Precisa da sua atenção</h2></div>' + corpo;
+    cx.innerHTML = '<div class="pn-sec-cab"><h2 id="pnc-t-atencao">' + (espectro() ? 'Sua fila de coordenação' : 'Precisa da sua atenção') + '</h2></div>' + corpo;
   }
 
   function pintarSemana() {
@@ -609,6 +611,13 @@ B7.PainelCoord = (function () {
         '<section class="pn-bloco" id="pnc-fluxo" aria-labelledby="pnc-t-fluxo"></section>' +
       '</div>' +
     '</div>';
+    /* Espectro: cabeçalho do quadro — "Coordenação · Nome" sobre o título "Painel" */
+    if (espectro()) {
+      const raiz = document.getElementById('pnc-raiz'), u = B7.Auth.usuario() || {}, alvo = U().emPrevia();
+      const k = raiz.querySelector('.pn-kicker'), t = raiz.querySelector('.pn-cab h1');
+      if (k) k.textContent = 'Coordenação · ' + ((alvo && alvo.nome) || u.nome || u.username || '');
+      if (t) t.textContent = 'Painel';
+    }
     const b = document.getElementById('pnc-nova-linha');
     if (b) b.onclick = () => B7.Conteudo.novaLinha();
     FONTES.forEach(carregar);
