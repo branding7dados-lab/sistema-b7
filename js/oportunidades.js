@@ -593,10 +593,11 @@ B7.Oportunidades = (function () {
     if (!souGestor()) { painel().innerHTML = '<div class="conteudo op"><div class="estado-b7"><b>Sem acesso a Oportunidades.</b></div></div>'; return; }
     lerParams(params || new URLSearchParams(location.hash.split('?')[1] || ''));
     painel().innerHTML = '<div class="conteudo entra op">' +
-      '<div class="cb-topo op-topo"><div class="cb-titulo"><h1>Oportunidades</h1><p class="op-intro">Datas comemorativas e campanhas com fonte, e para quais clientes elas fazem sentido.</p></div>' +
-        '<div class="cb-topo-acoes"><a class="b contorno op-cal" href="#/calendario?v=mes&op=1" aria-label="Ver no Calendário">' + IC + '<span>Ver no Calendário</span></a></div></div>' +
-      (souAdmin() ? '<div class="filtro op-abas" role="tablist">' + [['proximas', 'Próximas'], ['revisao', 'Revisão'], ['fontes', 'Fontes']].map(([k, r]) =>
-        '<button role="tab" data-aba="' + k + '" class="' + (P.aba === k ? 'on' : '') + '" aria-selected="' + (P.aba === k) + '">' + r + '<span class="cb-n" data-n-' + k + '></span></button>').join('') + '</div>' : '') +
+      '<div class="cb-topo op-topo"><div class="cb-titulo"><p class="op-sobre">Datas comemorativas com relevância por cliente</p><h1>Oportunidades</h1></div>' +
+        '<div class="cb-topo-acoes">' +
+        (souAdmin() ? '<div class="filtro op-abas" role="tablist">' + [['proximas', 'Próximas'], ['revisao', 'Revisão'], ['fontes', 'Fontes']].map(([k, r]) =>
+          '<button role="tab" data-aba="' + k + '" class="' + (P.aba === k ? 'on' : '') + '" aria-selected="' + (P.aba === k) + '">' + r + '<span class="cb-n" data-n-' + k + '></span></button>').join('') + '</div>' : '') +
+        '<a class="b contorno op-cal" href="#/calendario?v=mes&op=1" aria-label="Ver no Calendário">' + IC + '<span>Ver no Calendário</span></a></div></div>' +
       '<div id="op-corpo">' + B7.UI.skeleton('lista', { n: 5 }) + '</div></div>';
     painel().querySelectorAll('[data-aba]').forEach(x => x.onclick = () => { P.aba = x.dataset.aba; gravarParams(); abrir(new URLSearchParams(location.hash.split('?')[1] || '')); });
     try { await carregarBase(); } catch (e) { document.getElementById('op-corpo').innerHTML = '<div class="cb-aviso erro">Não foi possível carregar as oportunidades. <button class="cb-link" data-de-novo>Tentar de novo</button></div>'; painel().querySelector('[data-de-novo]').onclick = () => abrir(params); return; }
@@ -673,27 +674,30 @@ B7.Oportunidades = (function () {
     try { itens = await periodo(hoje, fim, { cliente: P.cliente || null }); } catch (e) { cx.innerHTML = '<div class="cb-aviso erro">Não foi possível calcular as oportunidades.</div>'; return; }
     const lista = filtrarItens(itens, P);
     if (!lista.length) { cx.innerHTML = '<p class="cb-vazio">Nenhuma oportunidade nos próximos ' + P.dias + ' dias' + ((P.cat || P.rel || P.cliente || P.conf || P.abr || P.nat || P.q) ? ' com esses filtros' : '') + '.</p>'; return; }
-    const grupos = new Map();
-    lista.forEach(it => { const k = it.ini < hoje ? hoje : it.ini; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(it); });
-    let n = 0;
+    /* Espectro: uma tabela só (Data · Oportunidade · Relevância por cliente · Fonte) */
     cx.innerHTML = '<p class="op-contagem">' + lista.length + ' oportunidade' + (lista.length > 1 ? 's' : '') + ' nos próximos ' + P.dias + ' dias</p>' +
-      [...grupos.entries()].map(([dia, its]) => {
-        const d = D().local(dia);
-        return '<section class="op-dia' + (dia <= hoje ? ' hoje' : '') + '"><h3>' + esc(DIAS[d.getDay()] + ', ' + d.getDate() + ' ' + MESES[d.getMonth()]) + '<span>' + esc(faltaTx(dia)) + '</span></h3>' +
-          its.map(it => cartaoHTML(it, n++)).join('') + '</section>';
-      }).join('');
+      '<div class="op-tabela" role="list"><div class="op-tab-cab" aria-hidden="true"><span>Data</span><span>Oportunidade</span><span>Relevância por cliente</span><span>Fonte</span><span></span></div>' +
+        lista.map((it, n) => cartaoHTML(it, n, hoje)).join('') + '</div>';
     cx.querySelectorAll('[data-op]').forEach(x => x.onclick = () => folha(x.dataset.op, { dia: x.dataset.dia, cliente: P.cliente || null, aoMudar: () => pintarLista(hoje, fim) }));
   }
-  function cartaoHTML(it, i) {
+  function cartaoHTML(it, i, hoje) {
     const op = it.op, rels = it.relacionados.filter(r => r.nivel === 'muito' || r.nivel === 'relacionada');
     const nivel = P.cliente ? it.rel && it.rel.nivel : it.nivelMax;
-    return '<button type="button" class="op-card nv-' + esc(nivel || 'nenhum') + '" data-op="' + esc(op.id) + '" data-dia="' + esc(it.ini) + '" style="--i:' + Math.min(i || 0, 8) + '">' +
-      '<i class="op-card-ic">' + IC + '</i>' +
+    const dia = hoje && it.ini < hoje ? hoje : it.ini;
+    /* etiqueta de cliente no tom do nível (muito = verde, relacionada = neutro, geral = "Todos") */
+    const chip = (rot, nv, title) => '<span class="op-cli-chip nv-' + esc(nv) + '"' + (title ? ' title="' + esc(title) + '"' : '') + '><i></i>' + esc(rot) + '</span>';
+    const clis = P.cliente && it.rel ? chip(((B.clientesMap.get(P.cliente) || {}).nome) || 'Cliente', it.rel.nivel, (NIVEL[it.rel.nivel] || {}).rot + ' · ' + it.rel.motivos.join(' · '))
+      : rels.length ? rels.slice(0, 3).map(r => chip(r.cliente.nome, r.nivel, NIVEL[r.nivel].rot + ' · ' + r.motivos.join(' · '))).join('') + (rels.length > 3 ? '<span class="op-cli-mais">+' + (rels.length - 3) + '</span>' : '')
+      : nivel === 'geral' ? chip('Todos', 'geral', NIVEL.geral.rot) : '<span class="op-cli-nada">—</span>';
+    const prova = (B.provas.get(op.id) || []).find(p => p.ativo) || (B.provas.get(op.id) || [])[0];
+    const conf = CONF[op.confiabilidade] || CONF.pendente;
+    return '<button type="button" class="op-card nv-' + esc(nivel || 'nenhum') + '" role="listitem" data-op="' + esc(op.id) + '" data-dia="' + esc(it.ini) + '" style="--i:' + Math.min(i || 0, 8) + '">' +
+      '<span class="op-card-data" title="' + esc(faltaTx(it.ini, it.fim)) + '">' + pad(D().local(dia).getDate()) + '/' + pad(D().local(dia).getMonth() + 1) + '</span>' +
       '<span class="op-card-tx"><b>' + esc(op.nome) + '</b>' +
-        '<small>' + esc([NATUREZA[op.natureza], lugarTx(op), it.fim !== it.ini ? 'até ' + D().local(it.fim).getDate() + ' ' + MESES[D().local(it.fim).getMonth()] : '', (op.categorias || []).map(nomeTema).slice(0, 3).join(', ')].filter(Boolean).join(' · ')) + '</small>' +
-        (P.cliente && it.rel ? '<small class="op-motivo">' + esc(it.rel.motivos.join(' · ')) + '</small>'
-          : rels.length ? '<small class="op-clis">' + esc(rels.slice(0, 3).map(r => r.cliente.nome).join(', ') + (rels.length > 3 ? ' +' + (rels.length - 3) : '')) + '</small>' : '') +
-      '</span><span class="op-card-lado">' + seloNivel(nivel) + seloConf(op) + '</span></button>';
+        '<small>' + esc([faltaTx(it.ini, it.fim), lugarTx(op), it.fim !== it.ini ? 'até ' + D().local(it.fim).getDate() + ' ' + MESES[D().local(it.fim).getMonth()] : ''].filter(Boolean).join(' · ')) + '</small></span>' +
+      '<span class="op-card-clis">' + clis + '</span>' +
+      '<span class="op-card-fonte" title="' + esc(conf.rot + ' — ' + conf.desc) + '">' + esc(prova ? (FONTES_ROT[prova.fonte_id] || prova.fonte_id) : conf.rot) + '</span>' +
+      '<span class="op-card-acao"><span class="op-sugerir">' + SVG('<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z"/>') + 'Sugerir</span></span></button>';
   }
 
   /* ---- revisão (admin): possíveis duplicatas ---- */
