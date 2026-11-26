@@ -168,6 +168,17 @@ for (const [escolha, esperado, peca] of [[null, 'ignicao', '.ign-bl'], ['streami
     'identidade nova, escolha ' + (escolha || 'nenhuma') + ' → ' + esperado + ': cena do artefato inteira e parada no fim, sem nada do visual antigo (' + JSON.stringify(t) + ')');
   await ctx.close();
 }
+/* 5c) 5.16.1: a "data especial" (estação) não tinge a abertura nem o carregamento no Espectro (deixava tudo verde e azul) */
+for (const curta of [false, true]) {
+  const ctx = await nav.newContext({ viewport:{width:1073,height:482} });
+  await ctx.addInitScript(c => { try { if (c) sessionStorage.setItem('b7_abertura', '1'); } catch (x) {}
+    document.addEventListener('DOMContentLoaded', () => document.documentElement.setAttribute('data-estacao', 'verde')); }, curta);
+  const pg = await ctx.newPage(); await pg.goto(BASE + '/index.html'); await pg.waitForTimeout(400);
+  const t = await pg.evaluate(() => { const a = document.querySelector('.b7-abertura'), e = document.querySelector('.b7-abertura .ab-espera');
+    return { filtro: a ? getComputedStyle(a).filter : 'sem', placa: e ? getComputedStyle(e).backgroundColor : 'sem' }; });
+  ok(t.filtro === 'none' && /rgba\(0, 0, 0, 0\)|transparent|sem/.test(t.placa), (curta ? 'carregamento' : 'abertura') + ' com estação "verde": cores da marca, sem tingir e sem a placa antiga (' + JSON.stringify(t) + ')');
+  await ctx.close();
+}
 /* 5b) a saída da abertura nova é só a cena apagando: sem a onda de luz e sem o "assentar" da antiga */
 {
   const ctx = await nav.newContext({ viewport:{width:1280,height:800} });

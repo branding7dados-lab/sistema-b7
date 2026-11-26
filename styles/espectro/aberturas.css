@@ -21,7 +21,17 @@ html[data-identidade="espectro"] .esp-ab-nome{display:none;font-weight:400;font-
 html[data-identidade="espectro"] .esp-ab-carga{display:none;z-index:2;}
 
 /* espera honesta (só se o sistema ainda não estiver pronto) na voz nova */
-html[data-identidade="espectro"] .b7-abertura .ab-espera{top:calc(50% + 150px);font-family:inherit;color:#C4C8E4;font-size:13px;}
+/* 5.16.1: a frase de espera na voz nova — sem a placa de vidro escuro e sem o fio de luz da abertura antiga */
+html[data-identidade="espectro"] .b7-abertura.b7-abertura .ab-espera{top:calc(50% + 120px);font-family:inherit;color:#C4C8E4;font-size:13px;
+  padding:0;border:0;border-radius:0;background:none;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;}
+html[data-identidade="espectro"].ab-curta .b7-abertura.b7-abertura.inicial .ab-espera,
+html[data-identidade="espectro"] .b7-abertura.b7-abertura:not(.inicial) .ab-espera{top:calc(50% + 56px);}
+html[data-identidade="espectro"] .b7-abertura.b7-abertura.b7-abertura .ab-frase{font-family:inherit;font-weight:400;font-size:12px;letter-spacing:.22em;text-indent:.22em;text-transform:uppercase;color:#AEB4D6;}
+html[data-identidade="espectro"] .b7-abertura.b7-abertura.b7-abertura.b7-abertura .ab-fio{display:none;}
+/* 5.16.1: a "data especial" (estação: vermelho, dourado, verde, azul) girava a cor da abertura inteira e deixava o
+   carregamento verde e azul. No Espectro as cores são as da marca, sempre. */
+html[data-identidade="espectro"][data-estacao] .b7-abertura,
+html[data-identidade="espectro"][data-estacao] .b7-abertura .ab-marca{filter:none;}
 html[data-identidade="espectro"] .b7-abertura .ab-ola{font-family:inherit;font-weight:400;font-size:17px;color:#F3F4FA;}
 html[data-identidade="espectro"] .b7-abertura .ab-fio{width:140px;height:4px;border-radius:4px;background:rgba(255,255,255,.09);}
 html[data-identidade="espectro"] .b7-abertura .ab-fio:after{width:40%;border-radius:4px;background:repeating-linear-gradient(120deg,#7328A5 0 10px,#E02F75 10px 20px);}
