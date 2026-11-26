@@ -1,1 +1,218 @@
 /* Espectro · producao — redesenho fiel ao artefato. Tudo sob html[data-identidade="espectro"]. */
+/* Quadro "Produção": rótulo + título 42 · colunas em trilho suave (raio 24, respiro 12, vão 10) com a
+   etapa numa etiqueta-pílula de 24 (ponto de 6) e a contagem solta à direita · cartões brancos raio 18,
+   respiro 14: cliente 12 em cinza, título 14, rodapé com relógio + prazo 12 e avatar 24 (raio 10).
+   Arrastando: cartão inclinado -2° com contorno Violeta; coluna-alvo tracejada em Violeta. */
+
+/* ---------------------------------------------------------------- cabeçalho */
+html[data-identidade="espectro"] .kanban-tela .kb-cab{align-items:flex-end;margin:4px 0 22px;}
+html[data-identidade="espectro"] .kb-kicker{margin:0 0 8px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);line-height:1.45;}
+html[data-identidade="espectro"] .kanban-tela .kb-cab h1{margin:0;font-size:42px !important;line-height:1;letter-spacing:0;color:var(--ink);}
+html[data-identidade="espectro"] .kanban-tela .kb-cab h1 .conta,
+html[data-identidade="espectro"] .kanban-tela .kb-intro{display:none;}
+html[data-identidade="espectro"] .kanban-tela .kb-nova{min-height:48px;height:48px;padding:0 22px;border-radius:24px;font-size:15px;gap:8px;
+  background:#7328A5;color:#fff;border:0;box-shadow:0 10px 28px rgba(115,40,165,.32);}
+html[data-identidade="espectro"] .kanban-tela .kb-nova:hover{background:#520083;}
+html[data-identidade="espectro"] .kanban-tela .kb-nova-mais{font-size:20px;line-height:1;}
+
+/* ------------------------------------------------------- busca · filtros · vista */
+html[data-identidade="espectro"] .kanban-tela .kb-barra{gap:10px;margin:0 0 16px;}
+html[data-identidade="espectro"] .kanban-tela .kb-linha-busca{display:flex;align-items:center;gap:10px;min-width:0;}
+html[data-identidade="espectro"] .kanban-tela .kb-linha-busca{flex:0 1 300px;}
+html[data-identidade="espectro"] .kanban-tela .kb-busca-cx{flex:1 1 auto;min-width:0;}
+html[data-identidade="espectro"] .kanban-tela .kb-busca-cx svg{left:16px;width:16px;height:16px;stroke:var(--ink-3);stroke-width:1.8;}
+html[data-identidade="espectro"] .kanban-tela .kb-barra .kb-busca{height:40px;min-height:40px;padding:0 16px 0 40px !important;border-radius:20px;font-size:13.5px;
+  background:var(--card);border:1px solid var(--borda);box-shadow:0 8px 24px rgba(10,16,51,.04);}
+html[data-identidade="espectro"] .kanban-tela .kb-barra select.kb-filtro{height:34px;min-height:34px;padding:0 30px 0 14px !important;border-radius:17px;font-size:13px;font-weight:400;
+  background-color:var(--card);border:1px solid var(--borda-forte);color:var(--ink-2);line-height:32px;}
+html[data-identidade="espectro"] .kanban-tela .kb-barra select.kb-filtro.ativo{border-color:#7328A5;color:#7328A5;font-weight:400;}
+html[data-identidade="espectro"] .kanban-tela .kb-sels{display:flex;gap:8px;flex-wrap:wrap;}
+html[data-identidade="espectro"] .kanban-tela .kb-limpar,
+html[data-identidade="espectro"] .kanban-tela .kb-concluidas{min-height:34px;height:34px;padding:0 14px;border-radius:17px;font-size:13px;font-weight:400;
+  background:var(--card);border:1px solid var(--borda-forte);color:var(--ink);}
+html[data-identidade="espectro"] .kanban-tela .kb-concluidas b{font-size:11.5px;font-weight:400;background:var(--suave);color:var(--ink-3);border-radius:999px;padding:1px 8px;}
+html[data-identidade="espectro"] .kanban-tela .kb-concluidas.on{background:#F0E8F8;border-color:#7328A5;color:#7328A5;}
+html[data-identidade="espectro"] .kanban-tela .kb-concluidas.on b{background:#fff;color:#7328A5;}
+html[data-identidade="espectro"] .kanban-tela .kb-total{font-size:12.5px;color:var(--ink-3);}
+html[data-identidade="espectro"] .kanban-tela .seg-vista{display:inline-flex;gap:2px;height:34px;padding:0 3px;align-items:center;border-radius:17px;
+  background:var(--card);border:1px solid var(--borda);box-sizing:border-box;}
+html[data-identidade="espectro"] .kanban-tela .seg-vista button{height:26px;padding:0 12px;border-radius:13px;font-size:13px;font-weight:400;color:var(--ink-3);box-shadow:none;}
+html[data-identidade="espectro"] .kanban-tela .seg-vista button.on{background:var(--suave);color:var(--ink);box-shadow:none;font-weight:400;}
+html[data-identidade="espectro"] .kanban-tela .gl-bt-filtros{min-height:40px;height:40px;padding:0 16px;border-radius:20px;font-size:13px;font-weight:400;gap:8px;
+  background:var(--card);color:var(--ink);border:1px solid var(--borda-forte);}
+html[data-identidade="espectro"] .kanban-tela .gl-bt-filtros.on{border-color:#7328A5;color:#7328A5;}
+html[data-identidade="espectro"] .kanban-tela .gl-bt-filtros b{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#7328A5;color:#fff;font-size:11px;font-weight:400;
+  display:inline-flex;align-items:center;justify-content:center;}
+html[data-identidade="espectro"] .kanban-tela .gl-bt-filtros b[hidden]{display:none;}
+
+/* ---------------------------------------------------------------- quadro */
+html[data-identidade="espectro"] .kanban-tela .kb-quadro,
+html[data-identidade="espectro"] .kanban-tela .kb-quadro.sete{grid-auto-columns:minmax(190px,1fr);gap:14px;align-items:stretch;}
+html[data-identidade="espectro"] .kanban-tela .kb-viewport:before{background:linear-gradient(90deg,var(--fundo),transparent);}
+html[data-identidade="espectro"] .kanban-tela .kb-viewport:after{background:linear-gradient(270deg,var(--fundo),transparent);}
+html[data-identidade="espectro"] .kanban-tela .kb-seta{width:36px;height:36px;border-radius:18px;border:1px solid var(--borda);background:var(--card);color:var(--ink);
+  box-shadow:0 8px 24px rgba(10,16,51,.1);}
+html[data-identidade="espectro"] .kanban-tela .kb-seta:hover{color:#7328A5;border-color:#7328A5;}
+html[data-identidade="espectro"] .kanban-tela .kb-seta svg{stroke-width:1.8;}
+
+/* coluna: trilho suave */
+html[data-identidade="espectro"] .kanban-tela .kb-col{background:var(--suave);border-radius:24px;padding:12px;gap:10px;
+  min-height:calc(100dvh - 300px);max-height:calc(100dvh - 250px);box-sizing:border-box;transition:background-color .18s;}
+html[data-identidade="espectro"] .kanban-tela .kb-col header{align-items:center;padding:2px 4px;gap:8px;}
+html[data-identidade="espectro"] .kanban-tela .kb-col header small{display:none;}
+html[data-identidade="espectro"] .kanban-tela .kb-col header b.kb-etapa{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;max-width:100%;box-sizing:border-box;
+  font-size:12px;font-weight:400;line-height:24px;background:var(--neutro-bg);color:var(--neutro);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-identidade="espectro"] .kanban-tela .kb-etapa i{flex:none;width:6px;height:6px;border-radius:50%;background:currentColor;}
+html[data-identidade="espectro"] .kanban-tela .kb-col[data-coluna="producao"] header b.kb-etapa{background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"] .kanban-tela .kb-col[data-coluna="revisao"] header b.kb-etapa{background:var(--ambar-bg);color:var(--ambar);}
+html[data-identidade="espectro"] .kanban-tela .kb-col[data-coluna="aguardando_cliente"] header b.kb-etapa{background:var(--laranja-bg);color:var(--laranja);}
+html[data-identidade="espectro"] .kanban-tela .kb-col[data-coluna="ajustes"] header b.kb-etapa{background:var(--erro-bg);color:var(--erro);}
+html[data-identidade="espectro"] .kanban-tela .kb-col[data-coluna="pronto"] header b.kb-etapa,
+html[data-identidade="espectro"] .kanban-tela .kb-col[data-coluna="concluida"] header b.kb-etapa{background:var(--ok-bg);color:var(--ok);}
+html[data-identidade="espectro"] .kanban-tela .kb-cont{background:none;padding:0;font-size:12.5px;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .kanban-tela .kb-lista{gap:10px;padding:2px;margin:-2px;border-radius:18px;}
+/* coluna-alvo do arraste: tracejado Violeta sobre lilás */
+html[data-identidade="espectro"] .kanban-tela .kb-lista.sobre{background:none;outline:0;}
+html[data-identidade="espectro"] .kanban-tela .kb-col:has(.kb-lista.sobre){background:#F0E8F8;outline:2px dashed #7328A5;outline-offset:-2px;}
+html[data-identidade="espectro"] .kanban-tela .kb-marcador{height:3px;border-radius:2px;background:#7328A5;}
+html[data-identidade="espectro"] .kanban-tela .kb-vazio{font-size:12.5px;color:var(--ink-4);padding:22px 8px;border:1px dashed var(--borda-forte);border-radius:18px;}
+
+/* ---------------------------------------------------------------- cartão */
+html[data-identidade="espectro"] .kanban-tela .kb-card{background:var(--card);border:1px solid var(--borda);border-radius:18px;padding:14px;box-shadow:none;
+  transition:transform .12s, box-shadow .18s, border-color .18s;}
+html[data-identidade="espectro"] .kanban-tela .kb-card:hover{border-color:var(--borda-forte);transform:translateY(-1px);box-shadow:0 10px 24px rgba(10,16,51,.06);}
+html[data-identidade="espectro"] .kanban-tela .kb-card:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .kanban-tela .kb-card.alta{border-left:1px solid var(--borda);box-shadow:inset 3px 0 0 var(--erro);}
+html[data-identidade="espectro"] .kanban-tela .kb-card.do-cliente{border-color:color-mix(in srgb, var(--ambar) 45%, var(--borda));}
+/* arrastando: inclinado, com sombra e contorno Violeta */
+html[data-identidade="espectro"] .kanban-tela .kb-card.arrastando{opacity:1;transform:rotate(-2deg);border-color:#7328A5;box-shadow:0 18px 36px rgba(10,16,51,.18);}
+html[data-identidade="espectro"] .kanban-tela .kb-card.arr-sel{border-color:#7328A5;box-shadow:0 0 0 2px rgba(115,40,165,.25);}
+
+html[data-identidade="espectro"] .kanban-tela .kb-card-topo{align-items:center;gap:6px;}
+html[data-identidade="espectro"] .kanban-tela .kb-card .kb-cli{gap:0;font-size:12px;font-weight:400;color:var(--ink-3);line-height:1.45;}
+html[data-identidade="espectro"] .kanban-tela .kb-card .kb-cli .avatar{display:none;}
+html[data-identidade="espectro"] .kanban-tela .kb-card .kb-cli.sem{font-style:normal;color:var(--ink-4);}
+html[data-identidade="espectro"] .kanban-tela .kb-mover{width:24px;height:24px;padding:0;margin:-4px -6px -4px 0;border-radius:12px;align-items:center;justify-content:center;color:var(--ink-4);}
+html[data-identidade="espectro"] .kanban-tela .kb-mover svg{width:14px;height:14px;}
+html[data-identidade="espectro"] .kanban-tela .kb-mover:hover,
+html[data-identidade="espectro"] .kanban-tela .kb-mover:focus-visible{background:var(--suave);color:var(--ink);}
+html[data-identidade="espectro"] .kanban-tela .kb-card h4{margin:4px 0 0;font-size:14px;font-weight:400;line-height:1.4;color:var(--ink);}
+/* o tipo sai do cartão (fica na Lista e na gaveta); aprovação e pedido do cliente continuam */
+html[data-identidade="espectro"] .kanban-tela .kb-card .kb-tipo{display:none;}
+html[data-identidade="espectro"] .kanban-tela .kb-card .kb-tags{margin-top:8px;gap:6px;}
+html[data-identidade="espectro"] .kanban-tela .kb-card .kb-tags:not(:has(.kb-ap, .kb-pedido)){display:none;}
+html[data-identidade="espectro"] .kanban-tela .kb-pedido{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font-size:11.5px;font-weight:400;
+  background:#FCE4EE;color:#B0215A;}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-pedido{background:rgba(224,47,117,.18);color:#FF8FB8;}
+html[data-identidade="espectro"] .kanban-tela .kb-ap{height:22px;padding:0 9px;font-size:11.5px;font-weight:400;gap:6px;}
+html[data-identidade="espectro"] .kanban-tela .kb-ap:before{width:6px;height:6px;opacity:1;}
+html[data-identidade="espectro"] .kanban-tela .kb-ap.parcial{background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"] .kanban-tela .kb-feedback{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;margin-top:10px;padding:8px 10px;border-radius:12px;font-size:12px;font-weight:400;gap:2px 6px;}
+html[data-identidade="espectro"] .kanban-tela .kb-feedback small{grid-column:1/-1;}
+html[data-identidade="espectro"] .kanban-tela .kb-feedback svg{width:14px;height:14px;stroke-width:1.8;}
+html[data-identidade="espectro"] .kanban-tela .kb-feedback small{font-size:11px;font-weight:400;}
+html[data-identidade="espectro"] .kanban-tela .kb-origem{font-size:12px;font-weight:400;margin-top:8px;}
+html[data-identidade="espectro"] .kanban-tela .kb-aviso{margin-top:8px;font-size:12px;color:var(--ambar);}
+
+/* rodapé: relógio + prazo à esquerda, avatar 24 à direita */
+html[data-identidade="espectro"] .kanban-tela .kb-pe{margin-top:12px;gap:8px;align-items:center;}
+html[data-identidade="espectro"] .kanban-tela .kb-prazo{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .kanban-tela .kb-prazo svg{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+html[data-identidade="espectro"] .kanban-tela .kb-prazo.atrasada{color:var(--erro);font-weight:400;}
+html[data-identidade="espectro"] .kanban-tela .kb-notas,
+html[data-identidade="espectro"] .kanban-tela .kb-vinc,
+html[data-identidade="espectro"] .kanban-tela .kb-lock{font-size:12px;color:var(--ink-3);gap:4px;}
+html[data-identidade="espectro"] .kanban-tela .kb-pe svg{width:14px;height:14px;stroke-width:1.8;}
+html[data-identidade="espectro"] .kanban-tela .kb-sem-resp{width:24px;height:24px;border-radius:10px;border:1.5px dashed var(--borda-forte);box-sizing:border-box;}
+
+/* avatar de pessoa no quadro, na lista e na gaveta: liso, nas cores da marca */
+html[data-identidade="espectro"] :is(.kanban-tela, .kb-drawer) .av-pessoa{font-weight:400;letter-spacing:0;text-shadow:none;}
+html[data-identidade="espectro"] :is(.kanban-tela, .kb-drawer) .av-pessoa:not(.com-foto):before,
+html[data-identidade="espectro"] :is(.kanban-tela, .kb-drawer) .av-pessoa:not(.com-foto):after{display:none;}
+html[data-identidade="espectro"] :is(.kanban-tela, .kb-drawer) .av-pessoa.tom-0{background:#7328A5;}
+html[data-identidade="espectro"] :is(.kanban-tela, .kb-drawer) .av-pessoa.tom-1{background:#001561;}
+html[data-identidade="espectro"] :is(.kanban-tela, .kb-drawer) .av-pessoa.tom-2{background:#E02F75;}
+html[data-identidade="espectro"] :is(.kanban-tela, .kb-drawer) .av-pessoa.tom-3{background:#520083;}
+html[data-identidade="espectro"] :is(.kanban-tela, .kb-drawer) .av-pessoa.tom-4{background:#FF5A57;}
+html[data-identidade="espectro"] :is(.kanban-tela, .kb-drawer) .av-pessoa.tom-5{background:#7328A5;}
+html[data-identidade="espectro"] .kanban-tela .kb-pe .av-pessoa.xs{width:24px;height:24px;border-radius:10px;font-size:25px;flex:none;}
+html[data-identidade="espectro"] .kanban-tela .kb-pe .av-pessoa.xs span{font-size:9px;line-height:1;}
+
+/* ---------------------------------------------------------------- lista */
+html[data-identidade="espectro"] .kanban-tela .kb-tabela{border-radius:26px;border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);background:var(--card);}
+html[data-identidade="espectro"] .kanban-tela .kb-th,
+html[data-identidade="espectro"] .kanban-tela .kb-tr{padding:12px 22px;gap:14px;}
+html[data-identidade="espectro"] .kanban-tela .kb-th{background:none;border-bottom:1px solid var(--borda);font-size:11.5px;font-weight:400;letter-spacing:.14em;color:var(--ink-3);}
+html[data-identidade="espectro"] .kanban-tela .kb-ord.on{color:#7328A5;}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-ord.on{color:var(--acento);}
+html[data-identidade="espectro"] .kanban-tela .kb-tr{border-top:0;border-bottom:1px solid var(--borda);font-size:13.5px;min-height:58px;}
+html[data-identidade="espectro"] .kanban-tela .kb-tr:last-child{border-bottom:0;}
+html[data-identidade="espectro"] .kanban-tela .kb-tr b{font-weight:400;font-size:14px;}
+html[data-identidade="espectro"] .kanban-tela .kb-tr-titulo small{font-size:12px;color:var(--ink-3);}
+html[data-identidade="espectro"] .kanban-tela :is(.kb-chip, .kb-tr .kb-ap){display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:400;}
+html[data-identidade="espectro"] .kanban-tela .kb-chip:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
+html[data-identidade="espectro"] .kanban-tela .kb-chip.a_fazer{background:var(--neutro-bg);color:var(--neutro);}
+html[data-identidade="espectro"] .kanban-tela .kb-chip.producao{background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"] .kanban-tela .kb-chip.revisao{background:var(--ambar-bg);color:var(--ambar);}
+html[data-identidade="espectro"] .kanban-tela .kb-chip.aguardando_cliente{background:var(--laranja-bg);color:var(--laranja);}
+html[data-identidade="espectro"] .kanban-tela .kb-chip.ajustes{background:var(--erro-bg);color:var(--erro);}
+html[data-identidade="espectro"] .kanban-tela .kb-chip:is(.pronto, .concluida){background:var(--ok-bg);color:var(--ok);}
+html[data-identidade="espectro"] .kanban-tela .estado-b7{border-radius:26px;}
+
+/* ---------------------------------------------------------------- gaveta da demanda */
+html[data-identidade="espectro"] .kb-drawer-fundo{background:rgba(10,16,51,.32);backdrop-filter:blur(3px);}
+html[data-identidade="espectro"] .kb-drawer{border-left:1px solid var(--borda);border-radius:26px 0 0 26px;box-shadow:-24px 0 60px rgba(10,16,51,.16);}
+html[data-identidade="espectro"] .kb-dr-cab{padding:22px 24px 0;}
+html[data-identidade="espectro"] .kb-dr-cab h3{font-size:24px;font-weight:400;letter-spacing:0;line-height:1.2;margin:14px 0 10px;}
+html[data-identidade="espectro"] .kb-dr-meta{font-size:12.5px;}
+html[data-identidade="espectro"] .kb-dr-abas{margin:0 -24px;padding:0 24px;}
+html[data-identidade="espectro"] .kb-dr-abas button{font-size:13px;font-weight:400;padding:10px 12px;}
+html[data-identidade="espectro"] .kb-dr-abas button.on{color:#7328A5;border-bottom-color:#7328A5;}
+html[data-identidade="espectro"][data-theme="dark"] .kb-dr-abas button.on{color:var(--acento);border-bottom-color:var(--acento);}
+html[data-identidade="espectro"] .kb-dr-abas button b{font-weight:400;}
+html[data-identidade="espectro"] .kb-dr-corpo{padding:18px 24px 26px;}
+html[data-identidade="espectro"] .kb-dr-pe{padding:14px 24px;}
+html[data-identidade="espectro"] :is(.kb-dr-campo, .kd-bloco) small{font-size:11.5px;font-weight:400;letter-spacing:.14em;color:var(--ink-3);}
+html[data-identidade="espectro"] .kd-vinculo,
+html[data-identidade="espectro"] .kd-vinculo-fixo{border-radius:18px;}
+html[data-identidade="espectro"] .kd-vinculo b{font-weight:400;}
+html[data-identidade="espectro"] .kd-mais summary{font-weight:400;}
+
+/* ---------------------------------------------------------------- escuro */
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-col{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-card{background:var(--card);border-color:var(--esp-cartao-borda);}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-card:hover{box-shadow:0 12px 28px rgba(0,0,0,.35);}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-col[data-coluna="producao"] header b.kb-etapa,
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-chip.producao,
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-ap.parcial{background:rgba(181,123,230,.16);color:#C9A0F0;}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-col:has(.kb-lista.sobre){background:rgba(115,40,165,.22);outline-color:#B57BE6;}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-card.arrastando{border-color:#B57BE6;box-shadow:0 18px 36px rgba(0,0,0,.5);}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-concluidas.on{background:rgba(181,123,230,.16);border-color:#B57BE6;color:#C9A0F0;}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-concluidas.on b{background:rgba(255,255,255,.08);color:#C9A0F0;}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-barra select.kb-filtro.ativo,
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .gl-bt-filtros.on{border-color:#B57BE6;color:#C9A0F0;}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-busca{box-shadow:none;}
+html[data-identidade="espectro"][data-theme="dark"] .kb-drawer-fundo{background:rgba(3,4,15,.6);}
+html[data-identidade="espectro"][data-theme="dark"] .kb-drawer{box-shadow:-24px 0 60px rgba(0,0,0,.5);}
+
+/* ---------------------------------------------------------------- celular */
+@media (max-width:760px){
+  html[data-identidade="espectro"] .kanban-tela .kb-cab{margin:0 0 16px;align-items:center;}
+  html[data-identidade="espectro"] .kanban-tela .kb-cab h1{font-size:32px !important;}
+  html[data-identidade="espectro"] .kb-kicker{font-size:10.5px;margin-bottom:6px;}
+  html[data-identidade="espectro"] .kanban-tela .kb-cab .kb-nova{width:44px !important;height:44px !important;min-height:44px;padding:0 !important;border-radius:22px !important;}
+  html[data-identidade="espectro"] .kanban-tela .kb-busca-cx{flex:1 1 auto;min-width:0;}
+  html[data-identidade="espectro"] .kanban-tela .kb-movel-sel{gap:8px;}
+  html[data-identidade="espectro"] .kanban-tela .kb-movel-sel button{min-height:36px;height:36px;padding:0 14px;border-radius:18px;font-size:13px;font-weight:400;
+    background:var(--card);border:1px solid var(--borda-forte);color:var(--ink-3);}
+  html[data-identidade="espectro"] .kanban-tela .kb-movel-sel button b{font-size:11.5px;font-weight:400;background:var(--suave);color:var(--ink-3);}
+  html[data-identidade="espectro"] .kanban-tela .kb-movel-sel button.on{background:#001561;border-color:#001561;color:#fff;box-shadow:none;}
+  html[data-identidade="espectro"] .kanban-tela .kb-movel .kb-col header{display:none;}
+  html[data-identidade="espectro"] .kanban-tela .kb-movel-sel button.on b{background:rgba(255,255,255,.18);color:#fff;}
+  html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-movel-sel button.on{background:#7328A5;border-color:#7328A5;}
+  html[data-identidade="espectro"] .kanban-tela .kb-movel .kb-col{min-height:0;max-height:none;padding:12px;border-radius:24px;}
+  html[data-identidade="espectro"] .kanban-tela .kb-movel .kb-card{padding:14px;}
+  html[data-identidade="espectro"] .kanban-tela .kb-movel .kb-mover{width:32px;height:32px;margin:-8px -8px -8px 0;}
+  html[data-identidade="espectro"] .kanban-tela .kb-tabela{border-radius:22px;}
+  html[data-identidade="espectro"] .kb-drawer{border-radius:0;}
+}

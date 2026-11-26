@@ -150,7 +150,7 @@ B7.Design = (function () {
     if (aba) F.aba = aba;
     if (!F.aba) F.aba = ehDesigner() ? 'fila' : 'todas';
 
-    painel().innerHTML = '<div class="conteudo design-tela"><div class="cab-conteudo"><div><p class="v4-sobre">Fila de criação</p><h1>Produção de Design</h1>' +
+    painel().innerHTML = '<div class="conteudo design-tela"><div class="cab-conteudo ds2-cab"><div><p class="v4-sobre">Fila de criação</p><h1>Design</h1>' +
       '<p>' + (ehDesigner() ? 'Acompanhe as linhas editoriais e peças em produção.' : 'A fila de produção visual da equipe.') + '</p></div></div>' +
       B7.UI.skeleton('cards', { n: 6, titulo: false }) + '</div>';
 
@@ -165,7 +165,8 @@ B7.Design = (function () {
     const equipe = ehEquipe();
     painel().innerHTML = '<div class="conteudo entra design-tela">' +
       /* 4.49.4: cabeçalho no padrão novo (selo + sobretítulo + título) e números do momento */
-      '<div class="cab-conteudo ds2-cab"><div class="ds2-tit"><span class="ds2-selo" aria-hidden="true">' + IC_DS2 + '</span><div><p class="v4-sobre">Fila de criação</p><h1>Produção de Design</h1>' +
+      '<div class="cab-conteudo ds2-cab"><div class="ds2-tit"><span class="ds2-selo" aria-hidden="true">' + IC_DS2 + '</span><div><p class="v4-sobre">' +
+        (equipe ? (n => 'Fila da equipe · ' + n + (n === 1 ? ' peça' : ' peças'))(dados.filter(d => d.status !== 'finalizado').length) : 'Fila de criação') + '</p><h1>Design</h1>' +
       '<p>' + (ehDesigner() ? 'Acompanhe as linhas editoriais e peças em produção.'
                             : 'A fila de produção visual da equipe.') + '</p></div></div>' +
       (pode('design.criar') ? '<button class="b pri" id="ds-nova" aria-label="Nova demanda de Design"><span class="ds-nova-mais" aria-hidden="true">+</span><span class="ds-nova-tx">Nova demanda de Design</span></button>' : '') + '</div>' +
@@ -713,6 +714,14 @@ B7.Design = (function () {
     assinar();
   }
 
+  /* "Júlia, 6 peças na sua fila" — as minhas que ainda não foram finalizadas */
+  function tituloFila(minhas) {
+    const u = B7.Auth.usuario() || {};
+    const primeiro = ((u.nome || u.username || '').trim().split(/\s+/)[0]) || '';
+    const n = minhas.filter(d => d.status !== 'finalizado').length;
+    if (!n) return saudacao();
+    return (primeiro ? primeiro + ', ' : '') + n + (n === 1 ? ' peça' : ' peças') + ' na sua fila';
+  }
   function saudacao() {
     const u = B7.Auth.usuario() || {};
     const primeiro = ((u.nome || u.username || '').trim().split(/\s+/)[0]) || '';
@@ -755,15 +764,17 @@ B7.Design = (function () {
       '<b>' + n + '</b><span>' + r + '</span></button>';
 
     painel().innerHTML = '<div class="conteudo entra design-tela dsc-tela" id="dsc-raiz">' +
-      '<header class="dsc-cab"><div><h1>' + esc(saudacao()) + '</h1><p>' + esc(sub) + '</p></div>' +
-        '<a class="b fina contorno" href="#/design">Ver toda a fila</a></header>' +
-
+      /* Espectro: título da tela + faixa no degradê com a fila e os números */
+      '<div class="cab-conteudo dsc-pcab"><div><p class="v4-sobre">Sua fila de peças</p><h1>Central de Design</h1></div>' +
+        '<a class="b fina contorno" href="#/design">Ver toda a fila</a></div>' +
+      '<header class="dsc-cab dsc-hero"><div class="dsc-hero-tx"><p class="dsc-hero-rot">CENTRAL DE DESIGN</p>' +
+        '<h2>' + esc(tituloFila(minhas)) + '</h2><p>' + esc(sub) + '</p></div>' +
       (nada ? '' : '<div class="dsc-nums">' +
         num(precisa.length, precisa.length === 1 ? 'precisa de mim' : 'precisam de mim', 'precisa', true) +
         num(emCriacao, 'em criação', 'continuar') +
         num(esperando, 'esperando revisão', 'linhas') +
         num(semDono.length, semDono.length === 1 ? 'disponível para assumir' : 'disponíveis para assumir', 'disponiveis') +
-      '</div>') +
+      '</div>') + '</header>' +
 
       (precisa.length ? '<section class="dsc-sec dsc-precisa" id="dsc-precisa"><h2>Precisa de mim <span>' + precisa.length + '</span></h2>' +
         '<div class="dsc-fila">' + precisa.map(linhaPrecisa).join('') + '</div></section>' : '') +
@@ -1444,42 +1455,40 @@ B7.Design = (function () {
     op = op || {};
     const info = prazoInfo(d);
     const feedback = d.ultima_versao_estado === 'ajuste_solicitado';
-    return '<article class="ds-card' + (d.prioridade === 'urgente' ? ' urgente' : d.prioridade === 'alta' ? ' alta' : '') + '" ' +
+    /* Espectro: prévia em cima com a etiqueta de situação por cima,
+       cliente, título e "Responsável · vN" embaixo. Peça vencida mostra
+       "Atrasado" na etiqueta (é o prazo real, o mesmo de prazoInfo). */
+    const selo = info && info.atrasada ? ['erro', 'Atrasado'] : [TOM_STATUS[d.status] || 'neutro', rotuloStatus(d.status)];
+    return '<article class="ds-card' + (op.grupo ? ' grupo' : '') + (d.prioridade === 'urgente' ? ' urgente' : d.prioridade === 'alta' ? ' alta' : '') + '" ' +
       'data-peca="' + esc(d.id) + '" tabindex="0" role="button" aria-label="' + esc(d.titulo || d.conteudo_titulo || 'Peça de Design') + '">' +
-      '<div class="ds-card-topo">' +
+      '<div class="ds-card-midia">' +
         (fontePrevia(d) ? '<div class="ds-thumb" data-previa="' + esc(fontePrevia(d)) + '"><span class="ds-thumb-esq"></span></div>'
           : '<div class="ds-thumb ds-thumb-vazia">' + iconeTipo(d.tipo) + '</div>') +
-        '<div class="ds-card-info">' +
-          '<span class="ds-tipo">' + esc(rotuloTipo(d.tipo)) + '</span>' +
-          '<h4>' + esc(d.titulo || d.conteudo_titulo || 'Sem título') + '</h4>' +
-          (d.cliente_nome ? '<span class="ds-cli">' + esc(d.cliente_nome) + (d.linha_nome && !op.compacto ? ' · ' + esc(d.linha_nome) : '') + '</span>' : '<span class="ds-cli sem">Interno</span>') +
-        '</div>' +
+        '<span class="ds-card-selo t-' + selo[0] + '"><i></i>' + esc(selo[1]) + '</span>' +
       '</div>' +
-      cartaoRodape(d, op, info, feedback) +
+      '<div class="ds-card-info">' +
+        '<p class="ds-cli' + (d.cliente_nome ? '' : ' sem') + '">' + esc(d.cliente_nome || 'Interno') + (d.linha_nome && !op.compacto ? ' · ' + esc(d.linha_nome) : '') + '</p>' +
+        '<h4>' + esc(d.titulo || d.conteudo_titulo || 'Sem título') + '</h4>' +
+        cartaoRodape(d, op, info, feedback) +
+      '</div>' +
     '</article>';
   }
+  const TOM_STATUS = { aguardando_producao: 'neutro', em_criacao: 'violeta', revisao_interna: 'violeta', ajustes: 'ambar', ajustes_cliente: 'ambar',
+    aprovado_interno: 'ok', aguardando_cliente: 'neutro', aprovado_cliente: 'ok', finalizado: 'ok' };
 
-  /* rodapé do cartão. No quadro da equipe (compacto) a coluna já é o
-     status, então tudo cabe numa linha só: responsável à esquerda;
-     ajuste pendente, versão e prazo à direita. Dentro de um grupo de
-     cliente sem responsável nem prazo não há o que dizer — o grupo já
-     diz "sem responsável" e tem o botão Atribuir. */
+  /* rodapé do cartão: "Responsável · vN" à esquerda; ajuste pendente e
+     prazo à direita. Dentro de um grupo de cliente sem responsável nem
+     prazo não há o que dizer — o grupo já diz "sem responsável" e tem o
+     botão Atribuir. */
   function cartaoRodape(d, op, info, feedback) {
-    const versao = d.ultima_versao ? '<span class="ds-v">V' + String(d.ultima_versao).padStart(2, '0') + '</span>' : '';
+    const versao = d.ultima_versao ? ' · v' + d.ultima_versao : '';
     const ajuste = feedback ? '<span class="ds-feedback">Ajuste pendente</span>' : '';
     const prazo = info ? '<span class="ds-prazo' + (info.atrasada ? ' atrasada' : info.hoje ? ' hoje' : '') + '">' + esc(info.txt) + '</span>' : '';
-    const resp = d.designer_nome
-      ? '<span class="ds-resp">' + B7.UI.avatarPessoa({ nome: d.designer_nome, avatar_url: d.designer_avatar }, 'xs') +
-          '<b>' + esc(d.designer_nome.split(/\s+/)[0]) + '</b></span>'
-      : '<span class="ds-resp-vazio"><span class="ds-sem-resp"></span>Sem responsável</span>';
-    if (!op.compacto) {
-      return '<div class="ds-tags"><span class="ds-chip ' + esc(d.status) + '">' + esc(rotuloStatus(d.status)) + '</span>' + versao + ajuste + '</div>' +
-        '<div class="ds-pe">' + resp + prazo + '</div>';
-    }
-    const cliente = d.status === 'ajustes_cliente' ? '<span class="ds-chip ajustes_cliente">Cliente</span>' : '';
     if (op.grupo && !d.designer_nome && !prazo && !ajuste && !versao) return '';
-    return '<div class="ds-pe">' + (op.grupo && !d.designer_nome ? '' : resp) +
-      '<span class="ds-pe-dir">' + cliente + ajuste + versao + prazo + '</span></div>';
+    const resp = d.designer_nome
+      ? '<span class="ds-resp">' + esc(d.designer_nome.split(/\s+/)[0]) + versao + '</span>'
+      : '<span class="ds-resp-vazio">' + (op.grupo ? (d.ultima_versao ? 'v' + d.ultima_versao : '') : 'Sem responsável' + versao) + '</span>';
+    return '<div class="ds-pe">' + resp + '<span class="ds-pe-dir">' + ajuste + prazo + '</span></div>';
   }
 
   /* qual caminho usar pra desenhar a prévia de uma peça, sem nunca
@@ -3001,15 +3010,9 @@ B7.Design = (function () {
       '<header class="ds-ws-topo">' +
         '<button class="ico ds-ws-voltar" data-fechar aria-label="Fechar">←</button>' +
         '<div class="ds-ws-topo-tx">' +
-          '<div class="ds-ws-topo-linha1">' +
-            '<span class="ds-tipo">' + esc(rotuloTipo(d.tipo)) + '</span>' +
-            '<span class="ds-chip ' + esc(d.status) + '">' + esc(rotuloStatus(d.status)) + '</span>' +
-          '</div>' +
+          '<p class="ds-ws-topo-rot">' + esc(d.cliente_nome || 'Demanda interna') +
+            (versaoAtual && versaoAtual.numero ? ' · versão ' + versaoAtual.numero : '') + '</p>' +
           '<h3>' + esc(d.titulo || d.conteudo_titulo || 'Sem título') + '</h3>' +
-          '<div class="ds-ws-topo-meta">' +
-            (d.cliente_nome ? '<span>' + esc(d.cliente_nome) + '</span>' : '<span>Demanda interna</span>') +
-            (d.linha_nome ? '<span>· ' + esc(d.linha_nome) + '</span>' : '') +
-          '</div>' +
         '</div>' +
         '<button class="ico" data-fechar aria-label="Fechar">✕</button>' +
       '</header>' +
@@ -3021,7 +3024,13 @@ B7.Design = (function () {
           conteudoPrincipal(d) +
         '</div>' +
         '<div class="ds-ws-lateral">' +
-          acaoPrimariaHTML(acao) +
+          /* Espectro: a ficha da peça — situação, título, formato e cliente,
+             os campos de responsável/prazo/prioridade e a ação do momento */
+          '<div class="ds-ws-ficha">' +
+          '<span class="ds-card-selo t-' + (TOM_STATUS[d.status] || 'neutro') + '"><i></i>' + esc(rotuloStatus(d.status)) + '</span>' +
+          '<p class="ds-ws-ficha-tit">' + esc(d.titulo || d.conteudo_titulo || 'Sem título') + '</p>' +
+          '<p class="ds-ws-ficha-meta">' + esc(d.cliente_nome || 'Demanda interna') + ' · ' + esc(rotuloTipo(d.tipo)) +
+            (d.linha_nome ? ' · ' + esc(d.linha_nome) : '') + '</p>' +
           (podeCompartilhar ? '<div class="ds-dr-compartilhar">' +
               '<small>OU ATRIBUIR A UM COLEGA DESTA LINHA</small>' +
               '<div class="ds-dr-compartilhar-linha">' +
@@ -3047,6 +3056,8 @@ B7.Design = (function () {
                       : '<div class="ds-dr-valor">' + esc(rotuloPrioridade(d.prioridade)) + '</div>') +
             '</label>' +
             '<span class="ds-dr-salvo" id="dv-salvo" aria-live="polite"></span>' +
+          '</div>' +
+          acaoPrimariaHTML(acao) +
           '</div>' +
           blocoDecisaoCliente(d, x) +
 

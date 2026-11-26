@@ -250,6 +250,8 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
   /* o "modo leve" (js/desempenho.js) pinta o topo com !important e id no seletor: sem isto, vira uma faixa escura sobre a aurora */
   html.modo-leve[data-identidade="espectro"] body[data-shell="interno"] #tela-dashboard .topo.topo-global,
   html[data-identidade="espectro"] body.painel-rolou[data-shell="interno"] #tela-dashboard .topo.topo-global{background:transparent !important;box-shadow:none !important;border-bottom-color:transparent !important;}
+  /* margem lateral única para todas as telas (algumas vinham com 20px do visual antigo) */
+  html[data-identidade="espectro"] body[data-shell="interno"] #painel-dashboard > .conteudo{padding-left:26px;padding-right:26px;}
   /* o conteúdo que rola some num esfumado sob o topo, em vez de um corte seco */
   html[data-identidade="espectro"] body.painel-rolou[data-shell="interno"] #painel-dashboard{
     -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 22px);mask-image:linear-gradient(to bottom, transparent 0, #000 22px);}
