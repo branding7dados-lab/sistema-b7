@@ -17,8 +17,8 @@ B7.Slides = (function () {
   const MESES = B7.UI.MESES;
   /* Espectro: marca nova (assets/brand/espectro); lida a cada folha, porque a identidade troca sem recarregar */
   const ESPECTRO_ID = () => typeof document !== 'undefined' && document.documentElement.getAttribute('data-identidade') === 'espectro';
-  const MARCA = () => ESPECTRO_ID() ? 'assets/brand/espectro/simbolo.svg' : 'assets/brand/symbol-color.png';
-  const LOGO = () => ESPECTRO_ID() ? 'assets/brand/espectro/horizontal-branco.svg' : 'assets/brand/logo-white.png';
+  const MARCA = () => ESPECTRO_ID() ? B7.Folha.svgPronto('assets/brand/espectro/simbolo.svg', 2117, 2072) : 'assets/brand/symbol-color.png';
+  const LOGO = () => ESPECTRO_ID() ? B7.Folha.svgPronto('assets/brand/espectro/horizontal-branco.svg', 2971, 654) : 'assets/brand/logo-white.png';
 
   const vazio = t => !String(t || '').trim();
   const paragrafos = txt => String(txt || '').split('\n').map(s => s.trim()).filter(Boolean)
