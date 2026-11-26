@@ -60,7 +60,7 @@ B7.PerfilLateral = (function () {
   function avatar(u, classe) {
     const html = B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'pf-av-in') : '';
     return '<span class="pf-av ' + (classe || '') + '">' + html +
-      '<i class="pf-ponto" style="--pf-cor:' + corDe(estado.status) + '" aria-hidden="true"></i></span>';
+      '<i class="pf-ponto" data-st="' + esc(estado.status) + '" style="--pf-cor:' + corDe(estado.status) + '" aria-hidden="true"></i></span>';
   }
 
   /* ----------------------------------------------------------- cartão */
@@ -97,25 +97,30 @@ B7.PerfilLateral = (function () {
     const sup = B7.Auth.superadmin && B7.Auth.superadmin();
     const outro = !!(B7.Auth.naContaDeOutro && B7.Auth.naContaDeOutro());
     const temaAtual = (() => { let t = null; try { t = localStorage.getItem('b7_tema'); } catch (e) {} return t === 'dark' || t === 'light' ? t : 'sistema'; })();
-    const num = (n, rot, ir, cls) => '<button type="button" class="pf-num' + (cls || '') + '" data-ir-pf="' + ir + '"><b>' + (dia ? n : '–') + '</b><small>' + rot + '</small></button>';
+    /* Espectro: cada número do dia é uma linha com ícone (quadro "Perfil lateral") */
+    const icDia = p => '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
+    const ICD = { hoje: icDia('<circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.8 2.8L16.5 9"/>'), atrasadas: icDia('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+      gravacoes: icDia('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>') };
+    const num = (n, rot, ir, cls, ic) => '<button type="button" class="pf-num' + (cls || '') + '" data-ir-pf="' + ir + '">' + (ICD[ic] || '') + '<b>' + (dia ? n : '–') + '</b><small>' + rot + '</small></button>';
     return '<div class="pf-painel">' +
       '<div class="pf-topo' + (sup === 'supremo' && !outro ? ' pf-topo-prog' : '') + '">' + avatar(u, 'pf-av-g') +
         '<div class="pf-quem"><b>' + esc(u.nome || u.username) + '</b>' + cargosHTML(u, sup, outro) + '</div>' +
         '<button type="button" class="pf-editar" data-pf="perfil">Editar perfil</button></div>' +
-      '<div class="pf-rot">Meu status</div>' +
+      '<div class="pf-rot">Status</div>' +
       '<div class="pf-st" role="radiogroup" aria-label="Meu status">' + STATUS.map(([k, r, c]) =>
         '<button type="button" role="radio" aria-checked="' + (k === estado.status) + '" class="' + (k === estado.status ? 'on' : '') + '" data-st="' + k + '" style="--pf-cor:' + c + '"><i></i>' + r + '</button>').join('') + '</div>' +
       '<input class="pf-recado" id="pf-recado" maxlength="80" placeholder="Recado curto (ex.: volto às 15h)" value="' + esc(estado.recado) + '" aria-label="Recado do status">' +
       (estado.status === 'nao_perturbe' ? '<p class="pf-dica">Os avisos ficam guardados no sino, sem som. Ao voltar, chega um resumo.</p>' : '') +
       '<div class="pf-rot">Meu dia</div>' +
-      '<div class="pf-dia">' + num(dia && dia.hoje, 'para hoje', '#/painel') + num(dia && dia.atrasadas, 'atrasadas', '#/painel', dia && dia.atrasadas ? ' at' : '') +
-        num(dia && dia.gravacoes, 'gravações hoje', '#/calendario') + '</div>' +
+      '<div class="pf-dia">' + num(dia && dia.hoje, 'para hoje', '#/painel', '', 'hoje') + num(dia && dia.atrasadas, 'atrasadas', '#/painel', dia && dia.atrasadas ? ' at' : '', 'atrasadas') +
+        num(dia && dia.gravacoes, 'gravações hoje', '#/calendario', '', 'gravacoes') + '</div>' +
+      '<div class="pf-rot">Tema</div>' +
+      '<div class="pf-tema-l"><div class="pf-tema" role="radiogroup" aria-label="Tema">' +
+        [['light', 'Claro'], ['dark', 'Escuro'], ['sistema', 'Aparelho']].map(([k, r]) => '<button type="button" role="radio" aria-checked="' + (k === temaAtual) + '" class="' + (k === temaAtual ? 'on' : '') + '" data-tema="' + k + '">' + r + '</button>').join('') + '</div></div>' +
       '<div class="pf-rot">Atalhos</div>' +
       '<div class="pf-lista">' +
         (B7.Perm && B7.Perm.podeRota('config') ? '<button type="button" class="pf-it" data-pf="config">' + IC.config + 'Preferências e configurações</button>' : '') +
         (sup && !outro ? '<button type="button" class="pf-it" data-pf="super">' + IC.super + 'Super admin</button>' : '') +
-        '<div class="pf-it pf-tema-l">' + IC.tema + 'Tema<div class="pf-tema" role="radiogroup" aria-label="Tema">' +
-          [['light', 'Claro'], ['dark', 'Escuro'], ['sistema', 'Auto']].map(([k, r]) => '<button type="button" role="radio" aria-checked="' + (k === temaAtual) + '" class="' + (k === temaAtual ? 'on' : '') + '" data-tema="' + k + '">' + r + '</button>').join('') + '</div></div>' +
         (B7.Console ? '<button type="button" class="pf-it pf-ent" data-pf="entreter" role="switch" aria-checked="' + B7.Console.ligado() + '">' +
           '<span class="pf-ent-ic" aria-hidden="true">🎮</span>Modo entretenimento<i class="pf-chave' + (B7.Console.ligado() ? ' on' : '') + '" aria-hidden="true"></i></button>' : '') +
         '<button type="button" class="pf-it" data-pf="ajuda">' + IC.ajuda + 'Ajuda e tutoriais</button>' +
@@ -194,6 +199,9 @@ B7.PerfilLateral = (function () {
     const pop = document.createElement('div');
     pop.className = 'pf-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Sua conta');
     pop.innerHTML = htmlPainel();
+    /* véu atrás do painel (só a identidade Espectro o pinta: lá o painel é uma gaveta à direita) */
+    const veu = document.createElement('div'); veu.className = 'pf-veu'; veu.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(veu);
     document.body.appendChild(pop);
     ligar(pop);
     posicionar(pop, card);
@@ -207,7 +215,7 @@ B7.PerfilLateral = (function () {
       document.removeEventListener('pointerdown', fora, true); document.removeEventListener('keydown', tecla, true);
       removeEventListener('resize', reposicionar);
       card.classList.remove('on'); card.setAttribute('aria-expanded', 'false');
-      pop.classList.add('saindo'); setTimeout(() => pop.remove(), 160);
+      pop.classList.add('saindo'); veu.classList.add('saindo'); setTimeout(() => { pop.remove(); veu.remove(); }, 160);
     } };
     lerDia(pop);
   }

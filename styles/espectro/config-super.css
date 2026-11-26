@@ -9,7 +9,10 @@
 /* ---------------------------------------------------------------- estrutura */
 html[data-identidade="espectro"] .sa{gap:16px;}
 html[data-identidade="espectro"] .sa-corpo{gap:16px;}
-html[data-identidade="espectro"] .sa-grade{display:flex;flex-direction:column;align-items:stretch;gap:16px;}
+/* as grades viram uma coluna só (display:contents: os cartões entram na pilha do corpo) */
+html[data-identidade="espectro"] .sa-grade{display:contents;}
+html[data-identidade="espectro"] .sa-corpo > .sa-tiles{order:-2;}
+html[data-identidade="espectro"] .sa-bloco-backup{order:-1;}
 
 /* ---------------------------------------------------------------- números: cartões de cor cheia */
 html[data-identidade="espectro"] .sa-tiles{display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:16px;}
@@ -134,7 +137,7 @@ html[data-identidade="espectro"] .sa-lista > :is(.sa-pedido, .sa-lim, .sa-item).
 html[data-identidade="espectro"] .sa-lista > :is(.sa-pedido, .sa-lim, .sa-item):is(.sa-tab-lim, .sa-tab-reg),
 html[data-identidade="espectro"] .sa-aval-lista > .sa-item.sa-tab-aval{display:grid;gap:14px;align-items:center;margin:0;padding:12px 18px;border-top:1px solid var(--borda);font-size:13.5px;line-height:1.45;color:var(--ink);}
 html[data-identidade="espectro"] .sa-tab-reg > span{min-width:0;overflow:hidden;text-overflow:ellipsis;}
-html[data-identidade="espectro"] .sa-tab-apoio{min-width:0;color:var(--ink-3);}
+html[data-identidade="espectro"] .sa .sa-tab-apoio{min-width:0;color:var(--ink-3);}
 
 /* pedidos para aprovar */
 html[data-identidade="espectro"] .sa-pedido.sa-tab-pedidos .sa-pedido-tx{min-width:0;display:flex;flex-direction:column;gap:2px;}
@@ -190,6 +193,7 @@ html[data-identidade="espectro"] .sa .b.perigo[disabled]:hover{background:var(--
 /* "Zona de risco": cartão com fio vermelho */
 html[data-identidade="espectro"] .sa-aviso-topo{display:flex;align-items:center;gap:14px;margin:0;padding:22px;border-radius:26px;box-sizing:border-box;
   background:var(--card);border:1px solid var(--erro);box-shadow:var(--sh-2);font-size:13px;line-height:1.45;color:var(--ink-3);}
+html[data-identidade="espectro"] .sa-aviso-topo b{display:block;font-size:14px;font-weight:400;color:var(--ink);}
 html[data-identidade="espectro"] .sa-aviso-topo svg{width:22px;height:22px;flex:none;color:var(--erro);fill:none;stroke:currentColor;}
 /* formulários do supremo: campo de 44 do quadro */
 html[data-identidade="espectro"] .sa-rot{margin:12px 0 6px;font-size:12.5px;font-weight:400;color:var(--ink-3);}
@@ -254,7 +258,7 @@ html[data-identidade="espectro"] .sa-nota-ch{font-weight:400;}
 
 /* ---------------------------------------------------------------- escuro */
 html[data-identidade="espectro"][data-theme="dark"] .sa-tile{box-shadow:inset 0 1px 0 rgba(255,255,255,.1);}
-html[data-identidade="espectro"][data-theme="dark"] .sa-bt-ic{background:rgba(255,255,255,.04);border-color:var(--borda-forte);}
+html[data-identidade="espectro"][data-theme="dark"] .sa-bt-ic:not(.sa-bt-nada){background:rgba(255,255,255,.04);border-color:var(--borda-forte);}
 html[data-identidade="espectro"][data-theme="dark"] .sa-aviso-topo{border-color:var(--erro);}
 html[data-identidade="espectro"][data-theme="dark"] .sa-item .b.contorno{background:rgba(255,255,255,.04);border-color:var(--borda-forte);}
 html[data-identidade="espectro"][data-theme="dark"] .sa-item .b.contorno:hover{border-color:var(--acento);color:var(--acento);}

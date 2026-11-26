@@ -386,7 +386,7 @@ B7.Super = (function () {
           (credito ? '<div class="sa-grande"><b>' + mil(credito.creditos) + '</b><span>e-mails restantes' + (credito.tipo === 'free' ? ' hoje' : '') + '</span></div><p class="sa-nota">Plano ' + esc(credito.tipo === 'free' ? 'gratuito (300 por dia)' : credito.tipo) + '.</p>' : '<p>Conta conectada.</p>')) +
         (esp() ? bloco('baixar', 'Backups', 'só super admin baixa · o banco continua sendo o Supabase: isto é segurança extra',
           '<div class="sa-lista"><div class="sa-item"><span class="sa-item-tx"><b>Backup completo</b><small>clientes, gravações, roteiros e cenas</small></span>' +
-          '<button type="button" class="b fina contorno" id="sa-backup">' + SVG(IC.baixar) + 'Baixar</button></div></div>') :
+          '<button type="button" class="b fina contorno" id="sa-backup">' + SVG(IC.baixar) + 'Baixar</button></div></div>', 'sa-bloco-backup') :
         bloco('baixar', 'Backup completo', 'só super admin baixa',
           '<p class="sa-nota">Um arquivo com clientes, gravações, roteiros e cenas. O banco continua sendo o Supabase: isto é segurança extra.</p>' +
           '<button type="button" class="b pri" id="sa-backup">' + SVG(IC.baixar) + 'Baixar backup</button>')) + '</div>';
@@ -425,7 +425,7 @@ B7.Super = (function () {
     const outros = d.admins.filter(a => a.superadmin !== 'supremo');
     const FUN = [['coordenador', 'Coordenador'], ['designer', 'Designer'], ['videomaker', 'Videomaker']];
     const opcoes = vazioRot => '<option value="">' + vazioRot + '</option>' + outros.map(a => '<option value="' + esc(a.id) + '">' + esc(a.nome) + (a.superadmin ? ' (super admin)' : '') + '</option>').join('');
-    cx.innerHTML = '<p class="sa-aviso-topo">' + SVG(IC.alerta) + '<span>Tudo aqui é sério e só o programador vê. Cada ação pede confirmação e fica no histórico.</span></p>' +
+    cx.innerHTML = '<p class="sa-aviso-topo">' + SVG(IC.alerta) + '<span>' + (esp() ? '<b>Zona de risco</b>' : '') + 'Tudo aqui é sério e só o programador vê. Cada ação pede confirmação e fica no histórico.</span></p>' +
       bloco('alerta', 'Emergência', emerg ? '<b class="sa-ruim">ligada agora</b>' : 'trava o sistema para todos, menos os super admins',
         emerg ? '<div class="sa-perigo-linha"><p><b>O sistema está travado</b> para a equipe, os administradores e os clientes. Só os super admins usam.</p>' +
             '<button type="button" class="b pri" id="sa-emerg-off">Desligar a emergência</button></div>'

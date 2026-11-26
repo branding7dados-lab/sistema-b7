@@ -6,6 +6,7 @@
    ícone numa caixa 34×34 (raio 14, fundo suave, traço violeta). */
 html[data-identidade="espectro"] .tp-menu.tp-menu-criar{width:300px;min-width:300px;max-width:min(300px,calc(100vw - 20px));padding:8px;
   border-radius:24px;border:1px solid var(--borda);background:var(--card);box-shadow:0 30px 70px rgba(10,16,51,.25);
+  -webkit-backdrop-filter:none;backdrop-filter:none;
   font-family:var(--b7-fonte);transform:translateY(-8px) scale(.97);transform-origin:top right;
   transition:opacity .2s ease-out,transform .45s cubic-bezier(.16,1,.3,1);}
 html[data-identidade="espectro"] .tp-menu.tp-menu-criar.mostrando{transform:none;}
@@ -49,6 +50,7 @@ html[data-identidade="espectro"][data-theme="dark"] .tp-menu-criar .tp-item:focu
    caixa), raio 10; o perigoso em vermelho. Sem cabeçalho nem rodapé. */
 html[data-identidade="espectro"] .lista.ctx-menu{width:240px;min-width:240px;max-width:min(240px,calc(100vw - 16px));padding:6px;
   border-radius:18px;border:1px solid var(--borda);background:var(--card);box-shadow:0 24px 60px rgba(10,16,51,.25);
+  -webkit-backdrop-filter:none;backdrop-filter:none;
   font-family:var(--b7-fonte);transform:translateY(-8px) scale(.97);
   transition:opacity .2s ease-out,transform .45s cubic-bezier(.16,1,.3,1);}
 html[data-identidade="espectro"] .lista.ctx-menu.mostrando{transform:none;}
@@ -168,4 +170,10 @@ html[data-identidade="espectro"][data-theme="dark"] .paleta .cp-item:hover{backg
   html[data-identidade="espectro"] .paleta .busca-cp input{font-size:17px;}
   html[data-identidade="espectro"] .paleta .cp-item{padding:11px 12px;}
   html[data-identidade="espectro"] .tp-folha .tp-item[data-criar]{padding:11px 12px;}
+  html[data-identidade="espectro"] .fundo-modal.tp-folha .modal:has(.tp-item[data-criar]){background:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none;border-radius:24px 24px 0 0;}
+  html[data-identidade="espectro"][data-theme="dark"] .fundo-modal.tp-folha .modal:has(.tp-item[data-criar]){background:#11143A;}
 }
+
+/* atalho de teclado à direita do item do Criar (N, C), como o "Ctrl N" do quadro */
+html[data-identidade="espectro"] .tp-menu-criar .tp-item[data-atalho]::after{content:attr(data-atalho);flex:none;font-family:var(--b7-fonte);
+  font-size:11.5px;color:var(--ink-3);}
