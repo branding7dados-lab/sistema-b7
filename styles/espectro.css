@@ -458,3 +458,53 @@ html[data-identidade="espectro"] .esp-login-assinatura{position:absolute;right:4
 @media (prefers-reduced-motion:reduce){
   html[data-identidade="espectro"] *{transition:none !important;}
 }
+
+/* =====================================================================
+   TROCA DE TELA — ESPECTRO (5.7.0)
+   Antes a tela antiga esmaecia devagar enquanto a nova já aparecia: as duas
+   ficavam uma por cima da outra (títulos embaralhados). Agora a antiga sai
+   rápido e inteira; a nova é revelada na diagonal da marca (120°, a mesma do
+   degradê Espectro), com uma faixa de luz Violeta → Magenta → Coral varrendo
+   junto. Só transform, opacidade e máscara: tudo na placa de vídeo.
+   O JS (js/app.js, trocarComMorph) põe o .esp-vt-feixe só na foto nova.
+   ===================================================================== */
+html[data-identidade="espectro"]::view-transition-old(b7-pagina){animation:espVtSai .16s cubic-bezier(.4,0,1,1) both;}
+html[data-identidade="espectro"]::view-transition-new(b7-pagina){animation:espVtEntra .56s cubic-bezier(.16,1,.3,1) .14s both;
+  -webkit-mask-image:linear-gradient(120deg,#000 42%,transparent 58%);mask-image:linear-gradient(120deg,#000 42%,transparent 58%);
+  -webkit-mask-size:300% 100%;mask-size:300% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;}
+@keyframes espVtSai{from{opacity:1;transform:none}to{opacity:0;transform:translateY(-6px) scale(.99)}}
+@keyframes espVtEntra{
+  from{opacity:0;transform:translateY(10px);-webkit-mask-position:100% 0;mask-position:100% 0}
+  35%{opacity:1}
+  to{opacity:1;transform:none;-webkit-mask-position:0 0;mask-position:0 0}}
+
+/* a faixa de luz: existe só durante a troca (some com o html.b7-vt) */
+.esp-vt-feixe{display:none;}
+html.b7-vt[data-identidade="espectro"] .esp-vt-feixe{display:block;position:fixed;inset:0;pointer-events:none;z-index:2147483000;view-transition-name:esp-feixe;
+  background:linear-gradient(120deg,transparent 38%,rgba(115,40,165,.28) 45%,rgba(224,47,117,.42) 50%,rgba(255,90,87,.28) 55%,transparent 62%);}
+html.b7-vt[data-identidade="espectro"][data-theme="dark"] .esp-vt-feixe{
+  background:linear-gradient(120deg,transparent 38%,rgba(115,40,165,.45) 45%,rgba(224,47,117,.6) 50%,rgba(255,90,87,.42) 55%,transparent 62%);}
+html[data-identidade="espectro"]::view-transition-group(esp-feixe){animation:none;z-index:2;}
+html[data-identidade="espectro"]::view-transition-new(esp-feixe){animation:espFeixe .62s cubic-bezier(.16,1,.3,1) .1s both;}
+@keyframes espFeixe{from{opacity:0;transform:translateX(-70%)}25%{opacity:1}to{opacity:0;transform:translateX(70%)}}
+
+/* modo leve: sem máscara nem faixa, só a troca limpa (sem sobrepor) */
+html.modo-leve[data-identidade="espectro"]::view-transition-new(b7-pagina){-webkit-mask-image:none;mask-image:none;animation-name:espVtEntraLeve;}
+@keyframes espVtEntraLeve{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){ .esp-vt-feixe{display:none !important;} }
+
+/* atalho "Central · os seus sistemas" (js/central-n7.js) no pé do menu: fechado, só o ícone, igual aos itens;
+   aberto, a linha com o nome. Antes ele não encolhia e o texto vazava para fora do menu. */
+@media (min-width:761px){
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7{width:52px;height:52px;min-height:52px;margin:0 auto 6px;padding:0;justify-content:center;gap:0;
+    border-radius:18px;background:transparent;border:0;color:var(--esp-menu-icone);box-sizing:border-box;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 span{display:none;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 svg{flex:0 0 22px;width:22px;height:22px;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7:hover{background:var(--suave);color:var(--ink);}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7:focus-visible{outline:2px solid #7328A5;outline-offset:2px;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7{width:calc(100% - 32px);height:auto;min-height:52px;margin:0 16px 6px;padding:8px 12px;
+    justify-content:flex-start;gap:12px;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 span{display:flex;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 b{font-weight:400;font-size:13.5px;color:var(--ink);}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 small{font-size:11.5px;color:var(--ink-3);}
+}
