@@ -38,9 +38,9 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
                        : window.matchMedia('(prefers-color-scheme: dark)').matches;
     document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
   } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
-  /* 4.93.0: identidade nova (Espectro) — liga/desliga por pessoa em Configurações → Aparência
-     (js/identidade.js). Antes da primeira pintura, para o visual antigo não piscar. */
-  try { if (JSON.parse(localStorage.getItem('b7_pref_identidade') || 'null') === 'espectro') document.documentElement.setAttribute('data-identidade', 'espectro'); } catch (e) {}
+  /* 5.0.0: a identidade nova (Espectro) é o padrão para todos. Só fica no visual antigo o aparelho
+     que escolheu "classico" em Configurações → Aparência (rede de segurança da equipe; js/identidade.js). */
+  try { if (JSON.parse(localStorage.getItem('b7_pref_identidade') || 'null') !== 'classico') document.documentElement.setAttribute('data-identidade', 'espectro'); } catch (e) { document.documentElement.setAttribute('data-identidade', 'espectro'); }
   /* zzz140: cor do sistema e data especial da abertura, a partir da cópia guardada no aparelho */
   try {
     var ap = JSON.parse(localStorage.getItem('b7_sis_aparencia') || 'null');
@@ -187,8 +187,31 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
 <link rel="stylesheet" href="styles/v4.css">
 <link rel="stylesheet" href="styles/leve.css">
 <link rel="stylesheet" href="styles/print.css">
-<!-- 4.93.0: identidade nova (Espectro), por último; só vale com html[data-identidade="espectro"] -->
+<!-- identidade Espectro (padrão desde a 5.0.0), por último; vale com html[data-identidade="espectro"] -->
 <link rel="stylesheet" href="styles/espectro.css">
+<!-- 5.1.0: uma folha por tela do redesenho Espectro -->
+<link rel="stylesheet" href="styles/espectro/panorama.css">
+<link rel="stylesheet" href="styles/espectro/clientes.css">
+<link rel="stylesheet" href="styles/espectro/cliente.css">
+<link rel="stylesheet" href="styles/espectro/gestao.css">
+<link rel="stylesheet" href="styles/espectro/gestao-extra.css">
+<link rel="stylesheet" href="styles/espectro/operacoes.css">
+<link rel="stylesheet" href="styles/espectro/linhas.css">
+<link rel="stylesheet" href="styles/espectro/publicacoes.css">
+<link rel="stylesheet" href="styles/espectro/calendario.css">
+<link rel="stylesheet" href="styles/espectro/oportunidades-trends.css">
+<link rel="stylesheet" href="styles/espectro/gravacoes.css">
+<link rel="stylesheet" href="styles/espectro/roteiros.css">
+<link rel="stylesheet" href="styles/espectro/video.css">
+<link rel="stylesheet" href="styles/espectro/design.css">
+<link rel="stylesheet" href="styles/espectro/producao.css">
+<link rel="stylesheet" href="styles/espectro/aprovacoes.css">
+<link rel="stylesheet" href="styles/espectro/semanas.css">
+<link rel="stylesheet" href="styles/espectro/legendas.css">
+<link rel="stylesheet" href="styles/espectro/conversas.css">
+<link rel="stylesheet" href="styles/espectro/config.css">
+<link rel="stylesheet" href="styles/espectro/painel.css">
+<link rel="stylesheet" href="styles/espectro/projetos-arquivo.css">
 </head>
 <body class="apurando">
 

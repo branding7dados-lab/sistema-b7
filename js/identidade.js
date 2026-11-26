@@ -1,12 +1,12 @@
 /* =====================================================================
    IDENTIDADE NOVA — DIREÇÃO ESPECTRO (4.93.0)
 
-   A nova identidade da Branding7 (manual 2026) entra atrás de uma chave:
-   cada pessoa da equipe liga em Configurações → Aparência → "Identidade
-   nova". Ligada, o <html> ganha data-identidade="espectro" e o
-   styles/espectro.css troca cores, fonte (Grimblade), componentes e a
-   casca (menu flutuante e topo). Desligada, nada muda. O cliente (Portal)
-   nunca vê a chave e continua no visual atual até a liberação geral.
+   A nova identidade da Branding7 (manual 2026). Desde a 5.0.0 é o PADRÃO
+   para todos, clientes inclusive: o <html> nasce com
+   data-identidade="espectro" e o styles/espectro.css troca cores, fonte
+   (Grimblade), componentes e a casca (menu flutuante e topo). Durante a
+   transição, a equipe pode voltar ao visual antigo neste aparelho em
+   Configurações → Aparência; o cliente (Portal) usa sempre a nova.
 
    O atributo é posto antes da primeira pintura pelo <head> do index.html
    (lê b7_pref_identidade); aqui ficam a troca dos logos e o liga/desliga.
@@ -62,14 +62,16 @@ B7.Identidade = (function () {
     bt.title = aberto ? 'Fechar o menu' : 'Abrir o menu';
   }
 
+  /* 5.0.0: a identidade nova é o padrão. O aparelho da equipe pode voltar ao visual antigo ("classico")
+     enquanto durar a transição; o cliente (Portal) usa sempre a nova. */
   function definir(ligar) {
-    try { B7.pref.gravar('identidade', ligar ? ESPECTRO : null); } catch (e) {}
-    if (ligar && !ehCliente()) html.setAttribute('data-identidade', ESPECTRO); else html.removeAttribute('data-identidade');
+    try { B7.pref.gravar('identidade', ligar ? null : 'classico'); } catch (e) {}
+    if (ligar || ehCliente()) html.setAttribute('data-identidade', ESPECTRO); else html.removeAttribute('data-identidade');
     aplicarLogos(); aplicarMenu();
   }
 
-  /* o Portal do cliente fica no visual atual (aparelho compartilhado, chave ligada por outra pessoa) */
-  function conferirPapel() { if (ehCliente() && ligada()) html.removeAttribute('data-identidade'); aplicarLogos(); aplicarMenu(); }
+  /* aparelho compartilhado em que alguém da equipe voltou ao visual antigo: o cliente vê a identidade nova */
+  function conferirPapel() { if (ehCliente() && !ligada()) html.setAttribute('data-identidade', ESPECTRO); aplicarLogos(); aplicarMenu(); }
 
   /* o tema troca os logos da casca (o menu é branco no claro e vidro no escuro) */
   new MutationObserver(() => { if (ligada()) aplicarLogos(); }).observe(html, { attributes: true, attributeFilter: ['data-theme'] });

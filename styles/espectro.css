@@ -5,10 +5,10 @@
    Telas e animações (direção Espectro)").
 
    Carregado por ÚLTIMO e TUDO preso a html[data-identidade="espectro"]:
-   com a chave desligada (Configurações → Aparência → Identidade nova)
-   este arquivo não muda nada. Primeira entrega: tokens, fonte Grimblade,
-   componentes e a casca (menu flutuante de 84 px e topo). Telas com
-   desenho próprio (login, Portal, ficha A4, TV) e animações vêm depois.
+   desde a 5.0.0 o atributo é o padrão de todos; quem voltou ao visual
+   antigo (Configurações → Aparência) fica sem ele e este arquivo não muda
+   nada. Feito: tokens, fonte Grimblade, componentes, casca, login e Portal.
+   Ficha A4, TV, animações e peças dos apps vêm depois.
 
    Os nomes de token do sistema (--violeta, --card, --ink…) são mantidos:
    o Espectro muda os VALORES, e as 37 folhas de estilo seguem iguais.
@@ -299,6 +299,34 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
   html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-bt span{display:inline !important;}
   html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-caixa{left:260px !important;}
 
+  /* 5.0.1: cartão da conta e "Visualizar como…" eram desenhados para a barra ESCURA (texto branco):
+     no menu branco sumiam, e fechado o cartão ficava com caixa e setas sobrando. */
+  html[data-identidade="espectro"] body[data-shell="interno"] .ver-como-bt{display:flex !important;align-items:center;width:48px !important;height:48px;min-height:48px !important;border-radius:18px !important;margin:0 auto;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .ver-como-bt svg{width:20px;height:20px;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .pf-card{width:48px;height:48px;padding:0 !important;margin:0 auto 4px !important;justify-content:center;gap:0;
+    background:none !important;border:0 !important;box-shadow:none !important;border-radius:18px;color:var(--ink);}
+  html[data-identidade="espectro"] body[data-shell="interno"] .pf-card :is(.pf-tx, :scope > svg),
+  html[data-identidade="espectro"] body[data-shell="interno"] .pf-card > svg{display:none !important;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .pf-card:hover{background:var(--suave) !important;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .pf-card .pf-av-in{border-radius:14px;}
+  /* aberto: cartão com nome e função, e a busca "Visualizar como…" em pílula */
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .pf-card{width:100%;height:auto;min-height:52px;padding:6px 10px !important;justify-content:flex-start;gap:11px;
+    background:var(--suave) !important;border-radius:18px;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .pf-card .pf-tx{display:flex !important;flex-direction:column;min-width:0;text-align:left;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .pf-card .pf-tx b{color:var(--ink) !important;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .pf-card .pf-tx small{color:var(--ink-3) !important;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .pf-card > svg{display:block !important;color:var(--ink-3) !important;margin-left:auto;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-bt{display:none !important;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-campo{display:flex !important;height:42px;border-radius:21px;padding:0 14px;gap:10px;
+    background:var(--card) !important;border:1px solid var(--borda) !important;color:var(--ink-3) !important;box-shadow:none;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-campo:focus-within{border-color:#7328A5 !important;box-shadow:0 0 0 3px rgba(115,40,165,.18);}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-campo input{color:var(--ink) !important;font-size:13px;font-weight:400;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-campo input::placeholder{color:var(--ink-3) !important;font-weight:400;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como{margin-bottom:6px;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-caixa{left:0 !important;right:0 !important;width:auto;border-radius:18px;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .lateral{overflow:visible;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .ver-como.como-outro .ver-como-bt{color:var(--acento) !important;}
+
   /* o conteúdo respira como no Espectro */
   html[data-identidade="espectro"] body[data-shell="interno"] .area{padding-left:4px;}
 }
@@ -317,8 +345,7 @@ html[data-identidade="espectro"] body:not([data-shell="interno"]) .esp-alterna-m
 /* ------------------------------------------------------------ PORTAL DO CLIENTE (4.94.0)
    A barra lateral vira o TOPO do Portal (88 px): o cliente à esquerda, as abas em pílula
    no meio (a ativa em Azul Matriz) e ajuda, sino e conta à direita. A saudação do início
-   vira a faixa em Azul Matriz com o padrão da lâmpada. O cliente só vê isto na liberação
-   geral; até lá, a equipe confere pela Prévia do Portal com a chave ligada. */
+   vira a faixa em Azul Matriz com o padrão da lâmpada. */
 @media (min-width:1081px){
   html[data-identidade="espectro"] body[data-shell="portal"] #app{flex-direction:column;position:relative;}
   html[data-identidade="espectro"] body[data-shell="portal"] .lateral{

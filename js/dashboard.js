@@ -2124,10 +2124,10 @@ B7.Dashboard = (function () {
         L({ ic: 'play', tom: 'azul', t: 'Refazer o tour', d: 'o passeio de 1 minuto pelo que você mais usa', botao: true, attrs: ' data-refazer-tour' })) : '');
 
     const secAparencia =
-      /* 4.93.0: identidade nova (Espectro) — só a equipe; o Portal fica no visual atual até a liberação geral */
-      (B7.Identidade && !B7.Auth.ehCliente() ? grupo('Identidade nova', 'A nova marca da Branding7 no sistema, em teste. Vale só para este aparelho: os clientes continuam vendo o visual atual.',
+      /* 5.0.0: a identidade nova (Espectro) é o padrão; a equipe pode voltar ao visual antigo neste aparelho durante a transição */
+      (B7.Identidade && !B7.Auth.ehCliente() ? grupo('Identidade nova', 'A nova marca da Branding7 já vale para todo mundo, clientes inclusive. Se algo atrapalhar o seu trabalho, dá para voltar ao visual antigo só neste aparelho, por enquanto.',
         L({ ic: 'tema', tom: 'violeta', t: 'Usar a identidade nova', cls: 'cfg-alterna',
-            d: 'cores, fonte e logos novos, menu flutuante e topo redesenhado',
+            d: 'desligue para voltar ao visual antigo neste aparelho (some quando a transição acabar)',
             dir: chave('identidade', B7.Identidade.ligada(), 'Usar a identidade nova') })) : '') +
       grupo('Visual', 'Vale só para este aparelho — cada pessoa da equipe ajusta o seu.',
         (B7.Aparencia ? L({ ic: 'tema', tom: 'rosa', t: 'Cor do sistema',

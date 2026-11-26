@@ -1,4 +1,4 @@
-/* 4.93.0: identidade nova (Espectro) atrás de uma chave — Configurações → Aparência → "Usar a identidade nova".
+/* 5.0.0: identidade nova (Espectro) como padrão de todos; a equipe pode voltar ao visual antigo em Configurações → Aparência.
    Chromium com o servidor simulado. PRINT=1 salva prints em testes/prints-wa/. */
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
@@ -39,20 +39,25 @@ const estado = () => pg.evaluate(() => {
     pref: localStorage.getItem('b7_pref_identidade') };
 });
 
-/* ---------------------------------------------------- desligada: nada muda */
-await pg.goto(URL0); await pg.waitForTimeout(1200);
+/* ---------------------------------------------------- 5.0.0: a identidade nova é o padrão */
+await pg.goto(URL0);
+ok((await pg.evaluate(() => document.documentElement.getAttribute('data-identidade'))) === 'espectro', 'aparelho sem escolha: o <html> já nasce com a identidade nova');
+await pg.waitForTimeout(1200);
 await entrar('admin'); await pg.waitForTimeout(500);
 let e = await estado();
-ok(!e.attr && /^Inter/.test(e.fonte) && e.largura > 200 && /symbol-white\.png$/.test(e.simbolo), 'desligada (padrão): visual atual, Inter, barra lateral larga e logo antigo (' + JSON.stringify(e) + ')');
+ok(e.attr === 'espectro' && /^Grimblade/.test(e.fonte) && e.pref === null, 'padrão para todos: identidade nova sem ninguém ligar nada (' + JSON.stringify(e) + ')');
 
-/* ---------------------------------------------------- ligar em Configurações → Aparência */
+/* ---------------------------------------------------- a equipe pode voltar ao visual antigo neste aparelho */
 await pg.evaluate(() => { location.hash = '#/config?s=aparencia'; }); await pg.waitForTimeout(1200);
 const linha = await pg.$('.cfg-alterna:has([data-chave="identidade"])');
-ok(!!linha, 'Configurações → Aparência tem "Usar a identidade nova"');
+ok(!!linha, 'Configurações → Aparência tem "Usar a identidade nova", ligada');
 if (linha) await linha.click();
 await pg.waitForTimeout(700);
 e = await estado();
-ok(e.attr === 'espectro' && e.pref === '"espectro"', 'ligar marca o <html> e guarda no aparelho');
+ok(!e.attr && e.pref === '"classico"' && /^Inter/.test(e.fonte) && e.largura > 200 && /symbol-white\.png$/.test(e.simbolo), 'desligar: visual antigo, Inter, barra larga e logo antigo, guardado no aparelho (' + JSON.stringify(e) + ')');
+await pg.click('.cfg-alterna:has([data-chave="identidade"])'); await pg.waitForTimeout(700);
+e = await estado();
+ok(e.attr === 'espectro' && e.pref === 'null', 'religar volta à identidade nova');
 ok(/^Grimblade/.test(e.fonte), 'a fonte vira a Grimblade (' + e.fonte + ')');
 ok(e.largura === 84, 'a barra lateral vira o menu flutuante de 84 px (' + e.largura + ')');
 ok(/espectro\/simbolo\.svg$/.test(e.simbolo), 'no claro, o menu é branco: símbolo novo colorido (' + e.simbolo + ')');
@@ -110,15 +115,16 @@ await pg.waitForTimeout(1200); await entrar('admin'); await pg.waitForTimeout(40
 await pg.evaluate(() => { location.hash = '#/config?s=aparencia'; }); await pg.waitForTimeout(1200);
 await pg.click('.cfg-alterna:has([data-chave="identidade"])'); await pg.waitForTimeout(600);
 e = await estado();
-ok(!e.attr && e.pref === 'null' && /^Inter/.test(e.fonte) && e.largura > 200 && /symbol-white\.png$/.test(e.simbolo), 'desligar volta o visual, a fonte, a barra e o logo de antes');
+ok(!e.attr && e.pref === '"classico"' && /^Inter/.test(e.fonte) && e.largura > 200 && /symbol-white\.png$/.test(e.simbolo), 'desligar volta o visual, a fonte, a barra e o logo de antes');
 ok(!(await pg.$('.esp-alterna-menu')), 'desligada, o botão de abrir o menu some');
 
-/* ---------------------------------------------------- cliente (Portal): nunca vê */
-await pg.evaluate(() => localStorage.setItem('b7_pref_identidade', JSON.stringify('espectro')));
-await pg.goto(URL0 + '?x=2'); await pg.waitForTimeout(1000);
+/* ---------------------------------------------------- cliente (Portal): sempre a identidade nova */
+await pg.goto(URL0 + '?x=2');
+ok(!(await pg.evaluate(() => document.documentElement.getAttribute('data-identidade'))), 'aparelho que escolheu o visual antigo abre nele');
+await pg.waitForTimeout(1000);
 await entrar('cliente');
 await pg.evaluate(() => B7.Identidade.conferirPapel());
-ok(!(await pg.evaluate(() => document.documentElement.getAttribute('data-identidade'))), 'cliente no aparelho com a chave ligada: o Portal fica no visual atual');
+ok((await pg.evaluate(() => document.documentElement.getAttribute('data-identidade'))) === 'espectro', 'cliente nesse mesmo aparelho: o Portal usa a identidade nova');
 
 await nav.close(); srv.close();
 if (falhas) process.exit(1);
