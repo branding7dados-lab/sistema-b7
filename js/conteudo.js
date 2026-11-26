@@ -180,7 +180,9 @@ B7.Conteudo = (function () {
         campo('DESCRIÇÃO DO NEGÓCIO', dados.descricao, t + ' data-campo="descricao"' +
           ex('O que a empresa faz, onde atua e para quem.')) +
         campo('OBSERVAÇÕES', dados.observacoes, t + ' data-campo="observacoes"' +
-          ex('Regras da conta: hashtags, o que evitar, combinados com o cliente.')), true) +
+          ex('Regras da conta: hashtags, o que evitar, combinados com o cliente.')),
+        /* Espectro (quadro "Cliente · inteligência"): as seções são cartões numa grade; abrem ao toque */
+        !(B7.Identidade && B7.Identidade.ligada())) +
 
       sec('icp', 'ICP — cliente ideal',
         campo('PERFIL', dados.icp_perfil, t + ' data-campo="icp_perfil"') +
@@ -313,6 +315,12 @@ B7.Conteudo = (function () {
             ? feitos.slice(0, 3).map(el => corta(el.value)).join(' · ') : DICA_INTEL[id];
           estado = !feitos.length ? '' : feitos.length === cs.length ? 'cheia' : 'parcial';
         }
+        /* Espectro: o cartão fechado destaca o primeiro texto já escrito (ou o nome do primeiro item) */
+        const escritos = [...s.querySelectorAll(lista ? lista[0] + ' [data-campo="nome"], ' + lista[0] + ' [data-campo="titulo"]' : CAMPOS)].filter(cheio);
+        const tx = s.querySelector('.sanfona-topo .tx');
+        tx.dataset.destaque = escritos.length ? corta(escritos[0].value) : '';
+        tx.dataset.resto = lista ? sub.textContent
+          : escritos.length > 1 ? escritos.slice(1, 3).map(el => corta(el.value)).join(' · ') : DICA_INTEL[id];
         s.classList.toggle('cheia', estado === 'cheia');
         s.classList.toggle('parcial', estado === 'parcial');
       });

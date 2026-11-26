@@ -29,15 +29,19 @@ B7.Gestao = (function () {
     if (params && params.get && params.get('aba')) aba = params.get('aba');
     params0 = params || null;
     if (!B7.Auth.ehAdmin()) { painel().innerHTML = '<div class="conteudo"><div class="estado-b7"><b>Só o administrador abre a Gestão.</b></div></div>'; return; }
+    /* Espectro: o rótulo acima do título diz onde se está (na Visão geral, "Só administração · mês") */
+    const ABAS = [['geral', 'Visão geral'], ['riscos', 'Clientes em risco'], ['contratado', 'Contratado × entregue'], ['prazos', 'Prazos e retrabalho'], ['pacotes', 'Serviços contratados'], ['equipe', 'Equipe'], ['saude', 'Saúde dos clientes'], ['avulsos', 'Avulsos'], ['pedidos', 'Pedidos'], ['recados', 'Recados']];
+    const sobre = () => aba === 'geral' ? 'Só administração · ' + new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : (ABAS.find(a => a[0] === aba) || ABAS[0])[1];
     painel().innerHTML = '<div class="conteudo entra gs">' +
-      '<div class="cb-topo"><div class="cb-titulo"><p class="v4-sobre">Visão da agência</p><h1>Gestão</h1><p class="gt-intro">A agência num olhar: entregas, a equipe, a saúde de cada cliente e o que eles estão pedindo.</p></div></div>' +
-      '<div class="filtro rolavel gt-abas" role="tablist">' + [['geral', 'Visão geral'], ['riscos', 'Clientes em risco'], ['contratado', 'Contratado × entregue'], ['prazos', 'Prazos e retrabalho'], ['pacotes', 'Serviços contratados'], ['equipe', 'Equipe'], ['saude', 'Saúde dos clientes'], ['avulsos', 'Avulsos'], ['pedidos', 'Pedidos'], ['recados', 'Recados']].filter(([k]) => (k !== 'avulsos' || B7.Projetos) && (k !== 'equipe' || B7.Colaboradores) && (!['riscos', 'contratado', 'prazos'].includes(k) || B7.GestaoExtra) && (k !== 'pacotes' || B7.Pacotes)).map(([k, r]) =>
+      '<div class="cb-topo"><div class="cb-titulo"><p class="v4-sobre" data-gt-sobre>' + esc(sobre()) + '</p><h1>Gestão</h1></div></div>' +
+      '<div class="filtro rolavel gt-abas" role="tablist">' + ABAS.filter(([k]) => (k !== 'avulsos' || B7.Projetos) && (k !== 'equipe' || B7.Colaboradores) && (!['riscos', 'contratado', 'prazos'].includes(k) || B7.GestaoExtra) && (k !== 'pacotes' || B7.Pacotes)).map(([k, r]) =>
         '<button role="tab" data-aba="' + k + '" class="' + (aba === k ? 'on' : '') + '" aria-selected="' + (aba === k) + '">' + r + '<span class="gt-n" data-n-' + k + '></span></button>').join('') + '</div>' +
       '<div id="gt-corpo">' + B7.UI.skeleton('lista', { n: 4 }) + '</div></div>';
     painel().querySelectorAll('[data-aba]').forEach(b => b.onclick = () => {
       aba = b.dataset.aba;
       painel().querySelectorAll('[data-aba]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b); });
       try { history.replaceState(null, '', '#/gestao?aba=' + aba); } catch (e) {}
+      painel().querySelector('[data-gt-sobre]').textContent = sobre();
       params0 = null;
       pintar();
     });
@@ -85,7 +89,7 @@ B7.Gestao = (function () {
 
   /* zzz267: a IA lê a saúde dos clientes e diz o que olhar primeiro */
   const iaBloco = () => B7.IAFerramentas && B7.IAFerramentas.ligada()
-    ? '<div id="gt-ia"><button type="button" class="gt-ia-bt" data-ia-riscos><span aria-hidden="true">✨</span><b>O que olhar primeiro?</b><small>A IA lê os números e a saúde de cada cliente e te diz por onde começar.</small></button></div>' : '';
+    ? '<div id="gt-ia"><button type="button" class="gt-ia-bt" data-ia-riscos><span aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9z"/></svg></span><b>O que olhar primeiro?</b><small>A IA lê os números e a saúde de cada cliente e te diz por onde começar.</small></button></div>' : '';
 
   /* ------------------------------------------------------ visão geral */
   function geral() {
@@ -94,21 +98,33 @@ B7.Gestao = (function () {
     const dia = new Date((dados.hoje || '') + 'T12:00:00');
     const fracao = dia.getDate() / new Date(dia.getFullYear(), dia.getMonth() + 1, 0).getDate();
     const ritmo = k.entregas_ant && fracao ? Math.round(100 * (k.entregas_mes / fracao - k.entregas_ant) / k.entregas_ant) : null;
-    const card = (v, l, sub, cls, ir) => '<' + (ir ? 'button type="button" data-ir="' + ir + '"' : 'div') + ' class="gt-kpi ' + (cls || '') + '"><b>' + v + '</b><span>' + l + '</span>' +
+    /* Espectro: quatro cartões de cor cheia; os outros números do mês vão para "Destaques" */
+    const card = (cor, l, v, sub, ir) => '<' + (ir ? 'button type="button" data-ir="' + ir + '"' : 'div') + ' class="gt-kpi gt-k-' + cor + '"><i class="gt-k-luz" aria-hidden="true"></i><span>' + l + '</span><b>' + v + '</b>' +
       (sub ? '<small>' + sub + '</small>' : '') + '</' + (ir ? 'button' : 'div') + '>';
-    return iaBloco() + '<div class="gt-kpis">' +
-      card(num(k.clientes), 'clientes ativos', '', '', '#/clientes') +
-      card(num(k.entregas_mes), 'entregas no mês', varia == null || ritmo == null ? '' : (ritmo >= 0 ? '▲ ritmo ' + ritmo + '% acima' : '▼ ritmo ' + Math.abs(ritmo) + '% abaixo') + ' do mês passado', ritmo != null && ritmo < -10 ? 'atencao' : '') +
-      card(num(k.atrasos), 'entregas atrasadas', k.atrasos ? 'design e vídeo com prazo vencido' : 'nada atrasado 🎉', k.atrasos ? 'erro' : 'ok', '#/kanban') +
-      card(num(k.aprov_pendentes), 'aprovações com o cliente', k.aprov_paradas ? k.aprov_paradas + ' paradas há 3+ dias' : '', k.aprov_paradas ? 'atencao' : '', '#/aprovacoes') +
-      card(num(k.pedidos_mes), 'pedidos no mês', k.pedidos_abertos ? k.pedidos_abertos + ' em aberto' : '', '', '#/gestao?aba=pedidos') +
-      card(k.satisfacao_media == null ? '—' : String(k.satisfacao_media).replace('.', ','), 'satisfação do mês',
-        k.respostas ? k.respostas + (k.respostas === 1 ? ' resposta' : ' respostas') + (k.nps != null ? ' · NPS ' + k.nps : '') : 'a pesquisa abre no dia 20', k.satisfacao_media != null && k.satisfacao_media < 7 ? 'erro' : '') +
+    const ic = (d, cor) => '<svg class="gt-dq-ic ' + cor + '" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+    const IC = { sobe: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>', alerta: '<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',
+      estrela: '<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9z"/>', pessoas: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 010 7"/><path d="M18 14.7c1.9.7 3.1 2.5 3.5 5.3"/>',
+      ok: '<circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.8 2.8L16.5 9"/>', pedido: '<path d="M4 5h16v11H9l-5 4z"/>' };
+    const dq = (svg, tx, ir) => '<' + (ir ? 'button type="button" data-ir="' + ir + '"' : 'p') + ' class="gt-dq">' + svg + '<span>' + tx + '</span></' + (ir ? 'button' : 'p') + '>';
+    const verdes = (dados.clientes || []).filter(c => c.cor === 'verde').length;
+    return iaBloco() + '<div class="gt-kpis gt-kpis-cor">' +
+      card('violeta', 'Clientes ativos', num(k.clientes), (dados.clientes || []).length ? verdes + (verdes === 1 ? ' com a saúde no verde' : ' com a saúde no verde') : '', '#/clientes') +
+      card('matriz', 'Peças entregues', num(k.entregas_mes), varia == null || ritmo == null ? 'no mês' : 'ritmo ' + Math.abs(ritmo) + '% ' + (ritmo >= 0 ? 'acima' : 'abaixo') + ' do mês passado') +
+      card('matriz', 'Entregas atrasadas', num(k.atrasos), k.atrasos ? 'design e vídeo com prazo vencido' : 'nada atrasado', '#/kanban') +
+      card('coral', 'Clientes em risco', num(k.saude_vermelho || 0), 'Ver aba', '#/gestao?aba=' + (B7.GestaoExtra ? 'riscos' : 'saude')) +
     '</div>' +
-    '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Entregas por mês</h2><span class="gt-leg"><i class="d"></i>design <i class="v"></i>vídeo <i class="p"></i>publicados</span></div>' + grafico(dados.serie || []) + '</section>' +
-    '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Clientes que pedem atenção</h2><button type="button" class="cb-link" data-ir="#/gestao?aba=saude">Ver todos →</button></div>' +
+    '<div class="gt-duo">' +
+    '<section class="gt-bloco gt-bloco-graf"><div class="gt-bloco-cab"><h2>Entregas por mês</h2></div>' + grafico(dados.serie || []) + '</section>' +
+    '<section class="gt-bloco gt-dest"><div class="gt-bloco-cab"><h2>Destaques</h2></div>' +
+      dq(k.aprov_paradas ? ic(IC.alerta, 'erro') : ic(IC.ok, 'ok'), num(k.aprov_pendentes) + ' aprovações com o cliente' + (k.aprov_paradas ? ' · ' + k.aprov_paradas + ' paradas há 3+ dias' : ''), '#/aprovacoes') +
+      dq(ic(IC.pedido, 'matriz'), num(k.pedidos_mes) + ' pedidos no mês' + (k.pedidos_abertos ? ' · ' + k.pedidos_abertos + ' em aberto' : ''), '#/gestao?aba=pedidos') +
+      dq(ic(IC.estrela, k.satisfacao_media != null && k.satisfacao_media < 7 ? 'erro' : 'violeta'), k.satisfacao_media == null ? 'Satisfação: a pesquisa abre no dia 20'
+        : 'Satisfação do mês ' + String(k.satisfacao_media).replace('.', ',') + (k.respostas ? ' · ' + k.respostas + (k.respostas === 1 ? ' resposta' : ' respostas') : '') + (k.nps != null ? ' · NPS ' + k.nps : '')) +
+      dq(ic(IC.pessoas, k.saude_amarelo ? 'ambar' : 'ok'), k.saude_amarelo ? k.saude_amarelo + (k.saude_amarelo === 1 ? ' cliente pede atenção' : ' clientes pedem atenção') : 'Nenhum cliente em atenção', '#/gestao?aba=saude') +
+    '</section></div>' +
+    '<section class="gt-bloco gt-atencao"><div class="gt-bloco-cab"><h2>Clientes que pedem atenção</h2><button type="button" class="cb-link" data-ir="#/gestao?aba=saude">Ver todos</button></div>' +
       ((dados.clientes || []).filter(c => c.cor !== 'verde').slice(0, 5).map(linhaCliente).join('') ||
-        '<p class="gt-vazio">Todos os clientes estão no verde. 💚</p>') + '</section>';
+        '<p class="gt-vazio">Todos os clientes estão no verde.</p>') + '</section>';
   }
 
   function grafico(serie) {
@@ -117,7 +133,7 @@ B7.Gestao = (function () {
     return '<div class="gt-graf" role="img" aria-label="Entregas por mês nos últimos 6 meses">' + serie.map(s => {
       const tot = s.design + s.video + s.publicados, [a, m] = s.mes.split('-');
       const h = v => (100 * v / max).toFixed(1) + '%';
-      return '<div class="gt-col" title="' + MESES[+m - 1] + '/' + a.slice(2) + ': ' + s.design + ' design · ' + s.video + ' vídeo · ' + s.publicados + ' publicados">' +
+      return '<div class="gt-col" style="--tot:' + h(tot) + '" title="' + MESES[+m - 1] + '/' + a.slice(2) + ': ' + s.design + ' design · ' + s.video + ' vídeo · ' + s.publicados + ' publicados">' +
         '<b>' + (tot || '') + '</b><div class="gt-barra"><i class="p" style="height:' + h(s.publicados) + '"></i><i class="v" style="height:' + h(s.video) + '"></i><i class="d" style="height:' + h(s.design) + '"></i></div>' +
         '<span>' + MESES[+m - 1] + '</span></div>';
     }).join('') + '</div>';
@@ -134,12 +150,10 @@ B7.Gestao = (function () {
   function saude() {
     const l = dados.clientes || [];
     const conta = cor => l.filter(c => c.cor === cor).length;
-    return iaBloco() + '<div class="gt-semaforos">' +
-      '<div class="gt-sem vermelho"><b>' + conta('vermelho') + '</b><span>em risco</span></div>' +
-      '<div class="gt-sem amarelo"><b>' + conta('amarelo') + '</b><span>atenção</span></div>' +
-      '<div class="gt-sem verde"><b>' + conta('verde') + '</b><span>saudáveis</span></div></div>' +
-      '<p class="gt-nota">A nota começa em 100 e cai com: entregas atrasadas, aprovações paradas há 3+ dias, demora para responder, muitas peças voltando com ajuste, nota baixa na pesquisa e meses sem entregas.</p>' +
-      '<section class="gt-bloco gt-lista">' + (l.map(linhaCliente).join('') || '<p class="gt-vazio">Nenhum cliente ativo.</p>') + '</section>';
+    /* Espectro: um cartão por cliente (a contagem por cor e a regra da nota ficam no rodapé) */
+    return iaBloco() + '<section class="gt-bloco gt-lista">' + (l.map(linhaCliente).join('') || '<p class="gt-vazio">Nenhum cliente ativo.</p>') + '</section>' +
+      '<p class="gt-nota gt-nota-saude"><span class="gt-sem vermelho"><b>' + conta('vermelho') + '</b> em risco</span><span class="gt-sem amarelo"><b>' + conta('amarelo') + '</b> atenção</span><span class="gt-sem verde"><b>' + conta('verde') + '</b> saudáveis</span>' +
+      '<span>A nota começa em 100 e cai com: entregas atrasadas, aprovações paradas há 3+ dias, demora para responder, muitas peças voltando com ajuste, nota baixa na pesquisa e meses sem entregas.</span></p>';
   }
 
   /* ---------------------------------------------------------- pedidos */

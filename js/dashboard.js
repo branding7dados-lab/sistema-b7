@@ -1199,8 +1199,14 @@ B7.Dashboard = (function () {
     const resumoMes = B7.ResumoMes && gestor && c.contrato !== 'avulso';
     const avulso = c.contrato === 'avulso';
     const criaProjeto = gestor && B7.Projetos && B7.Projetos.podeGerir();
-    return '<div class="cli-shell">' +
-      (podeIrRota('clientes') ? '<a class="cli-voltar" href="#/clientes">' + IC_VOLTAR + 'Clientes</a>' : '') +
+    /* Espectro (quadros "Cliente"): trilha em caixa-alta no lugar do "‹ Clientes"; na visão geral o título é
+       "Cliente" e o cabeçalho vira a faixa do Espectro (logo 72, nome 32, "Ver como cliente"); nas outras
+       seções o título é o nome e as ações ficam na linha dele. Mesmos data-atributos e ações. */
+    const geral = !secao || secao === 'geral', rotSec = (SECOES_CLIENTE.find(s => s.k === secao) || {}).r;
+    return '<div class="cli-shell' + (geral ? ' cli-geral' : '') + '">' +
+      '<p class="v4-sobre cli-trilha">' + (podeIrRota('clientes') ? '<a class="cli-voltar" href="#/clientes">Clientes</a>' : '<span>Clientes</span>') +
+        '<i aria-hidden="true">›</i><span>' + esc(c.nome) + '</span>' + (!geral && rotSec ? '<i aria-hidden="true">›</i><span>' + esc(rotSec) + '</span>' : '') + '</p>' +
+      (geral ? '<p class="cli-tit-geral" aria-hidden="true">Cliente</p>' : '') +
       '<header class="cli-cab">' +
         B7.UI.avatarCliente(c.nome, c.logo_url, 'cli-av') +
         '<div class="cli-cab-tx"><h1>' + esc(c.nome) + '</h1>' +
@@ -1209,6 +1215,7 @@ B7.Dashboard = (function () {
             (modosDe(c).join() !== 'linha' ? modosDe(c).map(k => '<span class="cli-modo-chip">' + esc(MODOS_CLIENTE.find(x => x[0] === k)[1]) + '</span>').join('') : '') +
             esc(quandoTx) + '</p>' : '') + '</div>' +
         (gestor ? '<div class="cli-acoes">' +
+          (ehAdmin() ? '<button class="b cli-ver-como" data-ir="#/previa/' + esc(c.id) + '">' + IC_OLHO + '<span>Ver como cliente</span></button>' : '') +
           /* zzz274: no cliente avulso, o botão principal abre um projeto (o projeto já monta gravação, roteiro e edição) */
           (avulso && criaProjeto ? '<button class="b pri fina cli-so-largo" data-novo-projeto>' + IC.mais + '<span>Novo projeto</span></button>'
             : criaGravacao ? '<button class="b pri fina cli-so-largo" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + '<span>Nova gravação</span></button>' : '') +
@@ -1233,6 +1240,7 @@ B7.Dashboard = (function () {
     '</div></nav>';
   }
   const IC_VOLTAR = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
+  const IC_OLHO = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 
   /* liga as ações do cabeçalho onde quer que ele esteja (telas do
      conteudo.js não passam pelo ligar() geral desta tela) */
@@ -1738,10 +1746,16 @@ B7.Dashboard = (function () {
   }
 
   function visaoGeralCliente(c, gravacoes, roteiros, emAndamento, conta, ultima, linhas, semanas) {
-    const numero = (n, rot, tom) => '<div class="vg-num vg-tom-' + tom + '"><b data-vg-conta="' + (+n || 0) + '">' + (+n || 0) + '</b><span>' + rot + '</span></div>';
+    /* Espectro (quadro "Cliente · visão geral"): cada número é um cartão com rótulo, valor e uma linha de apoio
+       (tirada dos mesmos dados desta função) */
+    const numero = (n, rot, tom, apoio) => '<div class="vg-num vg-tom-' + tom + '"><b data-vg-conta="' + (+n || 0) + '">' + (+n || 0) + '</b><span>' + rot + '</span>' +
+      (apoio ? '<small>' + apoio + '</small>' : '') + '</div>';
+    const nProntas = conta('Pronto para gravar'), nRasc = conta('Rascunho');
     const numeros = '<div class="vg-numeros">' +
-      numero(gravacoes.length, 'gravações', 'rosa') + numero(c.total_roteiros, 'roteiros', 'violeta') +
-      numero(emAndamento, 'em andamento', 'ambar') + numero(conta('Gravado'), 'gravadas', 'verde') + '</div>';
+      numero(gravacoes.length, 'gravações', 'rosa', nProntas + (nProntas === 1 ? ' pronta' : ' prontas') + ' para gravar') +
+      numero(c.total_roteiros, 'roteiros', 'violeta', roteiros.length ? 'último editado ' + esc(B7.UI.quando(roteiros[0].updated_at)) : 'nenhum ainda') +
+      numero(emAndamento, 'em andamento', 'ambar', nRasc + ' em rascunho') +
+      numero(conta('Gravado'), 'gravadas', 'verde', 'de ' + gravacoes.length + (gravacoes.length === 1 ? ' gravação' : ' gravações')) + '</div>';
     /* atalhos: o que era "Ações rápidas" (mesmas ações e handlers) */
     const atalho = (attrs, ic, rot, pri) => '<button type="button" class="vg-atalho' + (pri ? ' pri' : '') + '" ' + attrs + '>' + ic + '<span>' + rot + '</span></button>';
     const atalhos = '<div class="vg-atalhos" role="toolbar" aria-label="Atalhos do cliente">' +

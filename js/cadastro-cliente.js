@@ -83,7 +83,7 @@ B7.Cadastro = (function () {
       return '<div class="cd-nome">' + campo('NOME DO CLIENTE', 'cd-nome', c.nome, { obr: true, foco: true, ph: 'Ex: Mercato Sadia', max: 120 }) + '</div>' +
         '<fieldset class="cd-grupo"><legend>Empresa</legend><div class="cd-grade">' +
           campo('ÁREA DE ATUAÇÃO', 'cd-nicho', p.nicho, { meio: true, ph: 'Ex: Clínica odontológica' }) +
-          campo('CNPJ', 'cd-cnpj', fmtCnpj(i.cnpj), { meio: true, ph: '00.000.000/0000-00', modo: 'numeric', max: 18 }) +
+          campo('<span class="cd-sigla">CNPJ</span>', 'cd-cnpj', fmtCnpj(i.cnpj), { meio: true, ph: '00.000.000/0000-00', modo: 'numeric', max: 18 }) +
           campo('CIDADE / ESTADO', 'cd-cidade', i.cidade, { meio: true, ph: 'Ex: Vitória da Conquista - BA' }) +
           campo('INÍCIO DO SERVIÇO', 'cd-inicio', i.inicio_servico || '', { meio: true, tipo: 'date' }) +
           campo('INSTAGRAM', 'cd-insta', p.instagram ? '@' + p.instagram : '', { meio: true, ph: '@usuario', max: 60 }) +
