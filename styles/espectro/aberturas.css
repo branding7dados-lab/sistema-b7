@@ -1,1 +1,133 @@
-/* Espectro — aberturas (onda 2, em andamento). Toda regra começa com html[data-identidade="espectro"]. */
+/* Espectro — aberturas e carregamentos (5.14.0), quadros "Aberturas" e "Carregamentos" do artefato.
+   As 10 aberturas antigas viram 3 (data-ab-estilo: faisca · corte · pulso) e os carregamentos viram
+   os 6 do Espectro (data-ab-carga: corte · lampada · faixa · tres-pontos · anel · hexagono).
+   A marcação nova (.esp-ab) está dentro do #abertura no index.html; a escolha, no <head> e em
+   js/app.js (B7.Abertura). Com "reduzir movimento", o símbolo aparece parado.
+   Abertura completa = 1ª vez na sessão (html:not(.ab-curta) .b7-abertura.inicial).
+   Carregamento = recarregar (html.ab-curta) e a cortina entre o login e o sistema (:not(.inicial)). */
+
+/* ------------------------------------------------------------------ base: some o céu antigo */
+html[data-identidade="espectro"] .b7-abertura{background:#02030C;color:#F3F4FA;font-family:'Grimblade', system-ui, sans-serif;}
+html[data-identidade="espectro"] .b7-abertura > :is(.ab-ceu, .ab-palco, .ab-linha, .ab-flare, .ab-titulo),
+html[data-identidade="espectro"] .b7-abertura > canvas{display:none !important;}
+html[data-identidade="espectro"] .esp-ab{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;overflow:hidden;pointer-events:none;}
+html[data-identidade="espectro"] .esp-ab > i{position:absolute;display:none;}
+html[data-identidade="espectro"] .esp-ab-marca{position:relative;display:block;width:200px;max-width:52vw;z-index:2;}
+html[data-identidade="espectro"] .esp-ab-b7{display:block;width:100%;height:auto;}
+/* a lâmpada mora no canto do símbolo (mesmas coordenadas do SVG): por cima dele, para acender */
+html[data-identidade="espectro"] .esp-ab-lampada{position:absolute;left:78.05%;top:0;width:21.95%;height:auto;opacity:0;transform-origin:50% 60%;}
+html[data-identidade="espectro"] .esp-ab-nome{display:none;font-weight:400;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#C3C7E0;z-index:2;}
+html[data-identidade="espectro"] .esp-ab-carga{display:none;z-index:2;}
+
+/* espera honesta (só se o sistema ainda não estiver pronto) na voz nova */
+html[data-identidade="espectro"] .b7-abertura .ab-espera{top:calc(50% + 150px);font-family:inherit;color:#C4C8E4;font-size:13px;}
+html[data-identidade="espectro"] .b7-abertura .ab-ola{font-family:inherit;font-weight:400;font-size:17px;color:#F3F4FA;}
+html[data-identidade="espectro"] .b7-abertura .ab-fio{width:140px;height:4px;border-radius:4px;background:rgba(255,255,255,.09);}
+html[data-identidade="espectro"] .b7-abertura .ab-fio:after{width:40%;border-radius:4px;background:repeating-linear-gradient(120deg,#7328A5 0 10px,#E02F75 10px 20px);}
+
+/* saída: a cortina inteira apaga, sem íris */
+html[data-identidade="espectro"] .b7-abertura.saindo{animation:espAbSai .5s cubic-bezier(.4,0,.2,1) forwards;}
+@keyframes espAbSai{to{opacity:0}}
+
+/* ================================================================== ABERTURAS (a completa) */
+/* 01 · FAÍSCA — o B7 entra num corte de 60°, a lâmpada acende com brilho coral e o nome sobe (4,2 s) */
+html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial{background:#001561;}
+html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-padrao{display:block;inset:0;
+  background:url('../../assets/brand/espectro/padrao-lampada-matriz.svg') center/cover;opacity:.35;}
+html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-b7{animation:espA1b 4.2s cubic-bezier(.2,.8,.2,1) both;}
+@keyframes espA1b{0%{clip-path:polygon(0 0,0 0,0 100%,0 100%)}25%,100%{clip-path:polygon(0 0,140% 0,100% 100%,0 100%)}}
+html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-lampada{animation:espA1l 4.2s ease-out both;}
+@keyframes espA1l{0%,30%{opacity:0;transform:translateY(10px) scale(.4)}40%{opacity:1;transform:scale(1.15);filter:drop-shadow(0 0 18px rgba(255,90,87,.95))}48%,100%{opacity:1;transform:none;filter:drop-shadow(0 0 0 rgba(255,90,87,0))}}
+html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-brilho{display:block;width:180px;height:180px;border-radius:50%;
+  left:calc(50% - 12px);top:calc(50% - 183px);background:radial-gradient(circle,#FF5A57 0%,rgba(224,47,117,.5) 35%,transparent 70%);opacity:0;
+  animation:espA1f 4.2s ease-out both;}
+@keyframes espA1f{0%,36%{opacity:0;transform:scale(.2)}44%{opacity:.9}70%,100%{opacity:0;transform:scale(1.6)}}
+html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-nome{display:block;animation:espA1w 4.2s ease-out both;}
+@keyframes espA1w{0%,50%{opacity:0;transform:translateY(12px)}62%,100%{opacity:1;transform:none}}
+
+/* 02 · CORTE ESPECTRO — uma faixa do Espectro atravessa a tela a 60° e revela o símbolo (3,6 s) */
+html[data-identidade="espectro"][data-ab-estilo="corte"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-marca{width:130px;animation:espA2s 3.6s ease-out both;}
+@keyframes espA2s{0%,30%{opacity:0;transform:scale(.92)}48%,100%{opacity:1;transform:none}}
+html[data-identidade="espectro"][data-ab-estilo="corte"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-lampada{opacity:1;}
+html[data-identidade="espectro"][data-ab-estilo="corte"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-faixa{display:block;top:-20%;bottom:-20%;left:50%;width:40%;z-index:3;
+  background:linear-gradient(90deg,#001561,#520083,#7328A5,#E02F75,#FF5A57);transform:translateX(-50%) skewX(-30deg) translateX(-300%);
+  animation:espA2bar 3.6s cubic-bezier(.7,0,.3,1) both;}
+@keyframes espA2bar{0%{transform:translateX(-50%) skewX(-30deg) translateX(-300%)}45%,100%{transform:translateX(-50%) skewX(-30deg) translateX(330%)}}
+
+/* 03 · PULSO — o Espectro gira desfocado atrás do símbolo, com um anel que pulsa (contínuo) */
+html[data-identidade="espectro"][data-ab-estilo="pulso"]:not(.ab-curta) .b7-abertura.inicial{background:#001561;}
+html[data-identidade="espectro"][data-ab-estilo="pulso"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-giro{display:block;inset:-30%;
+  background:conic-gradient(from 0deg,#001561,#520083,#7328A5,#E02F75,#FF5A57,#001561);filter:blur(60px);opacity:.85;animation:espA3r 6s linear infinite;}
+@keyframes espA3r{to{transform:rotate(360deg)}}
+html[data-identidade="espectro"][data-ab-estilo="pulso"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-anel{display:block;width:220px;height:220px;border-radius:50%;
+  left:calc(50% - 110px);top:calc(50% - 110px);border:1.5px solid rgba(255,255,255,.5);animation:espA3g 3s ease-out infinite;}
+@keyframes espA3g{0%{transform:scale(.6);opacity:.8}100%{transform:scale(1.5);opacity:0}}
+html[data-identidade="espectro"][data-ab-estilo="pulso"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-marca{width:120px;animation:espA3s 3s ease-in-out infinite;}
+html[data-identidade="espectro"][data-ab-estilo="pulso"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-lampada{opacity:1;}
+@keyframes espA3s{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+/* ================================================================== CARREGAMENTOS (recarregar e cortina) */
+html[data-identidade="espectro"].ab-curta .b7-abertura.inicial,
+html[data-identidade="espectro"] .b7-abertura:not(.inicial){
+  background:radial-gradient(900px 700px at 8% 0%, rgba(0,21,97,.55), transparent 70%), radial-gradient(800px 600px at 62% -8%, rgba(82,0,131,.55), transparent 70%),
+    radial-gradient(600px 500px at 92% 55%, rgba(224,47,117,.22), transparent 70%), #02030C;}
+html[data-identidade="espectro"]:is(.ab-curta) .b7-abertura.inicial .esp-ab-lampada,
+html[data-identidade="espectro"] .b7-abertura:not(.inicial) .esp-ab-lampada{opacity:1;}
+/* qualquer carregamento que não usa o símbolo esconde a marca e mostra a peça dele */
+html[data-identidade="espectro"]:is([data-ab-carga="faixa"], [data-ab-carga="tres-pontos"], [data-ab-carga="anel"], [data-ab-carga="hexagono"]):is(.ab-curta) .b7-abertura.inicial .esp-ab-marca,
+html[data-identidade="espectro"]:is([data-ab-carga="faixa"], [data-ab-carga="tres-pontos"], [data-ab-carga="anel"], [data-ab-carga="hexagono"]) .b7-abertura:not(.inicial) .esp-ab-marca{display:none;}
+html[data-identidade="espectro"]:is([data-ab-carga="faixa"], [data-ab-carga="tres-pontos"], [data-ab-carga="anel"], [data-ab-carga="hexagono"]):is(.ab-curta) .b7-abertura.inicial .esp-ab-carga,
+html[data-identidade="espectro"]:is([data-ab-carga="faixa"], [data-ab-carga="tres-pontos"], [data-ab-carga="anel"], [data-ab-carga="hexagono"]) .b7-abertura:not(.inicial) .esp-ab-carga{display:flex;align-items:center;justify-content:center;}
+html[data-identidade="espectro"] .esp-ab-carga > i{display:none;}
+
+/* 05 · CORTE DO B7 (padrão) — o B7 se escreve e se apaga no corte de 60° */
+html[data-identidade="espectro"][data-ab-carga="corte"].ab-curta .b7-abertura.inicial .esp-ab-marca,
+html[data-identidade="espectro"][data-ab-carga="corte"] .b7-abertura:not(.inicial) .esp-ab-marca{width:96px;animation:espL5 2s ease-in-out infinite;}
+@keyframes espL5{0%{clip-path:polygon(0 0,0 0,0 100%,0 100%)}55%,75%{clip-path:polygon(0 0,140% 0,100% 100%,0 100%)}100%{clip-path:polygon(100% 0,140% 0,100% 100%,100% 100%)}}
+
+/* 01 · LÂMPADA — a lâmpada respira e brilha em coral */
+html[data-identidade="espectro"][data-ab-carga="lampada"].ab-curta .b7-abertura.inicial .esp-ab-b7,
+html[data-identidade="espectro"][data-ab-carga="lampada"] .b7-abertura:not(.inicial) .esp-ab-b7{display:none;}
+html[data-identidade="espectro"][data-ab-carga="lampada"].ab-curta .b7-abertura.inicial .esp-ab-marca,
+html[data-identidade="espectro"][data-ab-carga="lampada"] .b7-abertura:not(.inicial) .esp-ab-marca{width:46px;}
+html[data-identidade="espectro"][data-ab-carga="lampada"].ab-curta .b7-abertura.inicial .esp-ab-lampada,
+html[data-identidade="espectro"][data-ab-carga="lampada"] .b7-abertura:not(.inicial) .esp-ab-lampada{position:static;width:100%;animation:espL1 1.6s ease-in-out infinite;}
+@keyframes espL1{0%,100%{opacity:.35;filter:drop-shadow(0 0 0 rgba(255,90,87,0))}50%{opacity:1;filter:drop-shadow(0 0 14px rgba(255,90,87,.9))}}
+
+/* 02 · FAIXA 60° — barra indeterminada listrada */
+html[data-identidade="espectro"][data-ab-carga="faixa"] .esp-cg-barra{display:block !important;position:relative;width:220px;height:8px;border-radius:8px;background:rgba(255,255,255,.09);overflow:hidden;}
+html[data-identidade="espectro"][data-ab-carga="faixa"] .esp-cg-barra b{position:absolute;inset:0;width:40%;border-radius:8px;background:repeating-linear-gradient(120deg,#7328A5 0 10px,#E02F75 10px 20px);animation:espL2 1.5s cubic-bezier(.6,0,.4,1) infinite;}
+@keyframes espL2{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
+
+/* 03 · TRÊS PONTOS */
+html[data-identidade="espectro"][data-ab-carga="tres-pontos"] .esp-cg-pontos{display:flex !important;gap:10px;}
+html[data-identidade="espectro"][data-ab-carga="tres-pontos"] .esp-cg-pontos b{width:14px;height:14px;border-radius:4px;background:#7328A5;animation:espL3 1.2s ease-in-out infinite;}
+html[data-identidade="espectro"][data-ab-carga="tres-pontos"] .esp-cg-pontos b:nth-child(2){background:#E02F75;animation-delay:.15s;}
+html[data-identidade="espectro"][data-ab-carga="tres-pontos"] .esp-cg-pontos b:nth-child(3){background:#FF5A57;animation-delay:.3s;}
+@keyframes espL3{0%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-12px);opacity:1}}
+
+/* 04 · ANEL ESPECTRO */
+html[data-identidade="espectro"][data-ab-carga="anel"] .esp-cg-anel{display:block !important;width:64px;height:64px;border-radius:50%;
+  background:conic-gradient(#001561,#520083,#7328A5,#E02F75,#FF5A57,transparent 85%);
+  -webkit-mask:radial-gradient(circle,transparent 24px,#000 25px);mask:radial-gradient(circle,transparent 24px,#000 25px);animation:espL4 1s linear infinite;}
+@keyframes espL4{to{transform:rotate(360deg)}}
+
+/* 06 · HEXÁGONO — o selo da lâmpada gira 60° e vira círculo */
+html[data-identidade="espectro"][data-ab-carga="hexagono"] .esp-cg-hex{display:flex !important;align-items:center;justify-content:center;width:64px;height:64px;border-radius:18px;background:#7328A5;animation:espL6 1.8s cubic-bezier(.4,0,.2,1) infinite;}
+html[data-identidade="espectro"][data-ab-carga="hexagono"] .esp-cg-hex img{width:26px;height:auto;}
+@keyframes espL6{0%,100%{transform:rotate(0) scale(1)}50%{transform:rotate(60deg) scale(.88);border-radius:50%}}
+
+/* ------------------------------------------------------------------ celular */
+@media (max-width:760px){
+  html[data-identidade="espectro"] .esp-ab-marca{width:150px;}
+  html[data-identidade="espectro"][data-ab-estilo="faisca"]:not(.ab-curta) .b7-abertura.inicial .esp-ab-brilho{left:calc(50% - 12px);top:calc(50% - 145px);width:140px;height:140px;}
+}
+
+/* ------------------------------------------------------------------ reduzir movimento: o símbolo parado */
+@media (prefers-reduced-motion: reduce){
+  html[data-identidade="espectro"] .esp-ab *, html[data-identidade="espectro"] .esp-ab > i{animation:none !important;}
+  html[data-identidade="espectro"] .esp-ab :is(.esp-ab-faixa, .esp-ab-brilho, .esp-ab-anel){display:none !important;}
+  html[data-identidade="espectro"] .esp-ab-lampada{opacity:1 !important;}
+  html[data-identidade="espectro"] .esp-ab-marca{display:block !important;clip-path:none !important;}
+  html[data-identidade="espectro"] .esp-ab-carga{display:none !important;}
+}
