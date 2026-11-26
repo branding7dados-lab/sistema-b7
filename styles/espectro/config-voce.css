@@ -1,1 +1,162 @@
-/* Espectro — config-voce (onda 2). Toda regra começa com html[data-identidade="espectro"]. */
+/* Espectro · config-voce — conteúdo das seções "Você" das Configurações (onda 2).
+   Quadros: Config-senha, Config-notificacoes, Config-preferencias, Config-aparencia, Config-abertura-sons,
+   Config-teleprompter, Config-apps-tv, Config-este-aparelho. A casca (coluna, trilha, cartão, linha, chave,
+   seletor 44px) é de styles/espectro/config.css; aqui só o que muda dentro de cada seção.
+   Tudo sob html[data-identidade="espectro"]. */
+
+/* ---------------------------------------------------------------- seletor segmentado (Preferências, Aparência, Teleprompter)
+   Quadro: caixa inline 4px de respiro, 4px entre opções, raio 22, fundo #EFEDF7; opção 34px, raio 17, 13px;
+   a escolhida fica branca com sombra curta. Fica à direita da linha, como no quadro. */
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l > .cfg-seg:not(.cfg-temas){display:inline-flex;flex:none;gap:4px;width:auto;max-width:100%;margin:0;padding:4px;border-radius:22px;background:var(--suave);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l > .cfg-seg:not(.cfg-temas) .cfg-seg-pill{top:4px;bottom:4px;border-radius:17px;background:var(--card);box-shadow:0 1px 3px rgba(10,16,51,.12);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l > .cfg-seg:not(.cfg-temas) button{flex:none;min-height:34px;height:34px;padding:0 16px;border-radius:17px;font-size:13px;font-weight:400;color:var(--ink-3);white-space:nowrap;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l > .cfg-seg:not(.cfg-temas) button.on{color:var(--ink);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-painel .cfg-l > .cfg-seg:not(.cfg-temas){background:rgba(255,255,255,.05);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-painel .cfg-l > .cfg-seg:not(.cfg-temas) .cfg-seg-pill{background:rgba(255,255,255,.12);box-shadow:none;}
+
+/* seletor de lista (Tela inicial, Abertura, Som): a pílula de 44px do quadro, texto 14 */
+html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l > .cfg-sel{font-size:14px;color:var(--ink);}
+
+/* ---------------------------------------------------------------- Aparência · Tema
+   Quadro: três botões lado a lado, 12px de respiro, raio 22; prévia de 120px raio 16; rótulo 14 a 10px. */
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-tema .cfg-lista{margin-top:14px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-tema .cfg-seg.cfg-temas{display:flex;gap:14px;margin:0;padding:0;max-width:none;background:none;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-tema .cfg-temas button{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-tema .cfg-tm-ok{display:none;}
+
+/* ---------------------------------------------------------------- Aparência · Paleta
+   Quadro: grade de 3, cartão 14px de respiro, raio 22, fio #ECEDF4 (o escolhido: 2px Violeta Quantum);
+   faixa de cores de 44px raio 14; nome 14 e o ✓ violeta à direita. */
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-lista{margin-top:14px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cores{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor{display:block;min-width:0;padding:14px;border-radius:22px;border:1px solid var(--borda);background:var(--card);text-align:left;color:var(--ink);font:inherit;cursor:pointer;transition:border-color .18s;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor:hover{border-color:rgba(115,40,165,.45);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor.on{padding:13px;border:2px solid #7328A5;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor i{display:block;width:auto;height:44px;border-radius:14px;box-shadow:none !important;transform:none !important;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor i svg{display:none;}
+/* a paleta da casa é o próprio Espectro: as cinco cores da marca em faixas */
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor[data-cor="b7"] i{background:linear-gradient(90deg,#001561 0 20%,#520083 20% 40%,#7328A5 40% 60%,#E02F75 60% 80%,#FF5A57 80% 100%) !important;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor-nome{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;font-size:14px;line-height:20px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor.on .cfg-cor-nome::after{content:"";flex:none;width:20px;height:20px;background:#7328A5;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8 12.3l2.8 2.8L16.5 9'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8 12.3l2.8 2.8L16.5 9'/%3E%3C/svg%3E") center/contain no-repeat;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cores-pe{margin-top:14px;}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-g-paleta .cfg-cor{background:rgba(255,255,255,.04);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-g-paleta .cfg-cor.on{border-color:var(--acento);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-g-paleta .cfg-cor.on .cfg-cor-nome::after{background:var(--acento);}
+
+/* ---------------------------------------------------------------- Senha e segurança
+   Quadro Config-senha: cartão "Senha" com os três campos lado a lado (rótulo 13 #3D4466 a 6px do campo de 44px),
+   "Salvar senha" à esquerda a 14px; "Verificação em 2 etapas" em linhas com a chave à direita. */
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-senhas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-senhas > div{min-width:0;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-senhas label.rot{display:block;margin:0 0 6px;padding:0;font-size:13px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-2);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-senhas .pf-senha{margin:0;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-senhas + .pf-forca{margin-top:14px;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-cartao:has(.pf-senhas) .perfil-acao{display:flex;flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:12px;margin-top:14px;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-cartao:has(.pf-senhas) .perfil-acao .b{height:34px;min-height:34px;padding:0 16px;border-radius:17px;font-size:13px;}
+
+/* títulos dos cartões de segurança: título 16 e a situação como etiqueta (24px, raio cheio, 12) */
+html[data-identidade="espectro"] .cfg-meu-perfil :is(#pf-2fa, #pf-google) .pf-tit{display:flex;align-items:center;gap:10px;}
+html[data-identidade="espectro"] .cfg-meu-perfil :is(#pf-2fa, #pf-google) .pf-ic{display:none;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-tit .seg-pill{display:inline-flex;align-items:center;gap:6px;height:24px;margin-left:auto;padding:0 10px;border-radius:999px;background:var(--suave);color:var(--ink-3);font-size:12px;font-weight:400;letter-spacing:0;white-space:nowrap;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-tit .seg-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-tit .seg-pill.on{background:var(--ok-bg);color:var(--ok);}
+
+/* sem verificação ligada: as duas formas viram linhas com a chave desligada à direita (como no quadro) */
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-opcoes{display:flex;flex-direction:column;gap:0;margin:10px 0 0;}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-op{display:flex;align-items:center;justify-content:space-between;gap:24px;width:100%;margin:0;padding:14px 0;border:0;border-top:1px solid var(--borda);border-radius:0;background:none;box-shadow:none;transform:none !important;text-align:left;color:var(--ink);font:inherit;cursor:pointer;}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-op > svg{display:none;}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-op span{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-op b{font-size:14px;font-weight:400;line-height:1.45;color:var(--ink);}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-op small{font-size:13px;line-height:1.45;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-op::after{content:"";flex:none;width:44px;height:26px;border-radius:13px;background:radial-gradient(circle at 13px 13px,#fff 9.5px,transparent 10.5px),var(--borda);transition:background-color .18s;}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-op:hover:not(:disabled) b{color:#7328A5;}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-op:hover:not(:disabled)::after{background-color:rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-op:disabled{opacity:.55;cursor:not-allowed;}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-op:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);border-radius:12px;}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-meu-perfil .seg-op::after{background-color:var(--borda-forte);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-meu-perfil .seg-op:hover:not(:disabled) b{color:var(--acento);}
+
+/* ações (trocar, desligar, e-mail de recuperação): botões de contorno 34px, à esquerda */
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-acoes .b{height:34px;min-height:34px;padding:0 16px;border-radius:17px;font-size:13px;}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-rec{margin-top:14px;padding-top:14px;border-top:1px solid var(--borda);}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-rec .pf-tit{display:flex;align-items:center;gap:10px;font-size:14px;}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-rec .pf-ic{display:none;}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-rec > .ajuda{margin:2px 0 0;font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-meu-perfil .seg-aviso{margin:10px 0 0;padding:12px 16px;border-radius:16px;background:var(--ambar-bg);color:var(--ambar);font-size:13px;}
+
+/* ---------------------------------------------------------------- Notificações
+   Quadro Config-notificacoes: um cartão "O que avisar" com subtítulo e, dentro, uma tabela em cartão
+   (4px de respiro): cabeçalho em caixa-alta 11.5px e linhas de 12px × 18px, 13.5px, com a chave. */
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-sub{margin:0;font-size:16px;line-height:1.45;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-sub-ajuda{margin:2px 0 0;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo{margin:10px 0 0;padding:4px;border-radius:26px;overflow:hidden;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo summary{display:flex;align-items:center;gap:8px;padding:10px 18px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo summary > span{flex:1;min-width:0;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo summary small{font-size:11.5px;letter-spacing:.06em;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo-nota{margin:0;padding:0 18px 10px;font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo .perfil-opcao{padding:12px 18px;border-top:1px solid var(--borda);}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo .perfil-opcao-tx b{font-size:13.5px;}
+html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo .perfil-opcao-tx small{font-size:12.5px;}
+
+/* Horário de silêncio: vira cartão, com o seletor segmentado do quadro */
+html[data-identidade="espectro"] .cfg-meu-perfil [data-sl-pessoa]:not(:empty){padding:24px;border-radius:26px;background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .cfg-meu-perfil [data-sl-pessoa] > .pf-sub{margin:0;font-size:16px;line-height:1.45;}
+html[data-identidade="espectro"] .cfg-meu-perfil [data-sl-pessoa] .sl-caixa{margin-top:10px;padding:0;border:0;border-radius:0;background:none;gap:10px;}
+html[data-identidade="espectro"] .cfg-meu-perfil .sl-ops{display:inline-flex;gap:4px;padding:4px;border-radius:22px;background:var(--suave);}
+html[data-identidade="espectro"] .cfg-meu-perfil .sl-op{height:34px;padding:0 16px;border-radius:17px;font-size:13px;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .cfg-meu-perfil .sl-op[aria-checked="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(10,16,51,.12);}
+html[data-identidade="espectro"] .cfg-meu-perfil .sl-frase{margin:0;font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-meu-perfil .sl-ops{background:rgba(255,255,255,.05);}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-meu-perfil .sl-op[aria-checked="true"]{background:rgba(255,255,255,.12);box-shadow:none;}
+
+html[data-identidade="espectro"] .cfg-meu-perfil [data-sl-pessoa] .perfil-msg:empty{display:none;}
+
+/* ---------------------------------------------------------------- Este aparelho · Diagnóstico
+   Quadro Config-este-aparelho: a versão aparece como etiqueta de 24px, raio cheio, 12px, na fonte da marca. */
+html[data-identidade="espectro"] .cfg-v2 [data-painel="aparelho"] .cfg-versao{display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;background:var(--suave);color:var(--ink-2);font-family:inherit;font-size:12px;letter-spacing:0;}
+
+/* ---------------------------------------------------------------- Apps e TV
+   Quadro Config-apps-tv: grade de 3 cartões; título 16, apoio 13, prévia Azul Matriz de 120px raio 16 com o
+   ícone branco de 44px, e a ação embaixo. */
+html[data-identidade="espectro"] .cfg-v2 .cfg-apps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-apps .cfg-g{min-width:0;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-app .cfg-lista::before{content:"";display:block;height:120px;margin:0 0 12px;border-radius:16px;
+  background:#001561 var(--cfgv-app-ic) center/44px 44px no-repeat;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-app .cfg-lista > .cfg-l:first-of-type{border-top:0;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-g-app .cfg-l{gap:12px;padding:12px 0;}
+html[data-identidade="espectro"] .cfg-v2 .cfg-app-pc{--cfgv-app-ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='12' rx='2'/%3E%3Cpath d='M8 20h8M12 16v4'/%3E%3C/svg%3E");}
+html[data-identidade="espectro"] .cfg-v2 .cfg-app-tv{--cfgv-app-ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.5' y='5' width='19' height='12' rx='2'/%3E%3Cpath d='M8 21h8M9 2.5l3 2.5 3-2.5'/%3E%3C/svg%3E");}
+html[data-identidade="espectro"] .cfg-v2 .cfg-app-nov{--cfgv-app-ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4.6l1.6 4.3a1.5 1.5 0 0 0 .9.9l4.3 1.6-4.3 1.6a1.5 1.5 0 0 0-.9.9L10 18.2l-1.6-4.3a1.5 1.5 0 0 0-.9-.9l-4.3-1.6 4.3-1.6a1.5 1.5 0 0 0 .9-.9z'/%3E%3Cpath d='M18.2 14.6l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z'/%3E%3C/svg%3E");}
+html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-g-app .cfg-lista::before{box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);}
+
+/* ---------------------------------------------------------------- celular */
+@media (max-width:1023px){
+  html[data-identidade="espectro"] .cfg-v2 .cfg-apps{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:760px){
+  /* segmentado: desce para a linha de baixo e ocupa a largura toda */
+  html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l > .cfg-seg:not(.cfg-temas){display:flex;flex:1 1 100%;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-painel .cfg-l > .cfg-seg:not(.cfg-temas) button{flex:1;min-width:0;padding:0 8px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-g-tema .cfg-seg.cfg-temas{gap:8px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-g-tema .cfg-temas button{gap:8px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-g-tema .cfg-tm-rot{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cores{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor{padding:10px;border-radius:18px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor.on{padding:9px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor i{height:36px;border-radius:12px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor-nome{font-size:13px;margin-top:8px;}
+  html[data-identidade="espectro"] .cfg-meu-perfil .pf-senhas{grid-template-columns:minmax(0,1fr);gap:12px;}
+  html[data-identidade="espectro"] .cfg-meu-perfil .seg-op{gap:14px;}
+  html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo{border-radius:22px;}
+  html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo summary,
+  html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo .perfil-opcao{padding-left:14px;padding-right:14px;}
+  html[data-identidade="espectro"] .cfg-meu-perfil [data-sl-pessoa]:not(:empty){padding:18px;border-radius:22px;}
+  html[data-identidade="espectro"] .cfg-meu-perfil .sl-ops{display:flex;}
+  html[data-identidade="espectro"] .cfg-meu-perfil .sl-op{flex:1;min-width:0;padding:0 8px;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-apps{grid-template-columns:minmax(0,1fr);}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-g-app .cfg-lista::before{height:96px;}
+}

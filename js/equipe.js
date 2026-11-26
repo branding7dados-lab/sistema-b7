@@ -90,8 +90,21 @@ B7.Equipe = (function () {
       return { p, a, dias: a ? diasAte(a.dia, a.mes) : null };
     }).sort((x, y) => (x.dias === null) - (y.dias === null) || (x.dias || 0) - (y.dias || 0) || String(x.p.nome).localeCompare(y.p.nome));
     const quando = d => d === 0 ? 'é hoje!' : d === 1 ? 'amanhã' : 'em ' + d + ' dias';
+    /* Espectro: o mês corrente em grade (quadro "Config-ausencias"), com as mesmas
+       ausências e aniversários das listas abaixo. Escondido no visual antigo. */
+    const ref = new Date(h + 'T12:00:00'), ano = ref.getFullYear(), mes = ref.getMonth(), nDias = new Date(ano, mes + 1, 0).getDate();
+    const isoDia = d => ano + '-' + String(mes + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const prim = id => String(nomeDe(id)).trim().split(/\s+/)[0];
+    const cal = '<section class="eq-cal" hidden><header class="eq-cal-cab"><h2>' + MESES[mes].charAt(0).toUpperCase() + MESES[mes].slice(1) + ' ' + ano + '</h2>' +
+        (podeEditar() ? '<button type="button" class="b pri fina" data-eq-nova-cal>' + SVG('<path d="M12 5v14M5 12h14"/>') + 'Marcar ausência</button>' : '') + '</header>' +
+      '<div class="eq-cal-grade">' + Array.from({ length: nDias }, (_, i) => {
+        const d = i + 1, dia = isoDia(d);
+        const evs = cache.aus.filter(x => x.inicio <= dia && x.fim >= dia).map(x => '<span class="eq-cal-ev eq-' + esc(x.tipo) + '">' + esc(prim(x.perfil_id)) + ' · ' + esc((TIPOS[x.tipo] || 'Fora').toLowerCase()) + '</span>')
+          .concat(cache.ani.filter(a => a.mes === mes + 1 && a.dia === d).map(a => '<span class="eq-cal-ev eq-festa">Aniversário ' + esc(prim(a.perfil_id)) + '</span>'));
+        return '<div class="eq-cal-dia' + (dia === h ? ' hoje' : '') + '"><span class="eq-cal-n">' + d + '</span>' + evs.join('') + '</div>';
+      }).join('') + '</div></section>';
 
-    alvo.innerHTML =
+    alvo.innerHTML = cal +
       (ehAdm() && B7.Silencio ? '<div data-sl-equipe></div>' : '') +
       (!ehAdm() && podeEditar() ? '<section class="cfg-g"><h2 class="cfg-g-t">Recado para a equipe</h2>' +
         '<p class="cfg-g-nota">Uma frase no alto da tela de todo mundo da equipe, até a data que você escolher.</p>' +
@@ -120,6 +133,7 @@ B7.Equipe = (function () {
     }
     alvo.querySelectorAll('[data-eq-tirar]').forEach(b => b.onclick = () => tirarAusencia(b.dataset.eqTirar, () => montar(alvo)));
     const nova = alvo.querySelector('[data-eq-nova]'); if (nova) nova.onclick = () => modalAusencia(() => montar(alvo));
+    const novaCal = alvo.querySelector('[data-eq-nova-cal]'); if (novaCal) novaCal.onclick = () => modalAusencia(() => montar(alvo));
     alvo.querySelectorAll('[data-eq-aniv]').forEach(b => b.onclick = () => modalAniversario(b.dataset.eqAniv, () => montar(alvo)));
   }
 
