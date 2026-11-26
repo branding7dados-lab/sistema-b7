@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.1.0', versao: '5.1.0', em: '2026-11-26T12:00:00-03:00',
+    titulo: 'Telas redesenhadas na identidade nova',
+    itens: ['Panorama, Clientes, a página de cada cliente, Gestão (todas as abas), Operações, Publicações do dia, Linhas editoriais, Oportunidades e Trends ganharam o desenho novo da Branding7.',
+      'As outras telas chegam nas próximas versões.'] },
   { id: 'v-5.0.0', versao: '5.0.0', em: '2026-11-27T09:00:00-03:00',
     titulo: 'A identidade nova da Branding7 agora é de todos',
     itens: ['O B7 abre com a nova marca para toda a equipe e para os clientes: cores, fonte e logos novos, menu flutuante, login e Portal redesenhados.',

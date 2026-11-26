@@ -82,7 +82,7 @@ B7.Trends = (function () {
     if (B7.Dashboard && B7.Dashboard.marcarNav) B7.Dashboard.marcarNav('#/trends');
     if (B7.Rota && B7.Rota.titulo) B7.Rota.titulo(['Trends']);
     painel().innerHTML = '<div class="conteudo entra tr-tela">' +
-      '<div class="cb-topo"><div class="cb-titulo"><h1>Trends</h1><p class="tr-intro">Viu uma trend boa? Guarde aqui. Na hora de gravar, ela vira roteiro para o cliente certo em dois toques.</p></div>' +
+      '<div class="cb-topo"><div class="cb-titulo"><p class="tr-sobre">Mural de tendências da semana</p><h1>Trends</h1></div>' +
         '<div class="cb-topo-acoes"><button type="button" class="b pri" id="tr-nova">+ Nova trend</button></div></div>' +
       '<div class="tr-barra"><div class="filtro" role="tablist" aria-label="Quais trends">' +
         [['novas', 'Para usar'], ['usadas', 'Já usadas'], ['arquivadas', 'Arquivadas']].map(([k, r]) =>
@@ -180,16 +180,20 @@ B7.Trends = (function () {
   function cartao(t, i, porque) {
     const [k, nome] = origem(t.link), link = linkSeguro(t.link), usos = t.usos || [];
     const cli = t.client_id ? (clientes.find(c => c.id === t.client_id) || {}).nome : '';
+    /* Espectro: capa de 150px (sem imagem na base: fundo da marca + ícone da origem), selo da origem no canto */
+    const icCapa = k === 'nota' ? '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0012 3z"/>'
+      : k === 'web' || k === 'pin' ? '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>' : '<path d="M8 5.5v13l11-6.5z"/>';
     return '<article class="tr-card ad-in' + (marcadas.has(t.id) ? ' sel' : '') + '" style="--i:' + Math.min(i, 12) + '">' +
-      '<div class="tr-card-topo"><span class="tr-orig tr-o-' + k + '">' + nome + '</span>' +
-        '<small>' + esc(t.criado_por_nome || '') + (t.criado_por_nome ? ' · ' : '') + esc(B7.UI.quando ? B7.UI.quando(t.created_at) : '') + '</small>' +
+      '<div class="tr-capa tr-capa-' + k + '"><span class="tr-capa-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + icCapa + '</svg></span>' +
+        '<span class="tr-orig tr-o-' + k + '">' + nome + '</span>' +
         (t.arquivada_at ? '' : '<label class="tr-marca" title="Escolher para adicionar à gravação"><input type="checkbox" data-marca="' + esc(t.id) + '"' + (marcadas.has(t.id) ? ' checked' : '') + ' aria-label="Escolher esta trend"></label>') + '</div>' +
       '<h3>' + esc(t.titulo || 'Sem nome') + '</h3>' +
       (porque && porque.length ? '<div class="tr-porque">Combina por: ' + porque.map(w => '<b>' + esc(w) + '</b>').join(' · ') + '</div>' : '') +
       (t.nota ? '<p class="tr-nota">' + esc(t.nota) + '</p>' : '') +
       ((t.etiquetas || []).length || cli ? '<div class="tr-tags">' + (cli ? '<span class="tr-cli">Só para ' + esc(cli) + '</span>' : '') +
         (t.etiquetas || []).map(e => '<button type="button" class="tr-tag" data-etq-card="' + esc(e) + '">' + esc(e) + '</button>').join('') + '</div>' : '') +
-      (link ? '<a class="tr-link" href="' + esc(link) + '" target="_blank" rel="noopener noreferrer">Abrir a referência ↗</a>' : '') +
+      '<small class="tr-meta">' + esc(t.criado_por_nome || '') + (t.criado_por_nome ? ' · ' : '') + esc(B7.UI.quando ? B7.UI.quando(t.created_at) : '') + '</small>' +
+      (link ? '<a class="tr-link" href="' + esc(link) + '" target="_blank" rel="noopener noreferrer">Abrir a referência <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></a>' : '') +
       (usos.length ? '<div class="tr-usos">' + usos.slice(-4).map(u => '<a class="tr-uso" href="#/gravacao/' + esc(u.gravacao_id) + (u.roteiro_id ? '?roteiro=' + esc(u.roteiro_id) : '') + '">' + esc(u.cliente_nome || 'Cliente') + '</a>').join('') + '</div>' : '') +
       '<div class="tr-acoes">' +
         (t.arquivada_at ? '' : '<button type="button" class="b fina pri" data-usar="' + esc(t.id) + '">Usar para um cliente</button>') +
