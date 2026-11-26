@@ -1543,6 +1543,9 @@ B7.Usuarios = (function () {
      ================================================================= */
   const CONTEUDO = ['clientes', 'linhas', 'roteiros', 'gravacoes', 'semanas'];
   const chipNv = (n, cls) => '<span class="pm-nv pm-' + n + (cls ? ' ' + cls : '') + '" title="' + esc(rotuloNivel(n)) + '">' + (n === 'sem' ? '—' : esc(rotuloNivel(n))) + '</span>';
+  /* Espectro: o nível como 4 bolinhas (Sem acesso · Ver · Editar · Total), só leitura; escondidas no visual antigo */
+  const radNv = (n, cls) => '<span class="pm2-rad' + (cls ? ' ' + cls : '') + '" hidden aria-hidden="true">' + NIVEIS.map(([v]) => '<i' + (v === n ? ' class="on"' : '') + '></i>').join('') + '</span>';
+  const cabNv = '<div class="pm2-l pm2-th" hidden aria-hidden="true"><span>Módulo</span>' + NIVEIS.map(([, r]) => '<span>' + esc(r) + '</span>').join('') + '</div>';
   async function montarMatriz(alvo) {
     if (!alvo) return;
     matrizAlvo = alvo;
@@ -1575,13 +1578,13 @@ B7.Usuarios = (function () {
         return '<div class="pm2-sel" role="tablist" aria-label="Função">' + fns.map(x =>
             '<button type="button" role="tab" class="pm2-chip' + (x.id === f.id ? ' on' : '') + '" data-pm2-fn="' + esc(x.id) + '" aria-selected="' + (x.id === f.id) + '">' + esc(x.rotulo) +
             '<small>' + equipe.filter(u => identidadeDe(u).funcao === x.id).length + '</small></button>').join('') + '</div>' +
-          '<div class="pm2-cab"><span>' + resumoNv(niveis) + '</span><span class="pm2-quem">' +
+          '<div class="pm2-cab"><b class="pm2-tit" hidden>' + esc(f.rotulo) + ' · vale no banco</b><span>' + resumoNv(niveis) + '</span><span class="pm2-quem">' +
             (quem.length ? quem.map(u => '<i title="' + esc(u.nome) + '">' + B7.UI.avatarPessoa(u, 'lu-avatar') + '</i>').join('') + '<em>' + quem.length + (quem.length === 1 ? ' pessoa' : ' pessoas') + '</em>' : '<em>ninguém com esta função</em>') +
           '</span></div>' +
-          '<div class="pm2-lista">' + mods.map((m, i) => {
+          '<div class="pm2-lista">' + cabNv + mods.map((m, i) => {
             const n = niveis[i], trab = so(f.id) && CONTEUDO.includes(m.id) && ORD[n] >= 2;
             return '<div class="pm2-l' + (n === 'sem' ? ' off' : '') + '"><span class="pm2-mod"><b>' + esc(m.rotulo) + '</b><small>' +
-              (trab ? 'vale para o trabalho dele (peças, demandas, entregas)' : DESC_MOD(m, n)) + '</small></span>' + chipNv(n, trab ? 'pm-trab' : '') + '</div>';
+              (trab ? 'vale para o trabalho dele (peças, demandas, entregas)' : DESC_MOD(m, n)) + '</small></span>' + chipNv(n, trab ? 'pm-trab' : '') + radNv(n, trab ? 'pm-trab' : '') + '</div>';
           }).join('') + '</div>' +
           '<div class="pm-acoes"><button type="button" class="b pri fina" data-pm-funcoes>Editar funções e acessos</button></div>';
       }
@@ -1595,10 +1598,10 @@ B7.Usuarios = (function () {
         '<div class="pm2-cab"><span><b>' + esc(u.nome) + '</b> · ' + esc(idt.ehAdmin ? 'Parceiro B7 (administrador)' : rotuloFuncao(idt.funcao)) + '<br>' +
           (idt.ehAdmin ? 'Abre tudo em Total.' : resumoNv(niveis) + (difs ? ' · <b class="pm2-dif">' + difs + (difs === 1 ? ' diferente da função' : ' diferentes da função') + '</b>' : ' · igual à função')) + '</span>' +
           '<button type="button" class="b fina contorno" data-pm-pessoa="' + esc(u.id) + '">Mudar o acesso</button></div>' +
-        '<div class="pm2-lista">' + mods.map((m, i) => {
+        '<div class="pm2-lista">' + cabNv + mods.map((m, i) => {
           const n = niveis[i], pad = nivelPadraoDe(u, m.id), dif = !idt.ehAdmin && n !== pad;
           return '<div class="pm2-l' + (n === 'sem' ? ' off' : '') + (dif ? ' dif' : '') + '"><span class="pm2-mod"><b>' + esc(m.rotulo) + '</b><small>' +
-            (dif ? 'só para ' + esc(primeiroNome(u)) + ' · a função dá ' + esc(rotuloNivel(pad).toLowerCase()) : DESC_MOD(m, n)) + '</small></span>' + chipNv(n, dif ? 'pm-dif' : '') + '</div>';
+            (dif ? 'só para ' + esc(primeiroNome(u)) + ' · a função dá ' + esc(rotuloNivel(pad).toLowerCase()) : DESC_MOD(m, n)) + '</small></span>' + chipNv(n, dif ? 'pm-dif' : '') + radNv(n, dif ? 'pm-dif' : '') + '</div>';
         }).join('') + '</div>';
     }
     alvo.innerHTML =
