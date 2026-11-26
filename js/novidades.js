@@ -25,10 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
-  { id: 'v-5.20.0', versao: '5.20.0', em: '2026-11-26T23:00:00-03:00',
+  { id: 'v-5.20.1', versao: '5.20.1', em: '2026-11-26T23:30:00-03:00',
     titulo: 'Cartão da sua conta com o desenho novo',
     itens: ['Ao clicar no seu nome, no pé do menu, abre um cartão ao lado dele com o topo no degradê da marca, o status em pílulas coloridas e o "Meu dia" em três blocos com os números grandes.',
-      'O cartão não pisca mais ao abrir.'] },
+      'O cartão não pisca mais ao abrir. Quando não cabe na tela, ele rola com uma barra fina na cor da marca.'] },
   { id: 'v-5.19.0', versao: '5.19.0', em: '2026-11-26T22:00:00-03:00',
     titulo: 'Código de verificação e senha nova com o desenho novo',
     itens: ['O código da verificação em 2 etapas agora aparece em 6 caixinhas que acendem a cada número e ficam verdes quando confere, com "Verificado" antes de entrar. O "Reenviar" mostra quanto falta.',
