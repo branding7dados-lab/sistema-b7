@@ -129,7 +129,8 @@ const entrar = () => {
    logo invisível. */
 for (const estilo of ['hiper', 'bigbang', 'classica', 'streaming', 'tinta', 'glitch', 'aurora', 'neon', 'mosaico']) {
   const ctx = await nav.newContext({ viewport:{width:390,height:844} });
-  await ctx.addInitScript(e => { try { localStorage.setItem('b7_pref_abertura_estilo', JSON.stringify(e)); } catch (x) {} }, estilo);
+  /* 5.14.0: os estilos antigos só existem no visual antigo (Configurações → Aparência) */
+  await ctx.addInitScript(e => { try { localStorage.setItem('b7_pref_abertura_estilo', JSON.stringify(e)); localStorage.setItem('b7_pref_identidade', JSON.stringify('classico')); } catch (x) {} }, estilo);
   const pg = await ctx.newPage(); await pg.goto(BASE + '/index.html'); await pg.waitForTimeout(500);
   const t = await pg.evaluate(() => {
     for (const a of document.getAnimations()) { try { a.finish(); } catch (e) {} }
@@ -140,6 +141,36 @@ for (const estilo of ['hiper', 'bigbang', 'classica', 'streaming', 'tinta', 'gli
   });
   if (estilo === 'streaming') ok(t.estilo === estilo && t.opacidade === '0', 'streaming: no fim o logo some nas faixas (sem voo)');
   else ok(t.estilo === estilo && t.simbolo && t.marca, estilo + ': no fim da abertura o símbolo e a marca estão em repouso (o voo não salta)');
+  await ctx.close();
+}
+
+/* 5) 5.14.0 identidade nova: 3 aberturas (faisca · corte · pulso) e 6 carregamentos. O que a pessoa
+   escolheu no visual antigo cai no padrão novo; no fim da abertura o símbolo está inteiro e parado. */
+for (const [escolha, esperado] of [[null, 'faisca'], ['streaming', 'faisca'], ['faisca', 'faisca'], ['corte', 'corte'], ['pulso', 'pulso']]) {
+  const ctx = await nav.newContext({ viewport:{width:390,height:844} });
+  await ctx.addInitScript(e => { try { if (e) localStorage.setItem('b7_pref_abertura_estilo', JSON.stringify(e)); } catch (x) {} }, escolha);
+  const pg = await ctx.newPage(); await pg.goto(BASE + '/index.html'); await pg.waitForTimeout(500);
+  const t = await pg.evaluate(() => {
+    for (const a of document.getAnimations()) { try { if (a.effect && a.effect.getTiming().iterations !== Infinity) a.finish(); } catch (e) {} }
+    const m = document.querySelector('.b7-abertura .esp-ab-marca'), b7 = document.querySelector('.b7-abertura .esp-ab-b7');
+    const ceu = document.querySelector('.b7-abertura .ab-palco');
+    return { estilo: document.documentElement.getAttribute('data-ab-estilo'), visivel: !!m && m.getBoundingClientRect().width > 40 && getComputedStyle(m).opacity === '1',
+      inteiro: !!b7 && /none|140%/.test(getComputedStyle(b7).clipPath), antigo: !!ceu && getComputedStyle(ceu).display !== 'none' };
+  });
+  ok(t.estilo === esperado && t.visivel && t.inteiro && !t.antigo, 'identidade nova, escolha ' + (escolha || 'nenhuma') + ' → ' + esperado + ': símbolo inteiro e visível, sem o céu antigo (' + JSON.stringify(t) + ')');
+  await ctx.close();
+}
+for (const [escolha, esperado] of [[null, 'corte'], ['relampago', 'corte'], ['lampada', 'lampada'], ['faixa', 'faixa'], ['tres-pontos', 'tres-pontos'], ['anel', 'anel'], ['hexagono', 'hexagono']]) {
+  const ctx = await nav.newContext({ viewport:{width:390,height:844} });
+  await ctx.addInitScript(e => { try { sessionStorage.setItem('b7_abertura', '1'); if (e) localStorage.setItem('b7_pref_carregamento_estilo', JSON.stringify(e)); } catch (x) {} }, escolha);
+  const pg = await ctx.newPage(); await pg.goto(BASE + '/index.html'); await pg.waitForTimeout(400);
+  const t = await pg.evaluate(() => {
+    const vis = s => { const e = document.querySelector('.b7-abertura ' + s); if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 4 && getComputedStyle(e).display !== 'none'; };
+    return { carga: document.documentElement.getAttribute('data-ab-carga'), curta: document.documentElement.classList.contains('ab-curta'),
+      marca: vis('.esp-ab-marca'), barra: vis('.esp-cg-barra'), pontos: vis('.esp-cg-pontos'), anel: vis('.esp-cg-anel'), hex: vis('.esp-cg-hex') };
+  });
+  const peca = { corte: t.marca, lampada: t.marca, faixa: t.barra, 'tres-pontos': t.pontos, anel: t.anel, hexagono: t.hex }[esperado];
+  ok(t.carga === esperado && t.curta && peca, 'carregamento ' + (escolha || 'padrão') + ' → ' + esperado + ' aparece (' + JSON.stringify(t) + ')');
   await ctx.close();
 }
 

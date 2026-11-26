@@ -88,6 +88,16 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
     var b7Cg = function (e) { return /^(relampago|pulso|orbita|barra|brilho|pontos|programador)$/.test(e || '') ? e : null; };
     document.documentElement.setAttribute('data-ab-carga', b7Cg(JSON.parse(localStorage.getItem('b7_pref_carregamento_estilo') || 'null')) || b7Cg(localStorage.getItem('b7_carga_padrao')) || 'relampago');
   } catch (e) { document.documentElement.setAttribute('data-ab-estilo', 'streaming'); }
+  /* 5.14.0 identidade nova: só as 3 aberturas e os 6 carregamentos do Espectro (js/app.js, B7.Abertura) */
+  try {
+    if (JSON.parse(localStorage.getItem('b7_pref_identidade') || 'null') !== 'classico') {
+      var b7H = document.documentElement, b7Ab = /^(faisca|corte|pulso)$/, b7Cs = /^(corte|lampada|faixa|tres-pontos|anel|hexagono)$/;
+      var b7Ea = JSON.parse(localStorage.getItem('b7_pref_abertura_estilo') || 'null'), b7Pa = localStorage.getItem('b7_ab_padrao');
+      b7H.setAttribute('data-ab-estilo', b7Ab.test(b7Ea || '') ? b7Ea : b7Ab.test(b7Pa || '') ? b7Pa : 'faisca');
+      var b7Ec = JSON.parse(localStorage.getItem('b7_pref_carregamento_estilo') || 'null'), b7Pc = localStorage.getItem('b7_carga_padrao');
+      b7H.setAttribute('data-ab-carga', b7Cs.test(b7Ec || '') ? b7Ec : b7Cs.test(b7Pc || '') ? b7Pc : 'corte');
+    }
+  } catch (e) {}
   /* zzz156: app (ou PWA instalado) que o Android fechou em segundo plano
      para liberar memória. Se a pessoa estava usando há menos de 30 min,
      não é "abrir do zero": abertura curta e de volta à tela em que ela
@@ -249,6 +259,7 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   </div>
   <i class="ab-linha" aria-hidden="true"></i><i class="ab-flare" aria-hidden="true"></i><i class="ab-flare fino" aria-hidden="true"></i>
   <div class="ab-titulo" aria-hidden="true"><i></i><b>Sistema B7</b><b class="ab-data"></b></div>
+  <div class="esp-ab" aria-hidden="true"><i class="esp-ab-padrao"></i><i class="esp-ab-giro"></i><i class="esp-ab-faixa"></i><i class="esp-ab-anel"></i><i class="esp-ab-brilho"></i><span class="esp-ab-marca"><img class="esp-ab-b7" src="assets/brand/espectro/simbolo-mono-branco.svg" alt=""><img class="esp-ab-lampada" src="assets/brand/espectro/lampada-branco.svg" alt=""></span><b class="esp-ab-nome">Sistema B7</b><span class="esp-ab-carga"><i class="esp-cg-barra"><b></b></i><i class="esp-cg-pontos"><b></b><b></b><b></b></i><i class="esp-cg-anel"></i><i class="esp-cg-hex"><img src="assets/brand/espectro/lampada-branco.svg" alt=""></i></span></div>
   <div class="ab-espera"><b class="ab-ola"></b><span class="ab-frase">Preparando o seu espaço…</span><i class="ab-fio"></i></div>
 </div>
 <!-- zzz259 — app Android: a abertura fica parada no primeiro quadro (atrás da

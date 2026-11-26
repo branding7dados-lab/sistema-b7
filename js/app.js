@@ -620,7 +620,7 @@ B7.Rota = (function () {
      (streaming 4,9 s; big bang e clássica 6,4 s) */
   /* zzz231: streaming encurtou (as faixas abrem direto o sistema) e entrou o hiperespaço */
   /* zzz234: tinta · glitch · aurora · neon · mosaico */
-  const DURACAO_ESTILO = { streaming: 3600, hiper: 4000, bigbang: 6400, classica: 6400, tinta: 4200, glitch: 4200, aurora: 4200, neon: 3800, mosaico: 4200, estudio: 4200, programador: 4200 };
+  const DURACAO_ESTILO = { faisca: 4200, corte: 3600, pulso: 3000, streaming: 3600, hiper: 4000, bigbang: 6400, classica: 6400, tinta: 4200, glitch: 4200, aurora: 4200, neon: 3800, mosaico: 4200, estudio: 4200, programador: 4200 };
   const duracaoAbertura = () => reduzMov() ? 6400 : (DURACAO_ESTILO[document.documentElement.getAttribute('data-ab-estilo')] || 6400);
   B7.duracaoAbertura = duracaoAbertura;
   /* qual abertura vale para esta pessoa neste aparelho (a mesma regra do <head> do index.html) */
@@ -630,16 +630,24 @@ B7.Rota = (function () {
   const CARGAS = [['relampago', 'Relâmpago'], ['pulso', 'Pulso'], ['orbita', 'Órbita'], ['barra', 'Barra'], ['brilho', 'Brilho'], ['pontos', 'Pontos']];
   /* zzz292: exclusivos do cargo Programador (só aparecem para ele na escolha pessoal) */
   const SO_PROG = [['programador', 'Programador </>']];
+  /* 5.14.0 identidade nova (quadros Aberturas e Carregamentos): as 10 aberturas viram 3 e os
+     carregamentos viram os 6 do Espectro (CSS em styles/espectro/aberturas.css). O que a pessoa
+     tinha escolhido no visual antigo cai no padrão novo; quem voltar ao visual antigo reencontra o seu. */
+  const ESTILOS_ESP = [['faisca', 'Faísca'], ['corte', 'Corte Espectro'], ['pulso', 'Pulso']];
+  const CARGAS_ESP = [['corte', 'Corte do B7'], ['lampada', 'Lâmpada'], ['faixa', 'Faixa 60°'], ['tres-pontos', 'Três pontos'], ['anel', 'Anel Espectro'], ['hexagono', 'Hexágono']];
+  const espAb = () => document.documentElement.getAttribute('data-identidade') === 'espectro';
   B7.Abertura = {
-    ESTILOS: ESTILOS_AB, CARGAS, SO_PROG,
-    valido: e => ESTILOS_AB.concat(SO_PROG).some(x => x[0] === e) ? e : null,
-    cargaValida: e => CARGAS.concat(SO_PROG).some(x => x[0] === e) ? e : null,
-    padraoDoSistema() { try { return B7.Abertura.valido(localStorage.getItem('b7_ab_padrao')) || 'streaming'; } catch (e) { return 'streaming'; } },
-    cargaDoSistema() { try { return B7.Abertura.cargaValida(localStorage.getItem('b7_carga_padrao')) || 'relampago'; } catch (e) { return 'relampago'; } },
+    get ESTILOS() { return espAb() ? ESTILOS_ESP : ESTILOS_AB; },
+    get CARGAS() { return espAb() ? CARGAS_ESP : CARGAS; },
+    get SO_PROG() { return espAb() ? [] : SO_PROG; },
+    valido: e => (espAb() ? ESTILOS_ESP : ESTILOS_AB.concat(SO_PROG)).some(x => x[0] === e) ? e : null,
+    cargaValida: e => (espAb() ? CARGAS_ESP : CARGAS.concat(SO_PROG)).some(x => x[0] === e) ? e : null,
+    padraoDoSistema() { const p = espAb() ? 'faisca' : 'streaming'; try { return B7.Abertura.valido(localStorage.getItem('b7_ab_padrao')) || p; } catch (e) { return p; } },
+    cargaDoSistema() { const p = espAb() ? 'corte' : 'relampago'; try { return B7.Abertura.cargaValida(localStorage.getItem('b7_carga_padrao')) || p; } catch (e) { return p; } },
     resolver() {
       const minha = B7.Abertura.valido(B7.pref ? B7.pref.ler('abertura_estilo', null) : null);
       if (minha) return minha;
-      try { const pp = localStorage.getItem('b7_pref_abertura_particulas'); if (pp !== null && JSON.parse(pp) === false) return 'classica'; } catch (e) {}
+      try { const pp = localStorage.getItem('b7_pref_abertura_particulas'); if (!espAb() && pp !== null && JSON.parse(pp) === false) return 'classica'; } catch (e) {}
       return B7.Abertura.padraoDoSistema();
     },
     resolverCarga() { return B7.Abertura.cargaValida(B7.pref ? B7.pref.ler('carregamento_estilo', null) : null) || B7.Abertura.cargaDoSistema(); },
