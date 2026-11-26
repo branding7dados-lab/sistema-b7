@@ -28,7 +28,7 @@ html[data-identidade="espectro"] .tele-zona{background:linear-gradient(to bottom
     rgba(0,0,0,0) calc(var(--tele-foco) + var(--tele-fonte) * var(--tele-linha) * 2.5),
     rgba(0,0,0,.5) calc(var(--tele-foco) + var(--tele-fonte) * var(--tele-linha) * 3.8),
     #000 100%);}
-html[data-identidade="espectro"] .tele-zona:before{left:0;right:0;top:calc(var(--tele-foco) - var(--tele-fonte) * .16 - 4px);height:4px;border:0;opacity:.8;
+html[data-identidade="espectro"] .tele-zona:before{left:0;right:0;top:calc(var(--tele-foco) - var(--tele-fonte) * .3 - 4px);height:4px;border:0;opacity:.8;
   background:linear-gradient(120deg,#7328A5 0%,#E02F75 60%,#FF5A57 100%);}
 html[data-identidade="espectro"] .tele-zona:after{display:none;}
 html[data-identidade="espectro"] .tele-prog{background:rgba(255,255,255,.06);}
