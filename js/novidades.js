@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.2.0', versao: '5.2.0', em: '2026-11-26T13:30:00-03:00',
+    titulo: 'Mais telas na identidade nova',
+    itens: ['Calendário, Gravações e Roteiros (lista e editor) ganharam o desenho novo da Branding7.'] },
   { id: 'v-5.1.0', versao: '5.1.0', em: '2026-11-26T12:00:00-03:00',
     titulo: 'Telas redesenhadas na identidade nova',
     itens: ['Panorama, Clientes, a página de cada cliente, Gestão (todas as abas), Operações, Publicações do dia, Linhas editoriais, Oportunidades e Trends ganharam o desenho novo da Branding7.',

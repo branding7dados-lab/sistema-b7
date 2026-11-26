@@ -318,8 +318,7 @@ B7.Calendario = (function () {
 
   function pintarCabecalho() {
     const cx = document.getElementById('cb-topo'); if (!cx) return;
-    cx.innerHTML = '<div class="cb-titulo"><p class="v4-sobre">Toda a operação</p><h1>Calendário</h1>' +
-        '<p>Gravações, publicações e prazos da operação num lugar só.</p>' +
+    cx.innerHTML = '<div class="cb-titulo"><p class="v4-sobre" id="cb-sobre">' + esc(sobreTx()) + '</p><h1>Calendário</h1>' +
         (ehAgenda() ? '<small class="cb-sub" id="cb-sub" aria-live="polite"></small>' : '') + '</div>' +
       '<div class="cb-topo-acoes">' +
         (podeMarcar() ? '<button class="b pri" id="cb-marcar" aria-label="Marcar gravação">' + IC_MAIS + '<span>Marcar<span class="cb-lg"> gravação</span></span></button>' : '') +
@@ -328,6 +327,15 @@ B7.Calendario = (function () {
     const m = cx.querySelector('#cb-marcar'); if (m) m.onclick = () => modalMarcarGravacao(ehAgenda() || V.vista === 'dia' ? V.data : undefined);
     const c = cx.querySelector('#cb-config'); if (c) c.onclick = () => modalConfiguracoes();
     pintarSub();
+  }
+
+  /* linha de cima do título: o período na tela e, se houver, a agenda do Google ligada */
+  function sobreTx() {
+    const { ini, fim } = janela(), a = D().local(ini), b = D().local(fim), d = D().local(V.data);
+    const per = !ehAgenda() && V.vista === 'dia' ? d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()]
+      : !ehAgenda() && V.vista === 'mes' ? MESES_LONGOS[d.getMonth()] + ' de ' + d.getFullYear()
+      : a.getDate() + (a.getMonth() !== b.getMonth() ? ' de ' + MESES_LONGOS[a.getMonth()] : '') + ' a ' + b.getDate() + ' de ' + MESES_LONGOS[b.getMonth()];
+    return per + (conexao.conectado ? ' · Google Agenda ligada' : '');
   }
 
   /* celular: a semana em uma frase, embaixo do título */
@@ -530,6 +538,7 @@ B7.Calendario = (function () {
     const cx = document.getElementById('cb-corpo'); if (!cx) return;
     pintarAvisos();
     const rot = document.getElementById('cb-rotulo'); if (rot) rot.textContent = rotulo();
+    const sobre = document.getElementById('cb-sobre'); if (sobre) sobre.textContent = sobreTx();
     if (!R.pronto) {
       cx.innerHTML = '<div class="cb-carregando">' + B7.UI.skeleton(ehAgenda() ? 'lista' : 'cards', { n: ehAgenda() ? 4 : 6 }) + '</div>';
       return;
@@ -688,26 +697,52 @@ B7.Calendario = (function () {
       '<div class="cb-mes-grade">' + cel + '</div></div>' + vazioPeriodo(lista);
   }
 
-  /* ---- SEMANA: colunas por dia; prazos/dia todo em cima, horários embaixo ---- */
+  /* ---- SEMANA: grade de horários (60px por hora); prazos/dia todo numa faixa sob o cabeçalho ---- */
+  const minDe = h => { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? +m[1] * 60 + +m[2] : null; };
+  const hTx = m => Math.floor(m / 60) + 'h' + (m % 60 ? D().pad(m % 60) : '');
   function semanaHTML(lista) {
     const mapa = porDia(lista), hoje = D().hoje(), { ini } = janela();
-    let cols = '';
+    const comHora = lista.filter(e => e.hora && minDe(e.hora) != null);
+    const fimDe = e => { const a = minDe(e.hora), b = minDe(e.horaFim); return b != null && b > a ? b : a + 60; };
+    /* faixa visível: 8h às 19h, alargada se houver compromisso fora dela */
+    const h0 = Math.min(8, ...comHora.map(e => Math.floor(minDe(e.hora) / 60)));
+    const h1 = Math.max(19, ...comHora.map(e => Math.min(24, Math.ceil(fimDe(e) / 60))));
+    const temTodo = lista.some(e => !e.hora || minDe(e.hora) == null), MAXT = 4;
+    let cab = '<div class="cb-g-canto"></div>', todoL = '<div class="cb-g-canto cb-g-todo-rot">Dia todo</div>', horas = '<div class="cb-g-horas">', cols = '';
+    for (let h = h0; h < h1; h++) horas += '<p>' + h + 'h</p>';
+    horas += '</div>';
+    /* linha do agora: nasce na 1ª coluna e atravessa as sete */
+    const agora = new Date(), mAgora = agora.getHours() * 60 + agora.getMinutes();
+    const linha = hoje >= ini && hoje <= D().somarDias(ini, 6) && mAgora >= h0 * 60 && mAgora <= h1 * 60
+      ? '<i class="cb-g-agora" aria-hidden="true" style="top:' + (mAgora - h0 * 60 - 1) + 'px"></i>' : '';
     for (let i = 0; i < 7; i++) {
-      const dia = D().somarDias(ini, i), d = D().local(dia), evs = mapa.get(dia) || [];
-      const todo = agrupar(evs.filter(e => !e.hora)), hora = evs.filter(e => e.hora);
-      const MAXT = 5;
-      cols += '<section class="cb-sem-col' + (dia === hoje ? ' hoje' : '') + '" aria-label="' + DIAS_SEMANA[d.getDay()] + ', ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()] + '">' +
-        '<button type="button" class="cb-sem-cab" data-ir-dia="' + dia + '"><small>' + DIAS_SEMANA_ABREV[d.getDay()].toUpperCase() + '</small><b>' + d.getDate() + '</b>' + (dia === hoje ? '<em>Hoje</em>' : '') + '</button>' +
-        '<div class="cb-sem-todo">' + todo.slice(0, todo.length > MAXT ? MAXT - 1 : MAXT).map(pecaHTML).join('') +
-          (todo.length > MAXT ? '<button type="button" class="cb-mais" data-dia-mais="' + dia + '">+' + restantes(todo.slice(MAXT - 1)) + ' mais</button>' : '') + '</div>' +
-        '<div class="cb-sem-hora">' + (hora.length ? hora.map(ev =>
-          '<button type="button" class="cb-card d-' + ev.dominio + ' t-' + ev.tom + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + '" data-ev="' + esc(ev.id) + '" aria-label="' + esc(ariaEvento(ev)) + '">' +
-            '<span class="cb-card-h"><i class="cb-dom-ic">' + DOM(ev.dominio).ic + '</i>' + esc(horaTx(ev)) + '</span>' +
-            '<b>' + esc(ev.clienteNome || ev.titulo) + '</b>' + (ev.clienteNome ? '<span>' + esc(ev.titulo) + '</span>' : '') +
-            statusHTML(ev, true) + '</button>').join('') : (todo.length ? '' : '<span class="cb-sem-vazio">—</span>')) + '</div>' +
-      '</section>';
+      const dia = D().somarDias(ini, i), d = D().local(dia), evs = mapa.get(dia) || [], ehHoje = dia === hoje;
+      const nome = DIAS_SEMANA[d.getDay()] + ', ' + d.getDate() + ' de ' + MESES_LONGOS[d.getMonth()];
+      const todo = agrupar(evs.filter(e => !e.hora || minDe(e.hora) == null));
+      const hora = evs.filter(e => e.hora && minDe(e.hora) != null).sort((a, b) => minDe(a.hora) - minDe(b.hora));
+      /* sobreposição: cada compromisso ganha uma raia dentro do seu grupo */
+      const raias = [], grupo = []; let fimGrupo = -1;
+      const fecha = () => { const n = Math.max(...grupo.map(x => x.r)) + 1; grupo.forEach(x => { x.n = n; }); grupo.length = 0; raias.length = 0; };
+      const pos = hora.map(ev => {
+        const a = minDe(ev.hora), b = fimDe(ev);
+        if (a >= fimGrupo && grupo.length) fecha();
+        let r = raias.findIndex(f => f <= a); if (r < 0) { r = raias.length; raias.push(b); } else raias[r] = b;
+        const x = { ev, a, b, r, n: 1 }; grupo.push(x); fimGrupo = Math.max(fimGrupo, b); return x;
+      });
+      if (grupo.length) fecha();
+      cab += '<button type="button" class="cb-sem-cab' + (ehHoje ? ' hoje' : '') + '" data-ir-dia="' + dia + '" aria-label="Abrir ' + nome + '">' +
+        DIAS_SEMANA_ABREV[d.getDay()].replace(/^./, c => c.toUpperCase()) + ' ' + d.getDate() + '</button>';
+      todoL += '<div class="cb-sem-todo' + (ehHoje ? ' hoje' : '') + '">' + todo.slice(0, todo.length > MAXT ? MAXT - 1 : MAXT).map(pecaHTML).join('') +
+        (todo.length > MAXT ? '<button type="button" class="cb-mais" data-dia-mais="' + dia + '">+' + restantes(todo.slice(MAXT - 1)) + ' mais</button>' : '') + '</div>';
+      cols += '<section class="cb-sem-hora' + (ehHoje ? ' hoje' : '') + '" aria-label="' + nome + '">' + pos.map(({ ev, a, b, r, n }) => {
+        const st = ev.statusRotulo && ev.status !== 'marcada' && ev.status !== 'sem_vinculo' ? ' · ' + rotStatus(ev) : '';
+        return '<button type="button" class="cb-card d-' + ev.dominio + ' t-' + ev.tom + (ev.historico ? ' hist' : '') + (ev.cancelado ? ' canc' : '') + (ev.concluido ? ' feito' : '') + (b - a < 50 ? ' curto' : '') + '" data-ev="' + esc(ev.id) + '" aria-label="' + esc(ariaEvento(ev)) + '" title="' + esc(ariaEvento(ev)) + '" ' +
+          'style="top:' + (a - h0 * 60 + 4) + 'px;height:' + Math.max(b - a - 8, 22) + 'px;left:calc(' + (r * 100 / n) + '% + 6px);width:calc(' + (100 / n) + '% - 12px)">' +
+          '<b>' + esc(ev.clienteNome ? (ev.dominio === 'gravacao' ? 'Gravação ' : '') + ev.clienteNome : ev.titulo) + '</b>' +
+          '<span>' + hTx(a) + (minDe(ev.horaFim) != null ? ' – ' + hTx(b) : '') + esc(st) + '</span></button>';
+      }).join('') + (i === 0 ? linha : '') + '</section>';
     }
-    return '<div class="cb-semana">' + cols + '</div>' + vazioPeriodo(lista);
+    return '<div class="cb-semana cb-grade' + (temTodo ? ' tem-todo' : '') + '" style="--nh:' + (h1 - h0) + '">' + cab + (temTodo ? todoL : '') + horas + cols + '</div>' + vazioPeriodo(lista);
   }
 
   /* ---- DIA / agenda: agrupado por domínio, só grupos não vazios ---- */

@@ -242,13 +242,13 @@ B7.Editor = (function () {
   /* ==================================================== trilho */
   function renderTrilho() {
     const t = document.getElementById('trilho');
-    t.innerHTML = E.roteiros.map((r, i) =>
+    t.innerHTML = '<p class="ed-tr-cab" hidden>Roteiros · ' + E.roteiros.length + '</p>' + E.roteiros.map((r, i) =>
       /* zzz16: no celular o chip mostra também o começo do título
          (no desktop o trilho é estreito e o .chip-t fica escondido) */
       '<button class="chip' + (r.id === E.atual ? ' on' : '') + '" draggable="true" data-id="' + esc(r.id) + '">' +
       '<span class="chip-n">' + String(i + 1).padStart(2, '0') + '</span>' +
       '<span class="chip-t">' + esc(r.titulo || 'Sem título') + '</span></button>').join('') +
-      '<button class="add" id="bt-add-roteiro" title="Novo roteiro">+</button>';
+      '<button class="add" id="bt-add-roteiro" title="Novo roteiro" aria-label="Novo roteiro"><span class="ed-add-mais">+</span><svg hidden viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="ed-add-tx" hidden>Roteiro</span></button>';
 
     t.querySelectorAll('.chip').forEach(c => {
       c.onclick = () => selecionar(c.dataset.id);
@@ -611,7 +611,6 @@ B7.Editor = (function () {
           '<span class="cena-topo" title="Recolher / abrir"><span class="ed2-num">' + String(i + 1).padStart(2, '0') + '</span></span>' +
           '<div class="menu ed2-tipo-menu"><button class="ed2-tipo" aria-label="Tipo da cena">' + esc(c.tipo || 'Narrativa') + '<i>▾</i></button><div class="lista">' +
             TIPOS.map(t => '<button data-tipo="' + t + '"' + (c.tipo === t ? ' class="on"' : '') + '>' + t + '</button>').join('') + '</div></div>' +
-          '<textarea class="ed2-dir cresce" data-c-campo="direcao" rows="1" placeholder="Direção (ex.: direto pra câmera)" aria-label="Direção da cena">' + esc(c.direcao) + '</textarea>' +
           '<span class="ed2-tempo">' + tempoTx(segundos(c.texto)) + '</span>' +
           '<span class="puxa" title="Arraste para reordenar">⠿</span>' +
           '<div class="menu"><button class="ico" data-menu aria-label="Ações da cena">⋯</button><div class="lista">' +
@@ -622,7 +621,11 @@ B7.Editor = (function () {
           '</div></div>' +
         '</div>' +
         '<div class="cena-corpo">' +
-          '<textarea class="ed2-texto cresce" data-c-campo="texto" rows="1" placeholder="Escreva a fala desta cena… (Ctrl+Enter cria a próxima)">' + esc(c.texto) + '</textarea>' +
+          /* Espectro: direção (imagem) e fala lado a lado, cada uma com o seu rótulo */
+          '<div class="ed-cena-grade"><div class="ed-cena-col"><span class="ed-rot" hidden>Imagem</span>' +
+            '<textarea class="ed2-dir cresce" data-c-campo="direcao" rows="1" placeholder="Direção (ex.: direto pra câmera)" aria-label="Direção da cena">' + esc(c.direcao) + '</textarea></div>' +
+          '<div class="ed-cena-col"><span class="ed-rot" hidden>Fala</span>' +
+            '<textarea class="ed2-texto cresce" data-c-campo="texto" rows="1" placeholder="Escreva a fala desta cena… (Ctrl+Enter cria a próxima)">' + esc(c.texto) + '</textarea></div></div>' +
           (c.tipo === 'Narração' ?
             '<div class="sugestao-cx ed2-sug' + (falta ? ' falta' : '') + '">' +
             '<label class="rot">IMAGENS DA NARRAÇÃO' + (falta ? ' · OBRIGATÓRIO' : '') + '</label>' +
