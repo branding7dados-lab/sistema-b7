@@ -247,6 +247,12 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
   html[data-identidade="espectro"] body[data-shell="interno"] .topo-global{background:transparent !important;border:0 !important;box-shadow:none !important;
     -webkit-backdrop-filter:none !important;backdrop-filter:none !important;padding:28px 36px 10px 28px !important;min-height:0;gap:10px;}
   html[data-identidade="espectro"] body[data-shell="interno"] .topo-global:after{display:none !important;}
+  /* o "modo leve" (js/desempenho.js) pinta o topo com !important e id no seletor: sem isto, vira uma faixa escura sobre a aurora */
+  html.modo-leve[data-identidade="espectro"] body[data-shell="interno"] #tela-dashboard .topo.topo-global,
+  html[data-identidade="espectro"] body.painel-rolou[data-shell="interno"] #tela-dashboard .topo.topo-global{background:transparent !important;box-shadow:none !important;border-bottom-color:transparent !important;}
+  /* o conteúdo que rola some num esfumado sob o topo, em vez de um corte seco */
+  html[data-identidade="espectro"] body.painel-rolou[data-shell="interno"] #painel-dashboard{
+    -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 22px);mask-image:linear-gradient(to bottom, transparent 0, #000 22px);}
   html[data-identidade="espectro"] body[data-shell="interno"] .busca-gatilho{order:5;flex:none !important;width:260px;max-width:30vw;height:48px;padding:0 18px;border-radius:24px !important;
     background:var(--card) !important;border:1px solid var(--esp-cartao-borda) !important;box-shadow:0 8px 24px rgba(10,16,51,.04);color:var(--ink-3);}
   html[data-identidade="espectro"] body[data-shell="interno"] .busca-gatilho kbd{display:none;}
