@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.16.1', versao: '5.16.1', em: '2026-11-26T19:00:00-03:00',
+    titulo: 'Carregamento nas cores da marca',
+    itens: ['Com uma data especial ligada (as cores de estação), a abertura e a tela de carregamento ficavam verdes e azuis. Agora ficam sempre nas cores da Branding7.',
+      'A frase "Preparando o seu espaço…" perdeu a caixa escura antiga e ficou logo abaixo do carregamento.'] },
   { id: 'v-5.16.0', versao: '5.16.0', em: '2026-11-26T18:00:00-03:00',
     titulo: 'Aberturas novas: Ignição, Hiperespaço e Aurora',
     itens: ['O B7 abre com as três aberturas de cinema da marca: Ignição (a padrão), Hiperespaço e Aurora, cada uma com a sua trilha sonora. Dá para escolher em Configurações → Aparência.',
