@@ -15,8 +15,10 @@ window.B7 = window.B7 || {};
 B7.Slides = (function () {
   const esc = B7.UI.esc;
   const MESES = B7.UI.MESES;
-  const MARCA = 'assets/brand/symbol-color.png';
-  const LOGO = 'assets/brand/logo-white.png';
+  /* Espectro: marca nova (assets/brand/espectro); lida a cada folha, porque a identidade troca sem recarregar */
+  const ESPECTRO_ID = () => typeof document !== 'undefined' && document.documentElement.getAttribute('data-identidade') === 'espectro';
+  const MARCA = () => ESPECTRO_ID() ? B7.Folha.svgPronto('assets/brand/espectro/simbolo.svg', 2117, 2072) : 'assets/brand/symbol-color.png';
+  const LOGO = () => ESPECTRO_ID() ? B7.Folha.svgPronto('assets/brand/espectro/horizontal-branco.svg', 2971, 654) : 'assets/brand/logo-white.png';
 
   const vazio = t => !String(t || '').trim();
   const paragrafos = txt => String(txt || '').split('\n').map(s => s.trim()).filter(Boolean)
@@ -44,7 +46,7 @@ B7.Slides = (function () {
     opcoes = opcoes || {};
     return '<div class="slide' + (opcoes.escuro ? ' escuro' : '') + '">' +
       (opcoes.escuro ? '' :
-        '<div class="sl-topo"><div class="esq"><img src="' + MARCA + '" alt="">' +
+        '<div class="sl-topo"><div class="esq"><img src="' + MARCA() + '" alt="">' +
         '<span>B7 &nbsp;/&nbsp; BRANDING7</span></div>' +
         '<div class="dir">' + esc(opcoes.secao || '') + '</div></div>') +
       '<div class="sl-corpo">' + conteudo + '</div>' +
@@ -59,7 +61,7 @@ B7.Slides = (function () {
     const l = ctx.linha;
     return '<div class="slide escuro sl-capa">' +
       '<div class="brilho"></div>' +
-      '<img class="marca" src="' + LOGO + '" alt="B7">' +
+      '<img class="marca" src="' + LOGO() + '" alt="B7">' +
       (ctx.clienteLogo
         ? '<div class="sl-logo-cliente"><img src="' + esc(ctx.clienteLogo) + '" alt=""></div>' : '') +
       '<div class="sl-capa-in">' +
@@ -386,7 +388,7 @@ B7.Slides = (function () {
     const canais = (l.canais || '').split(',').map(x => x.trim()).filter(Boolean);
     return '<div class="slide s2-capa">' +
       '<div class="s2-capa-painel"><div class="cp-luz"></div><div class="cp-luz l2"></div>' +
-        '<div class="cp-topo"><img class="cp-marca" src="' + LOGO + '" alt="B7"><span class="cp-kicker">Planejamento de conteúdo</span></div>' +
+        '<div class="cp-topo"><img class="cp-marca" src="' + LOGO() + '" alt="B7"><span class="cp-kicker">Planejamento de conteúdo</span></div>' +
         '<div class="cp-miolo"><h1>Linha<br>editorial</h1><div class="cp-sub">' + esc(rotulo(l)) + (periodo(l) ? ' · ' + esc(periodo(l)) : '') + '</div></div>' +
       '</div>' +
       '<div class="s2-capa-lado">' +
@@ -820,6 +822,8 @@ B7.PreviewLinha = (function () {
         (estado.i + 1) + ' / ' + estado.paginas.length;
       caixa.querySelector('.preview-prog i').style.setProperty('--p',
         estado.paginas.length > 1 ? estado.i / (estado.paginas.length - 1) : 1);
+      /* Espectro: o progresso é dividido em um traço por slide (styles/espectro/ficha-slides.css) */
+      caixa.querySelector('.preview-prog').style.setProperty('--n', Math.max(1, estado.paginas.length));
       caixa.querySelectorAll('[data-ant],[data-ant2]').forEach(b => b.disabled = estado.i === 0);
       caixa.querySelectorAll('[data-prox],[data-prox2]').forEach(b => b.disabled = estado.i >= estado.paginas.length - 1);
       escalar();
