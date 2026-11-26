@@ -201,11 +201,13 @@ B7.Perfil = (function () {
   function htmlSeg() {
     return (
       '<div class="pf-cartao">' +
-            titulo(IC.chave, 'ambar', 'Trocar senha') +
+            titulo(IC.chave, 'ambar', 'Senha') +
             '<p class="ajuda">Ao trocar, as outras sessões abertas com esta conta são encerradas.</p>' +
-            senha('pf-atual', 'SENHA ATUAL', 'current-password') +
-            senha('pf-nova', 'NOVA SENHA', 'new-password') +
-            senha('pf-nova2', 'REPETIR A NOVA SENHA', 'new-password') +
+            '<div class="pf-senhas">' +
+              '<div>' + senha('pf-atual', 'Senha atual', 'current-password') + '</div>' +
+              '<div>' + senha('pf-nova', 'Senha nova', 'new-password') + '</div>' +
+              '<div>' + senha('pf-nova2', 'Repetir', 'new-password') + '</div>' +
+            '</div>' +
             '<div class="pf-forca" id="pf-forca" data-n="0" aria-hidden="true"><i></i><i></i><i></i><i></i><span></span></div>' +
             '<ul class="pf-req" id="pf-req" aria-label="Requisitos da nova senha">' +
               '<li data-req="tam">10 caracteres ou mais</li>' +
@@ -215,7 +217,7 @@ B7.Perfil = (function () {
             '</ul>' +
             '<div class="perfil-acao">' +
               '<span class="perfil-msg" id="pf-msg-senha" role="status"></span>' +
-              '<button class="b pri fina" id="pf-salvar-senha">Trocar senha</button>' +
+              '<button class="b pri fina" id="pf-salvar-senha">Salvar senha</button>' +
             '</div>' +
           '</div>' +
           /* zzz218: verificação em 2 etapas e Google (js/seguranca.js) */
@@ -416,7 +418,7 @@ B7.Perfil = (function () {
       } catch (e) {
         aviso(msgSenha, e.message || 'Não foi possível trocar a senha.', 'erro');
       }
-      btSenha.disabled = false; btSenha.textContent = 'Trocar senha';
+      btSenha.disabled = false; btSenha.textContent = 'Salvar senha';
     };
   }
 
@@ -436,14 +438,14 @@ B7.Perfil = (function () {
   function gruposNotificacao() {
     const gs = (B7.Notif && B7.Notif.grupos) ? B7.Notif.grupos() : [];
     if (!gs.length) return '';
-    return '<div class="pf-sub">O que te avisa</div>' +
+    return '<div class="pf-cartao pf-avisos"><div class="pf-sub">O que te avisa</div>' +
       '<p class="ajuda pf-sub-ajuda">Desligar um aviso tira o push e o som dele. O registro continua no sino.</p>' +
       gs.map((g, i) =>
         '<details class="pf-grupo" data-grupo="' + esc(g.id) + '"' + (i === 0 ? ' open' : '') + '>' +
           '<summary><span>' + esc(g.titulo) + '</span><small data-conta></small></summary>' +
           (g.nota ? '<p class="ajuda pf-grupo-nota">' + esc(g.nota) + '</p>' : '') +
           g.itens.map(it => opcao('n:' + it[0], it[1], it[2])).join('') +
-        '</details>').join('');
+        '</details>').join('') + '</div>';
   }
 
   /* Cada interruptor grava na hora. "Salvo" só aparece depois de o banco

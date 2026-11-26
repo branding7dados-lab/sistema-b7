@@ -2056,7 +2056,7 @@ B7.Dashboard = (function () {
     const OK_COR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
     const coresRapidas = () => '<div class="cfg-cores" role="radiogroup" aria-label="Cor do sistema">' +
       B7.Aparencia.bolinhas().map(b => '<button type="button" role="radio" class="cfg-cor' + (b.on ? ' on' : '') + '" aria-checked="' + b.on + '" data-cor="' + b.id + '" title="' + esc(b.nome) + '" aria-label="' + esc(b.nome) + '">' +
-        '<i style="background:' + b.fundo + '">' + OK_COR + '</i></button>').join('') +
+        '<i style="background:' + b.fundo + '">' + OK_COR + '</i>' + (B7.Identidade && B7.Identidade.ligada() ? '<span class="cfg-cor-nome">' + esc(b.nome) + '</span>' : '') + '</button>').join('') +
       '</div><div class="cfg-cores-pe">' +
         (B7.Aparencia.pessoal() ? '<button type="button" class="cfg-cor-link" data-cor-equipe>Usar a da equipe</button>' : '<span class="cfg-cor-nota">Igual à da equipe</span>') +
         '<button type="button" class="cfg-cor-mais" data-ap-pessoal>Mais opções' + SETA_CFG + '</button></div>';
@@ -2119,7 +2119,7 @@ B7.Dashboard = (function () {
 
       (abre('calendario') ? grupo('Calendário', '',
         L({ ic: 'calendario', tom: 'azul', t: 'Visão padrão', d: 'como o Calendário abre',
-            abaixo: seletor('cal_vista', B7.pref.ler('calendario_vista', 'mes'), [['mes', 'Mês'], ['semana', 'Semana'], ['dia', 'Dia']]) })) : '') +
+            dir: seletor('cal_vista', B7.pref.ler('calendario_vista', 'mes'), [['mes', 'Mês'], ['semana', 'Semana'], ['dia', 'Dia']]) })) : '') +
       (pode('interface') ? grupo('Interface', '',
         L({ ic: 'lateral', tom: 'cinza', t: 'Começar com a barra recolhida', d: 'só os ícones na lateral', cls: 'cfg-alterna',
             dir: chave('sidebar', recolhida, 'Barra lateral recolhida') }) +
@@ -2135,25 +2135,18 @@ B7.Dashboard = (function () {
         L({ ic: 'play', tom: 'azul', t: 'Refazer o tour', d: 'o passeio de 1 minuto pelo que você mais usa', botao: true, attrs: ' data-refazer-tour' })) : '');
 
     const secAparencia =
-      /* 5.0.0: a identidade nova (Espectro) é o padrão; a equipe pode voltar ao visual antigo neste aparelho durante a transição */
-      (B7.Identidade && !B7.Auth.ehCliente() ? grupo('Identidade nova', 'A nova marca da Branding7 já vale para todo mundo, clientes inclusive. Se algo atrapalhar o seu trabalho, dá para voltar ao visual antigo só neste aparelho, por enquanto.',
-        L({ ic: 'tema', tom: 'violeta', t: 'Usar a identidade nova', cls: 'cfg-alterna',
-            d: 'desligue para voltar ao visual antigo neste aparelho (some quando a transição acabar)',
-            dir: chave('identidade', B7.Identidade.ligada(), 'Usar a identidade nova') })) : '') +
-      grupo('Visual', 'Vale só para este aparelho — cada pessoa da equipe ajusta o seu.',
-        (B7.Aparencia ? L({ ic: 'tema', tom: 'rosa', t: 'Cor do sistema',
-            d: '<span data-ap-eu-d>' + esc(B7.Aparencia.resumoPessoal()) + '</span>',
-            abaixo: coresRapidas() }) : '') +
-        L({ ic: 'tema', tom: 'violeta', t: 'Tema', d: 'claro, escuro ou igual ao do aparelho',
-            abaixo: '<div class="cfg-seg cfg-temas" data-grupo="tema" role="radiogroup" aria-label="Tema"><i class="cfg-seg-pill" aria-hidden="true"></i>' +
-              [['light', 'Claro'], ['dark', 'Escuro'], ['auto', 'Sistema']].map(([v, r]) =>
-                '<button type="button" role="radio" data-v="' + v + '" aria-checked="' + (tema === v) + '"' + (tema === v ? ' class="on"' : '') + '>' +
-                '<span class="cfg-tm cfg-tm-' + v + '" aria-hidden="true"><i class="cfg-tm-lado"></i><i class="cfg-tm-topo"></i><i class="cfg-tm-a"></i><i class="cfg-tm-b"></i>' +
-                '<b class="cfg-tm-ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></b></span>' +
-                '<span class="cfg-tm-rot">' + r + '</span></button>').join('') + '</div>' }) +
+      /* Espectro (quadro Config-aparencia): Tema · Paleta · Conforto, e a chave da identidade nova por último */
+      grupo('Tema', 'Vale só para este aparelho — cada pessoa da equipe ajusta o seu.',
+        '<div class="cfg-seg cfg-temas" data-grupo="tema" role="radiogroup" aria-label="Tema"><i class="cfg-seg-pill" aria-hidden="true"></i>' +
+          [['light', 'Claro'], ['dark', 'Escuro'], ['auto', 'Igual ao aparelho']].map(([v, r]) =>
+            '<button type="button" role="radio" data-v="' + v + '" aria-checked="' + (tema === v) + '"' + (tema === v ? ' class="on"' : '') + '>' +
+            '<span class="cfg-tm cfg-tm-' + v + '" aria-hidden="true"><i class="cfg-tm-lado"></i><i class="cfg-tm-topo"></i><i class="cfg-tm-a"></i><i class="cfg-tm-b"></i>' +
+            '<b class="cfg-tm-ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></b></span>' +
+            '<span class="cfg-tm-rot">' + r + '</span></button>').join('') + '</div>', 'cfg-g-tema') +
+      (B7.Aparencia ? grupo('Paleta', '<span data-ap-eu-d>' + esc(B7.Aparencia.resumoPessoal()) + '</span>', coresRapidas(), 'cfg-g-paleta') : '') +
+      grupo('Conforto', '',
         L({ ic: 'densidade', tom: 'azul', t: 'Densidade', d: 'quanto conteúdo cabe na tela',
-            abaixo: seletor('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']]) })) +
-      grupo('Movimento e desempenho', '',
+            dir: seletor('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']]) }) +
         (B7.Desempenho && B7.Desempenho.animacoesLigadas
           ? L({ ic: 'animacao', tom: 'rosa', t: 'Animações', cls: 'cfg-alterna',
                 d: '<span id="cfg-anim-d">' + descAnimacoes() + '</span>',
@@ -2161,7 +2154,12 @@ B7.Dashboard = (function () {
           : L({ ic: 'animacao', tom: 'rosa', t: 'Animações', d: 'segue a preferência do seu sistema',
                 dir: '<span class="cfg-valor">' + (reduz ? 'Reduzidas' : 'Normais') + '</span>' })) +
         (B7.Desempenho ? L({ ic: 'raio', tom: 'laranja', t: 'Desempenho', d: '<span id="cfg-desemp-d">' + descDesempenho() + '</span>',
-            abaixo: seletor('desempenho', B7.Desempenho.modo(), [['auto', 'Automático'], ['leve', 'Leve'], ['completo', 'Completo']]) }) : ''));
+            dir: seletor('desempenho', B7.Desempenho.modo(), [['auto', 'Automático'], ['leve', 'Leve'], ['completo', 'Completo']]) }) : '')) +
+      /* 5.0.0: a identidade nova (Espectro) é o padrão; a equipe pode voltar ao visual antigo neste aparelho durante a transição */
+      (B7.Identidade && !B7.Auth.ehCliente() ? grupo('Identidade nova', 'A nova marca da Branding7 já vale para todo mundo, clientes inclusive. Se algo atrapalhar o seu trabalho, dá para voltar ao visual antigo só neste aparelho, por enquanto.',
+        L({ ic: 'tema', tom: 'violeta', t: 'Usar a identidade nova', cls: 'cfg-alterna',
+            d: 'desligue para voltar ao visual antigo neste aparelho (some quando a transição acabar)',
+            dir: chave('identidade', B7.Identidade.ligada(), 'Usar a identidade nova') })) : '');
 
     const secAbertura =
       grupo('Abertura e carregamento', 'Vale neste aparelho. Ao trocar, o aviso traz “Ver agora”.',
@@ -2183,17 +2181,18 @@ B7.Dashboard = (function () {
               (B7.Notif && B7.Notif.NOMES_SONS) || [['toque', 'Toque']], 'Som de notificação') }) +
         L({ ic: 'play', tom: 'verde', t: 'Testar som de notificação', d: 'toca o som escolhido', botao: true, attrs: ' data-testar-som' }));
 
-    const secTp = (usaTp ? grupo('Teleprompter', 'O que já vem pronto ao abrir. Dá para mudar durante a leitura.',
+    const secTp = (usaTp ? grupo('Leitura', 'O que já vem pronto ao abrir. Dá para mudar durante a leitura.',
         L({ ic: 'ler', tom: 'rosa', t: 'Velocidade', d: 'de 1 (devagar) a 20 (rápido)', dir: passo('tp_velocidade', tp.velocidade, 'Velocidade do teleprompter') }) +
         L({ ic: 'letra', tom: 'laranja', t: 'Tamanho da letra', d: 'automático ajusta ao tamanho da tela',
-            abaixo: seletor('tp_fonte', String(tp.fonte || 0), [['0', 'Auto'], ['40', 'Pequena'], ['56', 'Média'], ['72', 'Grande'], ['96', 'Enorme']]) }) +
+            dir: seletor('tp_fonte', String(tp.fonte || 0), [['0', 'Auto'], ['40', 'Pequena'], ['56', 'Média'], ['72', 'Grande'], ['96', 'Enorme']]) }) +
         L({ ic: 'relogio', tom: 'azul', t: 'Contagem antes de começar', d: 'segundos até o texto andar',
-            abaixo: seletor('tp_contagem', String(tp.contagem), [['0', 'Sem'], ['3', '3 s'], ['5', '5 s'], ['10', '10 s']]) }) +
+            dir: seletor('tp_contagem', String(tp.contagem), [['0', 'Sem'], ['3', '3 s'], ['5', '5 s'], ['10', '10 s']]) }) +
         L({ ic: 'espelho', tom: 'cinza', t: 'Texto espelhado', d: 'para usar com vidro de teleprompter', cls: 'cfg-alterna',
             dir: chave('tp_espelho', !!tp.espelho, 'Texto espelhado') })) : '');
 
-    const secApps =
-      (u && !ehCli && linhasApp ? grupo('Aplicativos', '', linhasApp) : '') +
+    /* Espectro (quadro Config-apps-tv): cada bloco vira um cartão da grade, com a prévia azul no alto */
+    const secApps = (x => x ? '<div class="cfg-apps">' + x + '</div>' : '')(
+      (u && !ehCli && linhasApp ? grupo('Aplicativos', '', linhasApp, 'cfg-g-app cfg-app-pc') : '') +
       (u && !ehCli && B7.TV && B7.Recursos && B7.Recursos.ligado('tv') ? grupo('Painel de TV',
         'Só leitura: sem nomes da equipe, comentários ou notificações. Para sair, aperte Esc.',
         L({ ic: 'play', tom: 'violeta', t: 'Abrir o Painel de TV', d: 'a agência no mês, para deixar aberta numa tela',
@@ -2201,20 +2200,14 @@ B7.Dashboard = (function () {
         L({ ic: 'animacao', tom: 'rosa', t: 'Abrir só a animação da B7', d: 'a abertura do sistema em ciclo, sem número nenhum',
             botao: true, attrs: ' data-ir="#/tv?modo=animacao"' }) +
         L({ ic: 'tema', tom: 'azul', t: 'Abrir só a logo', d: 'a marca parada na tela, com a frase e o relógio que você escolher',
-            botao: true, attrs: ' data-ir="#/tv?modo=logo"' })) : '') +
+            botao: true, attrs: ' data-ir="#/tv?modo=logo"' }), 'cfg-g-app cfg-app-tv') : '') +
       (u && !ehCli && B7.Novidades && B7.Novidades.total() ? grupo('Novidades', '',
         L({ ic: 'versao', tom: 'rosa', t: 'Novidades do B7', d: 'o que mudou no sistema', botao: true, attrs: ' data-novidades',
-            dir: B7.Novidades.pendentes() ? '<span class="cfg-valor ok">' + B7.Novidades.pendentes() + (B7.Novidades.pendentes() === 1 ? ' nova' : ' novas') + '</span>' : '' })) : '');
+            dir: B7.Novidades.pendentes() ? '<span class="cfg-valor ok">' + B7.Novidades.pendentes() + (B7.Novidades.pendentes() === 1 ? ' nova' : ' novas') + '</span>' : '' }), 'cfg-g-app cfg-app-nov') : ''));
 
+    /* Espectro (quadro Config-este-aparelho): o aparelho em cima, o diagnóstico (versão e atualização) embaixo */
     const secAparelho = !u ? '' :
       grupo('Este aparelho', u ? 'Limpar não apaga nada do banco nem tira você da conta: só o que o B7 guardou aqui para abrir mais rápido.' : '',
-        L({ ic: 'versao', tom: 'cinza', t: 'Versão', d: 'a que está rodando agora',
-            dir: '<code class="cfg-versao">v' + esc((B7.Auth && B7.Auth.VERSAO) || '') + '</code>' }) +
-        (location.protocol.startsWith('http') ? L({ ic: 'atualizar', tom: 'verde', t: 'Buscar atualização', d: '<span id="cfg-atu-d">confere se saiu versão nova</span>',
-            botao: true, semSeta: true, attrs: ' data-buscar-atu' }) : '') +
-        (ehAdm && location.protocol.startsWith('http') ? L({ ic: 'usuarios', tom: 'rosa', t: 'Atualizar todos agora',
-            d: '<span id="cfg-todos-d">quem está com o B7 aberto recarrega sozinho na versão publicada</span>',
-            botao: true, semSeta: true, attrs: ' data-atualizar-todos' }) : '') +
         (B7.AppNativo && B7.AppNativo.ativo
           ? L({ ic: 'celular', tom: 'azul', t: 'App Android', d: 'as telas do B7 estão neste aparelho; a internet é só para login e dados',
                 dir: '<span class="cfg-valor ok">Instalado</span>' })
@@ -2224,7 +2217,15 @@ B7.Dashboard = (function () {
                 d: '<span id="cfg-inst-d">' + (B7.instalacao ? 'abre direto, sem a barra do navegador' : 'no menu do navegador: “Instalar” ou “Adicionar à tela de início”') + '</span>',
                 botao: !!B7.instalacao, semSeta: true, attrs: ' data-instalar' })) +
         (u ? L({ ic: 'vassoura', tom: 'laranja', t: 'Limpar dados deste aparelho', d: 'memória das telas, arquivos guardados e filtros',
-            botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : ''));
+            botao: true, semSeta: true, attrs: ' data-limpar-aparelho' }) : '')) +
+      grupo('Diagnóstico', '',
+        L({ ic: 'versao', tom: 'cinza', t: 'Versão', d: 'a que está rodando agora',
+            dir: '<code class="cfg-versao">v' + esc((B7.Auth && B7.Auth.VERSAO) || '') + '</code>' }) +
+        (location.protocol.startsWith('http') ? L({ ic: 'atualizar', tom: 'verde', t: 'Buscar atualização', d: '<span id="cfg-atu-d">confere se saiu versão nova</span>',
+            botao: true, semSeta: true, attrs: ' data-buscar-atu' }) : '') +
+        (ehAdm && location.protocol.startsWith('http') ? L({ ic: 'usuarios', tom: 'rosa', t: 'Atualizar todos agora',
+            d: '<span id="cfg-todos-d">quem está com o B7 aberto recarrega sozinho na versão publicada</span>',
+            botao: true, semSeta: true, attrs: ' data-atualizar-todos' }) : ''));
 
     /* zzz247: tudo o que o admin ajusta da equipe, num lugar só */
     const finAdm = !!(B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro());
