@@ -1,1 +1,223 @@
 /* Espectro · publicacoes — redesenho fiel ao artefato. Tudo sob html[data-identidade="espectro"]. */
+/* Quadro "Publicações do dia": rótulo + título grande; barra com Hoje · Amanhã · Semana;
+   grade de 4 cartões com capa de 170 px, selo de status sobre a capa e três linhas de texto. */
+
+html[data-identidade="espectro"] .pb-tela{max-width:none;}
+
+/* ------------------------------------------------------------ cabeçalho */
+html[data-identidade="espectro"] .pb-tela .pb-cab{display:block;margin:0 0 18px;}
+html[data-identidade="espectro"] .pb-tela .pb-cab h1{font-size:clamp(30px, 3vw, 42px) !important;font-weight:400;line-height:1;letter-spacing:0;color:var(--ink);}
+html[data-identidade="espectro"] .pb-tela .pb-sub{display:block;min-height:1.3em;margin:0 0 8px;font-size:11.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-3);}
+
+/* ------------------------------------------------------------ barra: período + ir para */
+html[data-identidade="espectro"] .pb-tela .pb-barra{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 16px;}
+html[data-identidade="espectro"] .pb-tela .pb-seg{display:inline-flex;padding:4px;gap:4px;border-radius:22px;background:var(--suave);}
+html[data-identidade="espectro"] .pb-tela .pb-seg > *{height:34px;padding:0 16px;border-radius:17px;display:flex;align-items:center;border:0;
+  background:transparent;color:var(--ink-3);font-size:13px;font-weight:400;text-decoration:none;cursor:pointer;white-space:nowrap;
+  transition:background-color var(--t), color var(--t), box-shadow var(--t);}
+html[data-identidade="espectro"] .pb-tela .pb-seg > :hover:not(.on){color:var(--ink);}
+html[data-identidade="espectro"] .pb-tela .pb-seg > .on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(10,16,51,.12);}
+html[data-identidade="espectro"][data-theme="dark"] .pb-tela .pb-seg > .on{background:var(--elevado);box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 1px 3px rgba(0,0,0,.4);}
+html[data-identidade="espectro"] .pb-tela .pb-seg > :focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .pb-tela .pb-seletor-data{display:inline-flex;align-items:center;gap:8px;height:34px;min-height:34px;padding:0 6px 0 16px;
+  border-radius:17px;background:var(--card);border:1px solid var(--borda);color:var(--ink);}
+html[data-identidade="espectro"] .pb-tela .pb-seletor-data svg{width:16px;height:16px;color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-seletor-data .pb-rot{font-size:13px;letter-spacing:0;text-transform:none;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-seletor-data input{font-size:13px;color:var(--ink);min-width:118px;}
+html[data-identidade="espectro"][data-theme="dark"] .pb-tela .pb-seletor-data input{color-scheme:dark;}
+html[data-identidade="espectro"] .pb-tela .pb-seletor-data:focus-within{border-color:#7328A5;box-shadow:0 0 0 3px rgba(115,40,165,.18);}
+
+/* ------------------------------------------------------------ faixa de dias */
+html[data-identidade="espectro"] .pb-tela .pb-semana{margin:0 0 20px;padding:0;border:0;background:none;box-shadow:none;}
+html[data-identidade="espectro"] .pb-tela .pb-faixa-caixa{gap:8px;margin:0;}
+html[data-identidade="espectro"] .pb-tela .pb-faixa{gap:8px;}
+html[data-identidade="espectro"] .pb-tela .pb-seta{width:44px;border-radius:22px;border:1px solid var(--borda);background:var(--card);color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-seta:hover{color:var(--acento);border-color:var(--acento);}
+html[data-identidade="espectro"] .pb-tela .pb-dia{padding:8px 6px;gap:1px;border-radius:22px;border:1px solid var(--borda);background:var(--card);color:var(--ink-2);}
+html[data-identidade="espectro"] .pb-tela .pb-dia:hover{border-color:var(--borda-forte);}
+html[data-identidade="espectro"] .pb-tela .pb-dia-semana{font-size:10.5px;font-weight:400;letter-spacing:.14em;color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-dia-num{font-size:20px;font-weight:400;line-height:1.1;color:var(--ink);}
+html[data-identidade="espectro"] .pb-tela :is(.pb-dia-contagem, .pb-dia-hoje){font-size:11px;font-weight:400;color:var(--ink-4);}
+html[data-identidade="espectro"] .pb-tela .pb-dia-contagem.tem{color:var(--acento);}
+html[data-identidade="espectro"] .pb-tela .pb-dia.hoje .pb-dia-hoje{color:var(--acento);letter-spacing:.14em;}
+html[data-identidade="espectro"] .pb-tela .pb-dia.hoje:not(.on){border-color:color-mix(in srgb, #7328A5 55%, var(--borda));}
+html[data-identidade="espectro"] .pb-tela .pb-dia.passou:not(.on) .pb-dia-num{color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-dia.on{background:#7328A5;border-color:transparent;box-shadow:0 10px 28px rgba(115,40,165,.4);}
+html[data-identidade="espectro"] .pb-tela .pb-dia.on :is(.pb-dia-num, .pb-dia-semana, .pb-dia-contagem, .pb-dia-contagem.tem, .pb-dia-hoje){color:#fff;}
+/* computador: a faixa é uma fileira de pílulas de 44 px (dia da semana, número, contagem em linha) */
+@media (min-width:761px){
+  html[data-identidade="espectro"] .pb-tela .pb-seta{height:44px;}
+  html[data-identidade="espectro"] .pb-tela .pb-dia{flex-direction:row;align-items:baseline;justify-content:center;gap:7px;height:44px;padding:0 12px;}
+  html[data-identidade="espectro"] .pb-tela .pb-dia > *{align-self:center;}
+  html[data-identidade="espectro"] .pb-tela .pb-dia-num{font-size:18px;}
+  html[data-identidade="espectro"] .pb-tela :is(.pb-dia-contagem, .pb-dia-hoje){min-height:0;}
+  html[data-identidade="espectro"] .pb-tela .pb-dia-contagem:empty{display:none;}
+}
+
+/* ------------------------------------------------------------ cabeçalho do dia + resumo */
+html[data-identidade="espectro"] .pb-tela .pb-dia-cab{display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;margin:0 0 16px;}
+html[data-identidade="espectro"] .pb-tela .pb-dia-cab h2{font-size:20px;font-weight:400;letter-spacing:0;color:var(--ink);gap:10px;}
+html[data-identidade="espectro"] .pb-tela .pb-selo-hoje{height:24px;display:inline-flex;align-items:center;padding:0 10px;border-radius:999px;
+  font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;background:var(--acento-suave);color:var(--acento);}
+html[data-identidade="espectro"] .pb-tela .pb-totais{margin:0;font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-totais-limpar{font-weight:400;color:var(--acento);}
+html[data-identidade="espectro"] .pb-tela .pb-resumo{flex-basis:100%;gap:10px;margin:2px 0 0;}
+html[data-identidade="espectro"] .pb-tela .pb-resumo-item{gap:7px;border-radius:999px;}
+html[data-identidade="espectro"] .pb-tela .pb-resumo-item b{font-size:13px;font-weight:400;color:var(--ink-2);}
+html[data-identidade="espectro"] .pb-tela .pb-resumo-item.on{box-shadow:0 0 0 2px #7328A5;}
+
+/* etiqueta de status (o mapa de cores continua o do sistema): pílula de 24 px com ponto */
+html[data-identidade="espectro"] .pb-tela .status-conteudo{height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:400;
+  letter-spacing:0;text-transform:none;gap:6px;white-space:nowrap;}
+html[data-identidade="espectro"] .pb-tela .status-conteudo:before{width:6px;height:6px;}
+
+/* ------------------------------------------------------------ filtros */
+html[data-identidade="espectro"] .pb-tela .pb-filtros{margin:0 0 16px;}
+html[data-identidade="espectro"] .pb-tela .pb-filtros-corpo{gap:8px;}
+html[data-identidade="espectro"] .pb-tela select.pb-filtro{height:34px;min-height:34px;padding:0 30px 0 14px;border-radius:17px;font-size:13px;font-weight:400;
+  border:1px solid var(--borda);background-color:var(--card);color:var(--ink);}
+html[data-identidade="espectro"] .pb-tela select.pb-filtro.ativo{border-color:#7328A5;color:var(--acento);}
+html[data-identidade="espectro"] .pb-tela .pb-agrupar{display:inline-flex;padding:4px;gap:4px;border-radius:22px;background:var(--suave);border:0;}
+html[data-identidade="espectro"] .pb-tela .pb-agrupar button{height:28px;min-height:28px;padding:0 14px;border-radius:14px;border:0;background:transparent;
+  font-size:13px;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-agrupar button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(10,16,51,.12);}
+html[data-identidade="espectro"][data-theme="dark"] .pb-tela .pb-agrupar button.on{background:var(--elevado);}
+html[data-identidade="espectro"] .pb-tela .pb-limpar{min-height:34px;border-radius:17px;}
+html[data-identidade="espectro"] .pb-tela .pb-filtros-botao{height:34px;min-height:34px;padding:0 16px;border-radius:17px;font-size:13px;font-weight:400;
+  border:1px solid var(--borda);background:var(--card);color:var(--ink);}
+html[data-identidade="espectro"] .pb-tela .pb-filtros-n{font-weight:400;background:#7328A5;}
+
+/* ------------------------------------------------------------ a grade de cartões */
+html[data-identidade="espectro"] .pb-tela .pb-grupos{display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:16px;columns:auto;}
+html[data-identidade="espectro"] .pb-tela :is(.pb-grupo, .pb-cards){display:contents;}
+/* por cliente: o nome do cliente está em cada cartão, a grade corre sem cabeçalho */
+html[data-identidade="espectro"] .pb-tela .pb-grupos[data-agrupar="cliente"] .pb-grupo-cab{display:none;}
+/* por status: o status vira um cabeçalho de linha inteira */
+html[data-identidade="espectro"] .pb-tela .pb-grupos[data-agrupar="status"] .pb-grupo-cab{grid-column:1 / -1;margin:8px 0 -4px;gap:10px;}
+html[data-identidade="espectro"] .pb-tela .pb-grupos[data-agrupar="status"] .pb-grupo:first-child .pb-grupo-cab{margin-top:0;}
+html[data-identidade="espectro"] .pb-tela .pb-grupo-n{font-size:12px;background:var(--suave);color:var(--ink-3);height:24px;display:inline-flex;align-items:center;padding:0 10px;border-radius:999px;}
+
+html[data-identidade="espectro"] .pb-tela .pb-card{position:relative;display:flex;flex-direction:column;gap:0;padding:0;overflow:hidden;min-width:0;
+  background:var(--card);border:1px solid var(--borda);border-radius:22px;box-shadow:none;}
+html[data-identidade="espectro"] .pb-tela .pb-card:hover{border-color:var(--borda-forte);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"][data-theme="dark"] .pb-tela .pb-card{border-color:var(--esp-cartao-borda);}
+
+/* capa: tons do Espectro sobre o fundo suave, com o logo do cliente ao centro */
+html[data-identidade="espectro"] .pb-tela .pb-card-capa{position:relative;height:170px;display:flex;align-items:center;justify-content:center;background-color:var(--suave);}
+html[data-identidade="espectro"] .pb-tela .pb-tom-0{background-image:radial-gradient(120% 120% at 0% 0%, rgba(115,40,165,.30), transparent 62%), radial-gradient(110% 110% at 100% 100%, rgba(224,47,117,.22), transparent 60%);}
+html[data-identidade="espectro"] .pb-tela .pb-tom-1{background-image:radial-gradient(120% 120% at 100% 0%, rgba(0,21,97,.26), transparent 62%), radial-gradient(110% 110% at 0% 100%, rgba(115,40,165,.24), transparent 60%);}
+html[data-identidade="espectro"] .pb-tela .pb-tom-2{background-image:radial-gradient(120% 120% at 0% 100%, rgba(255,90,87,.26), transparent 62%), radial-gradient(110% 110% at 100% 0%, rgba(224,47,117,.22), transparent 60%);}
+html[data-identidade="espectro"] .pb-tela .pb-tom-3{background-image:radial-gradient(120% 120% at 100% 100%, rgba(82,0,131,.28), transparent 62%), radial-gradient(110% 110% at 0% 0%, rgba(0,21,97,.18), transparent 60%);}
+html[data-identidade="espectro"] .pb-tela .pb-tom-4{background-image:radial-gradient(120% 120% at 0% 0%, rgba(224,47,117,.24), transparent 62%), radial-gradient(110% 110% at 100% 100%, rgba(255,90,87,.22), transparent 60%);}
+html[data-identidade="espectro"][data-theme="dark"] .pb-tela .pb-card-capa{background-color:rgba(255,255,255,.03);}
+html[data-identidade="espectro"] .pb-tela .pb-avatar.lg{width:72px;height:72px;border-radius:24px;object-fit:cover;background:var(--card);
+  box-shadow:0 12px 30px rgba(10,16,51,.14);}
+html[data-identidade="espectro"] .pb-tela .pb-avatar.lg.vazio{display:inline-flex;align-items:center;justify-content:center;font-size:24px;font-weight:400;color:#7328A5;}
+html[data-identidade="espectro"][data-theme="dark"] .pb-tela .pb-avatar.lg{background:var(--elevado);box-shadow:0 12px 30px rgba(0,0,0,.4);}
+html[data-identidade="espectro"][data-theme="dark"] .pb-tela .pb-avatar.lg.vazio{color:var(--acento);}
+html[data-identidade="espectro"] .pb-tela .pb-card-selo{position:absolute;left:10px;top:10px;display:inline-flex;border-radius:999px;background:var(--card);}
+html[data-identidade="espectro"][data-theme="dark"] .pb-tela .pb-card-selo{background:var(--elevado);}
+
+html[data-identidade="espectro"] .pb-tela .pb-card-corpo{display:flex;flex-direction:column;min-width:0;padding:12px 14px 14px;}
+html[data-identidade="espectro"] .pb-tela .pb-card-cliente{display:block;margin:0;font-size:12px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+html[data-identidade="espectro"] .pb-tela .pb-card-titulo{margin:2px 0 0;font-size:14px;font-weight:400;line-height:1.35;color:var(--ink);}
+html[data-identidade="espectro"] .pb-tela .pb-card-meta{display:block;margin:8px 0 0;font-size:12.5px;color:var(--ink-3);}
+
+/* ações: sobre a capa, aparecem no passar do mouse ou no foco (continuam na ordem de tabulação) */
+html[data-identidade="espectro"] .pb-tela .pb-card-acoes{position:absolute;right:10px;top:124px;display:flex;align-items:center;gap:6px;margin:0;
+  opacity:0;pointer-events:none;transition:opacity var(--t);}
+html[data-identidade="espectro"] .pb-tela .pb-card:is(:hover, :focus-within) .pb-card-acoes{opacity:1;pointer-events:auto;}
+html[data-identidade="espectro"] .pb-tela .pb-acao{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;min-height:34px;padding:0 14px;
+  border-radius:17px;border:1px solid var(--borda);background:var(--card);color:var(--ink);font-size:12.5px;font-weight:400;
+  box-shadow:0 6px 16px rgba(10,16,51,.10);opacity:1;pointer-events:auto;}
+html[data-identidade="espectro"] .pb-tela .pb-acao-ico{width:34px;padding:0;}
+html[data-identidade="espectro"] .pb-tela .pb-acao-ico .pb-ico{display:block;width:16px;height:16px;}
+html[data-identidade="espectro"] .pb-tela .pb-acao-ico .pb-acao-tx{display:none;}
+html[data-identidade="espectro"] .pb-tela .pb-acao:hover{color:var(--acento);border-color:#7328A5;background:var(--card);}
+html[data-identidade="espectro"] .pb-tela .pb-acao:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"][data-theme="dark"] .pb-tela .pb-acao{background:var(--elevado);box-shadow:0 6px 16px rgba(0,0,0,.35);}
+
+/* ------------------------------------------------------------ estados */
+html[data-identidade="espectro"] .pb-tela .pb-estado{padding:44px 24px;border-radius:22px;border:1px solid var(--borda);background:var(--card);}
+html[data-identidade="espectro"] .pb-tela .pb-estado b{font-size:18px;font-weight:400;color:var(--ink);}
+html[data-identidade="espectro"] .pb-tela .pb-estado p{font-size:13.5px;color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-estado-livre{background:radial-gradient(90% 120% at 50% 0%, rgba(115,40,165,.10), transparent 70%), var(--card);}
+html[data-identidade="espectro"] .pb-tela .pb-estado-ic{width:60px;height:60px;border-radius:22px;background:var(--acento-suave);color:var(--acento);}
+html[data-identidade="espectro"] .pb-tela .pb-estado-erro{border-color:var(--erro);background:var(--erro-bg);}
+html[data-identidade="espectro"] .pb-tela .pb-estado-erro :is(b, p){color:var(--erro);}
+
+/* ------------------------------------------------------------ próximas e pendentes */
+html[data-identidade="espectro"] .pb-tela .pb-secao{margin-top:28px;}
+html[data-identidade="espectro"] .pb-tela .pb-secao h3{font-size:11.5px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px;}
+html[data-identidade="espectro"] .pb-tela .pb-etiqueta{height:22px;display:inline-flex;align-items:center;padding:0 9px;border-radius:999px;font-size:12px;font-weight:400;letter-spacing:0;}
+html[data-identidade="espectro"] .pb-tela .pb-fraca{font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-proximos-lista{gap:12px;}
+html[data-identidade="espectro"] .pb-tela .pb-proximo{padding:14px 16px 16px;border-radius:22px;border:1px solid var(--borda);background:var(--card);}
+html[data-identidade="espectro"] .pb-tela .pb-proximo:hover{border-color:var(--borda-forte);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"][data-theme="dark"] .pb-tela :is(.pb-proximo, .pb-pendente){border-color:var(--esp-cartao-borda);}
+html[data-identidade="espectro"] .pb-tela .pb-prox-topo b{font-size:13.5px;font-weight:400;color:var(--ink);}
+html[data-identidade="espectro"] .pb-tela .pb-prox-topo small{font-size:12px;font-weight:400;color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-prox-n{font-size:12.5px;color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-prox-n b{font-size:28px;font-weight:400;color:var(--ink);}
+html[data-identidade="espectro"] .pb-tela .pb-proximo:hover .pb-prox-n b{color:var(--acento);}
+html[data-identidade="espectro"] .pb-tela .pb-prox-barra{background:var(--b7-espectro-curto);height:3px;}
+html[data-identidade="espectro"] .pb-tela .pb-pendentes-lista{gap:8px;}
+html[data-identidade="espectro"] .pb-tela .pb-pendente{min-height:52px;padding:10px 16px;border-radius:18px;border:1px solid var(--borda);background:var(--card);}
+html[data-identidade="espectro"] .pb-tela .pb-pendente:hover{border-color:var(--borda-forte);}
+html[data-identidade="espectro"] .pb-tela .pb-pendente-data{font-size:12px;font-weight:400;color:var(--ambar);}
+html[data-identidade="espectro"] .pb-tela .pb-pendente-cliente{font-size:12.5px;color:var(--ink-3);}
+html[data-identidade="espectro"] .pb-tela .pb-pendente-titulo{font-size:14px;font-weight:400;color:var(--ink);}
+html[data-identidade="espectro"] .pb-tela .pb-pend-alternar{height:40px;padding:0 16px;border-radius:20px;border:1px solid var(--borda);font-size:13px;font-weight:400;color:var(--acento);}
+html[data-identidade="espectro"] .pb-tela .pb-pend-alternar:hover{background:var(--acento-suave);}
+
+/* ------------------------------------------------------------ larguras intermediárias */
+@media (max-width:1180px){
+  html[data-identidade="espectro"] .pb-tela .pb-grupos{grid-template-columns:repeat(3, minmax(0, 1fr));}
+}
+@media (max-width:960px){
+  html[data-identidade="espectro"] .pb-tela .pb-grupos{grid-template-columns:repeat(2, minmax(0, 1fr));}
+}
+
+/* ------------------------------------------------------------ celular */
+@media (max-width:760px){
+  html[data-identidade="espectro"] .pb-tela .pb-cab{margin-bottom:14px;}
+  html[data-identidade="espectro"] .pb-tela .pb-cab h1{font-size:30px !important;}
+  html[data-identidade="espectro"] .pb-tela .pb-sub{font-size:11px;letter-spacing:.12em;}
+  html[data-identidade="espectro"] .pb-tela .pb-barra{gap:10px;margin-bottom:12px;}
+  html[data-identidade="espectro"] .pb-tela .pb-seg{flex:1;min-width:0;}
+  html[data-identidade="espectro"] .pb-tela .pb-seg > *{flex:1;justify-content:center;padding:0 10px;}
+  /* "ir para": só o ícone, o seletor do aparelho cobre o botão */
+  html[data-identidade="espectro"] .pb-tela .pb-seletor-data{position:relative;flex:none;width:42px;height:42px;padding:0;justify-content:center;border-radius:21px;}
+  html[data-identidade="espectro"] .pb-tela .pb-seletor-data .pb-rot{display:none;}
+  html[data-identidade="espectro"] .pb-tela .pb-seletor-data input{position:absolute;inset:0;width:100%;height:100%;min-width:0;opacity:0;cursor:pointer;}
+  html[data-identidade="espectro"] .pb-tela .pb-semana{margin-bottom:16px;}
+  html[data-identidade="espectro"] .pb-tela .pb-faixa{gap:4px;}
+  html[data-identidade="espectro"] .pb-tela .pb-dia{padding:8px 0 7px;border:0;background:transparent;border-radius:18px;}
+  html[data-identidade="espectro"] .pb-tela .pb-dia.hoje:not(.on){box-shadow:inset 0 0 0 1.5px color-mix(in srgb, #7328A5 55%, transparent);}
+  html[data-identidade="espectro"] .pb-tela .pb-dia.on{background:#7328A5;box-shadow:0 8px 20px rgba(115,40,165,.38);}
+  html[data-identidade="espectro"] .pb-tela .pb-dia-num{font-size:18px;}
+  html[data-identidade="espectro"] .pb-tela .pb-dia-semana{font-size:9.5px;letter-spacing:.08em;}
+  html[data-identidade="espectro"] .pb-tela .pb-dia-cab h2{font-size:18px;}
+
+  html[data-identidade="espectro"] .pb-tela .pb-grupos{grid-template-columns:minmax(0, 1fr);gap:14px;}
+  html[data-identidade="espectro"] .pb-tela .pb-card-capa{height:140px;}
+  html[data-identidade="espectro"] .pb-tela .pb-avatar.lg{width:60px;height:60px;border-radius:20px;}
+  html[data-identidade="espectro"] .pb-tela .pb-avatar.lg.vazio{font-size:20px;}
+  /* no celular as ações ficam sempre à vista, embaixo do texto */
+  html[data-identidade="espectro"] .pb-tela .pb-card-acoes{position:static;opacity:1;pointer-events:auto;margin-top:12px;gap:6px;
+    display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0, 1fr);}
+  html[data-identidade="espectro"] .pb-tela .pb-card-acoes:has(.pb-acao-copiar){grid-auto-flow:row;grid-template-columns:repeat(3, minmax(0, 1fr));}
+  html[data-identidade="espectro"] .pb-tela .pb-acao-copiar{grid-column:1 / -1;}
+  html[data-identidade="espectro"] .pb-tela .pb-acao,
+  html[data-identidade="espectro"] .pb-tela .pb-acao-ico{width:auto;height:40px;min-height:40px;padding:0 8px;border-radius:20px;box-shadow:none;background:var(--suave);border-color:transparent;font-size:12px;}
+  html[data-identidade="espectro"] .pb-tela .pb-acao .pb-acao-curto{display:inline;}
+  html[data-identidade="espectro"] .pb-tela .pb-acao-copiar{background:var(--acento-suave);color:var(--acento);}
+
+  html[data-identidade="espectro"] .pb-tela .pb-filtros-corpo .seg-vista button{flex:1 1 0;}
+  html[data-identidade="espectro"] .pb-tela .pb-proximo{min-width:132px;}
+  html[data-identidade="espectro"] .pb-tela .pb-pendente{padding:11px 14px;}
+}
+
+/* escuro: o Violeta Quantum puro some sobre o fundo; o texto do "Aprovado" usa o acento claro */
+html[data-identidade="espectro"][data-theme="dark"] .pb-tela .status-conteudo.sc-aprovado{color:var(--acento);}

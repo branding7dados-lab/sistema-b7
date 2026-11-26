@@ -1008,29 +1008,33 @@ B7.Dashboard = (function () {
     const comGrav = clientes.filter(c => c.total_gravacoes > 0).length;
     const fixadosN = clientes.filter(c => c.is_pinned).length;
     const avulsosN = clientes.filter(c => c.contrato === 'avulso').length;
-    const pil = (id, rot, n) => '<button type="button" class="cl2-pil' + (id === 'todos' ? ' on' : '') + '" data-f="' + id + '">' + rot + '<b>' + n + '</b></button>';
-    painel().innerHTML = '<div class="conteudo cl2">' +
-      '<div class="cab-conteudo cl2-cab"><div><p class="v4-sobre">Carteira</p><h1>Clientes</h1>' +
-        '<p>' + clientes.length + ' cliente' + (clientes.length === 1 ? '' : 's') + ' ativo' + (clientes.length === 1 ? '' : 's') +
-          (inativosN ? ' · ' + inativosN + ' inativo' + (inativosN === 1 ? '' : 's') : '') +
-          (fixadosN ? ' · ' + fixadosN + ' fixado' + (fixadosN === 1 ? '' : 's') : '') + ' · cada um com o seu workspace.</p></div>' +
-        '<div class="cl2-acoes">' +
-          /* 4.89.0: preencher o cadastro dos clientes com o que já está no Núcleo 7 (administrador) */
-          (B7.N7Puxar && B7.Auth && B7.Auth.ehAdmin && B7.Auth.ehAdmin() ? '<button class="b contorno" data-n7-todos>Puxar cadastros do Núcleo 7</button>' : '') +
-          '<button class="b pri cl2-novo" data-novo-cliente>' + IC.mais + '<span>Novo cliente</span></button></div></div>' +
+    /* Espectro (quadro Clientes): rótulo com o tamanho da carteira + título; uma linha só com as pílulas
+       de filtro ("Ativos · 32") à esquerda e as ações à direita; grade de cartões de 4 colunas. A busca e a
+       ordem (que o quadro não desenha) ficam na linha do título. Mesmos ids, data-atributos e ações. */
+    const pil = (id, rot, n) => '<button type="button" class="clx-pil' + (id === 'todos' ? ' on' : '') + '" data-f="' + id + '">' + rot + ' · ' + n + '</button>';
+    const icx = d => '<svg class="clx-ic" viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>';
+    const acoesCab = '<div class="clx-acoes">' +
+      /* 4.89.0: preencher o cadastro dos clientes com o que já está no Núcleo 7 (administrador) */
+      (B7.N7Puxar && B7.Auth && B7.Auth.ehAdmin && B7.Auth.ehAdmin() ? '<button class="b contorno fina" data-n7-todos>' + icx('<path d="M12 4v11M7 10l5 5 5-5M4 20h16"/>') + '<span>Puxar cadastros do Núcleo 7</span></button>' : '') +
+      '<button class="b pri fina clx-novo" data-novo-cliente>' + icx('<path d="M12 5v14M5 12h14"/>') + '<span>Novo cliente</span></button></div>';
+    painel().innerHTML = '<div class="conteudo cl2 clx">' +
+      '<div class="cab-conteudo clx-cab"><div class="clx-tit"><p class="v4-sobre">' + clientes.length + ' marca' + (clientes.length === 1 ? '' : 's') + ' na carteira</p><h1>Clientes</h1></div>' +
+        (todosClientes.length
+          ? '<label class="clx-busca">' + icx('<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>') +
+              '<input id="busca-cli" placeholder="Buscar cliente" autocomplete="off" aria-label="Buscar cliente"></label>' +
+            '<div class="clx-ordem" id="ordem-cli" role="group" aria-label="Ordem">' +
+              '<button type="button" data-o="recentes">Recentes</button><button type="button" class="on" data-o="az">A–Z</button></div>'
+          : acoesCab) + '</div>' +
       (todosClientes.length
-        ? '<div class="cl2-barra">' +
-            '<label class="cl2-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="M20 20l-4.3-4.3"/></svg>' +
-              '<input id="busca-cli" placeholder="Buscar cliente…" autocomplete="off" aria-label="Buscar cliente"></label>' +
-            '<div class="cl2-pils" id="filtro-cli" role="group" aria-label="Filtrar clientes">' +
-              pil('todos', 'Todos', clientes.length) +
+        ? '<div class="clx-barra">' +
+            '<div class="clx-pils" id="filtro-cli" role="group" aria-label="Filtrar clientes">' +
+              pil('todos', 'Ativos', clientes.length) +
+              (fixadosN ? pil('fixados', 'Fixados', fixadosN) : '') +
               /* zzz274: com algum cliente avulso, dá para separar quem é mensal de quem comprou um projeto */
               (avulsosN ? pil('mensal', 'Mensais', clientes.length - avulsosN) + pil('avulso', 'Avulsos', avulsosN) : '') +
               pil('com', 'Com gravações', comGrav) + pil('sem', 'Sem gravações', clientes.length - comGrav) +
               (inativosN ? pil('inativos', 'Inativos', inativosN) : '') +
-            '</div>' +
-            '<div class="cl2-ordem" id="ordem-cli" role="group" aria-label="Ordem">' +
-              '<button type="button" data-o="recentes">Recentes</button><button type="button" class="on" data-o="az">A–Z</button></div>' +
+            '</div>' + acoesCab +
           '</div>' +
           '<div id="lista-cli"></div>'
         : vazioClientes()) + '</div>';
@@ -1042,6 +1046,7 @@ B7.Dashboard = (function () {
       let lista = filtroAtual === 'inativos' ? todosClientes.filter(inativo) : clientes.slice();
       if (filtroAtual === 'com') lista = lista.filter(c => c.total_gravacoes > 0);
       if (filtroAtual === 'sem') lista = lista.filter(c => !c.total_gravacoes);
+      if (filtroAtual === 'fixados') lista = lista.filter(c => c.is_pinned);
       if (filtroAtual === 'mensal') lista = lista.filter(c => c.contrato !== 'avulso');
       if (filtroAtual === 'avulso') lista = lista.filter(c => c.contrato === 'avulso');
       if (termo) lista = lista.filter(c => c.nome.toLowerCase().includes(termo));
@@ -1049,13 +1054,10 @@ B7.Dashboard = (function () {
         ? (a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR')
         : (a, b) => String(b.ultima_atividade).localeCompare(String(a.ultima_atividade)));
       const fix = lista.filter(c => c.is_pinned), resto = lista.filter(c => !c.is_pinned);
-      let i = 0;
-      const bloco = (tit, l) => !l.length ? '' : '<section class="cl2-grupo">' +
-        (tit ? '<h2 class="cl2-grupo-t">' + tit + '<span>' + l.length + '</span></h2>' : '') +
-        '<div class="cl2-grade">' + l.map(c => cartaoCliente2(c, i++)).join('') + '</div></section>';
+      /* Espectro: uma grade só, fixados na frente (a estrela acesa marca quem é) */
       cx.innerHTML = lista.length
-        ? (fix.length && !termo ? bloco('Fixados', fix) + bloco('Todos os clientes', resto) : bloco('', lista))
-        : '<div class="cl2-vazio"><b>Nenhum cliente aqui' + (termo ? ' para “' + esc(termo) + '”' : '') + '.</b><p>Tente outro filtro ou outra busca.</p></div>';
+        ? '<div class="clx-grade">' + (fix.length && !termo ? fix.concat(resto) : lista).map((c, i) => cartaoCliente2(c, i)).join('') + '</div>'
+        : '<div class="clx-vazio"><b>Nenhum cliente aqui' + (termo ? ' para “' + esc(termo) + '”' : '') + '.</b><p>Tente outro filtro ou outra busca.</p></div>';
       ligar();
     };
     aplicar();
@@ -1079,34 +1081,41 @@ B7.Dashboard = (function () {
      última atividade; fixar e ⋯ com as mesmas ações do cartão antigo */
   const IC_CL2 = {
     grav: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6.5" width="12.5" height="11" rx="3.1"/><path d="M15 10.7l4.8-3a.8.8 0 0 1 1.2.7v7.2a.8.8 0 0 1-1.2.7l-4.8-3z"/></svg>',
-    rot: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h6.1a2 2 0 0 1 1.4.6l4.4 4.4a2 2 0 0 1 .6 1.4V18a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 18V6A2.5 2.5 0 0 1 7 3.5z"/></svg>'
+    rot: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h6.1a2 2 0 0 1 1.4.6l4.4 4.4a2 2 0 0 1 .6 1.4V18a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 18V6A2.5 2.5 0 0 1 7 3.5z"/></svg>',
+    estrela: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1 6.2L12 17.4 6.5 20.3l1-6.2L3 9.7l6.2-.9z"/></svg>'
   };
   function cartaoCliente2(c, i) {
     const qd = c.ultima_atividade ? B7.UI.quando(c.ultima_atividade) : '';
     const inat = c.servico && c.servico !== 'ativo';
-    return '<div class="cl2-card' + (c.is_pinned ? ' fixado' : '') + (c.total_gravacoes ? '' : ' sem-grav') + (inat ? ' inativo' : '') + '" data-cliente="' + esc(c.id) + '"' +
+    /* Espectro (quadro Clientes): logo 48 + estrela no alto, nome, linha de apoio e rodapé. O quadro mostra
+       segmento e "% do mês entregue", que o cadastro não tem: entram o tipo de contrato, o ano do cadastro
+       e os contadores reais. A cor do quadrado sem logo sai do nome (sempre a mesma para o mesmo cliente). */
+    let tom = 0; for (const ch of String(c.nome || '')) tom = (tom * 31 + ch.codePointAt(0)) % 997;
+    const ano = c.created_at ? String(c.created_at).slice(0, 4) : '';
+    const avulso = c.contrato === 'avulso';
+    return '<div class="cl2-card clx-card' + (c.is_pinned ? ' fixado' : '') + (c.total_gravacoes ? '' : ' sem-grav') + (inat ? ' inativo' : '') + '" data-cliente="' + esc(c.id) + '"' +
         ' style="--i:' + Math.min(i, 16) + '" tabindex="0" title="Abrir ' + esc(c.nome) + '">' +
-      '<span class="cl2-logo">' + B7.UI.avatarCliente(c.nome, c.logo_url) + '</span>' +
-      '<div class="cl2-tx"><b>' + esc(c.nome) + (c.teste ? ' <i class="tag-teste" title="Cliente fictício: fora dos números do Panorama e da TV">teste</i>' : '') +
-          (c.contrato === 'avulso' ? ' <i class="tag-avulso" title="Cliente avulso: comprou um projeto pontual, não tem mês contratado">avulso</i>' : '') +
-          (inat ? ' <i class="tag-inativo" title="' + esc((c.servico === 'cancelado' ? 'Contrato cancelado' : 'Inativo') + (c.servico_desde ? ' desde ' + B7.UI.dataBR(c.servico_desde) : '') + (c.servico_nota_interna ? ' — ' + c.servico_nota_interna : '')) + '">' + (c.servico === 'cancelado' ? 'cancelado' : 'inativo') + '</i>' : '') + '</b>' +
-        '<span class="cl2-meta">' +
-          '<span class="cl2-n" title="Gravações">' + IC_CL2.grav + c.total_gravacoes + '</span>' +
-          '<span class="cl2-n" title="Roteiros">' + IC_CL2.rot + c.total_roteiros + '</span>' +
-          (qd ? '<span class="cl2-quando">' + esc(qd) + '</span>' : '') +
-        '</span></div>' +
-      '<div class="cl2-acoes">' +
-        '<button class="ico pin cl2-pin' + (c.is_pinned ? ' fixado' : '') + '" data-fixar="' + esc(c.id) + '" data-fixado="' + (c.is_pinned ? '1' : '0') + '"' +
-          ' title="' + (c.is_pinned ? 'Desafixar cliente' : 'Fixar no topo') + '" aria-label="' + (c.is_pinned ? 'Desafixar ' : 'Fixar ') + esc(c.nome) + '">' + IC_PIN + '</button>' +
-        '<div class="menu"><button class="ico" onclick="event.stopPropagation()" aria-label="Ações de ' + esc(c.nome) + '">⋯</button><div class="lista">' +
-          '<button data-abrir-cli="' + esc(c.id) + '">Abrir workspace</button>' +
-          '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' +
-          '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
-          '<button data-fixar="' + esc(c.id) + '" data-fixado="' + (c.is_pinned ? '1' : '0') + '">' + (c.is_pinned ? 'Desafixar' : 'Fixar no topo') + '</button>' +
-          (ehAdmin() ? (inat ? '<button data-reativar-cli="' + esc(c.id) + '">Reativar cliente</button>' : '<button data-desativar-cli="' + esc(c.id) + '">Desativar cliente</button>') : '') + '<hr>' +
-          (c.teste ? '' : '<button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>') +
+      '<div class="clx-topo"><span class="clx-logo" data-tom="' + (tom % 6) + '">' + B7.UI.avatarCliente(c.nome, c.logo_url) + '</span>' +
+        '<div class="clx-card-acoes">' +
+          '<div class="menu"><button class="ico" onclick="event.stopPropagation()" aria-label="Ações de ' + esc(c.nome) + '">⋯</button><div class="lista">' +
+            '<button data-abrir-cli="' + esc(c.id) + '">Abrir workspace</button>' +
+            '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' +
+            '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
+            '<button data-fixar="' + esc(c.id) + '" data-fixado="' + (c.is_pinned ? '1' : '0') + '">' + (c.is_pinned ? 'Desafixar' : 'Fixar no topo') + '</button>' +
+            (ehAdmin() ? (inat ? '<button data-reativar-cli="' + esc(c.id) + '">Reativar cliente</button>' : '<button data-desativar-cli="' + esc(c.id) + '">Desativar cliente</button>') : '') + '<hr>' +
+            (c.teste ? '' : '<button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>') +
+          '</div></div>' +
+          '<button class="ico pin clx-pin' + (c.is_pinned ? ' fixado' : '') + '" data-fixar="' + esc(c.id) + '" data-fixado="' + (c.is_pinned ? '1' : '0') + '"' +
+            ' title="' + (c.is_pinned ? 'Desafixar cliente' : 'Fixar no topo') + '" aria-label="' + (c.is_pinned ? 'Desafixar ' : 'Fixar ') + esc(c.nome) + '">' + IC_CL2.estrela + '</button>' +
         '</div></div>' +
-      '</div></div>';
+      '<div class="clx-tx"><b>' + esc(c.nome) + (c.teste ? ' <i class="tag-teste" title="Cliente fictício: fora dos números do Panorama e da TV">teste</i>' : '') +
+          (inat ? ' <i class="tag-inativo" title="' + esc((c.servico === 'cancelado' ? 'Contrato cancelado' : 'Inativo') + (c.servico_desde ? ' desde ' + B7.UI.dataBR(c.servico_desde) : '') + (c.servico_nota_interna ? ' — ' + c.servico_nota_interna : '')) + '">' + (c.servico === 'cancelado' ? 'cancelado' : 'inativo') + '</i>' : '') + '</b>' +
+        '<span class="clx-sub"' + (avulso ? ' title="Cliente avulso: comprou um projeto pontual, não tem mês contratado"' : '') + '>' +
+          (avulso ? 'Avulso' : 'Mensal') + (ano ? ' · desde ' + esc(ano) : '') + '</span></div>' +
+      '<p class="clx-pe"><span title="Gravações">' + c.total_gravacoes + ' gravaç' + (c.total_gravacoes === 1 ? 'ão' : 'ões') + '</span> · ' +
+        '<span title="Roteiros">' + c.total_roteiros + ' roteiro' + (c.total_roteiros === 1 ? '' : 's') + '</span>' +
+        (qd ? ' · <span class="clx-quando">' + esc(qd) + '</span>' : '') + '</p>' +
+    '</div>';
   }
 
   /* ====================================================== UM CLIENTE */
@@ -1190,8 +1199,14 @@ B7.Dashboard = (function () {
     const resumoMes = B7.ResumoMes && gestor && c.contrato !== 'avulso';
     const avulso = c.contrato === 'avulso';
     const criaProjeto = gestor && B7.Projetos && B7.Projetos.podeGerir();
-    return '<div class="cli-shell">' +
-      (podeIrRota('clientes') ? '<a class="cli-voltar" href="#/clientes">' + IC_VOLTAR + 'Clientes</a>' : '') +
+    /* Espectro (quadros "Cliente"): trilha em caixa-alta no lugar do "‹ Clientes"; na visão geral o título é
+       "Cliente" e o cabeçalho vira a faixa do Espectro (logo 72, nome 32, "Ver como cliente"); nas outras
+       seções o título é o nome e as ações ficam na linha dele. Mesmos data-atributos e ações. */
+    const geral = !secao || secao === 'geral', rotSec = (SECOES_CLIENTE.find(s => s.k === secao) || {}).r;
+    return '<div class="cli-shell' + (geral ? ' cli-geral' : '') + '">' +
+      '<p class="v4-sobre cli-trilha">' + (podeIrRota('clientes') ? '<a class="cli-voltar" href="#/clientes">Clientes</a>' : '<span>Clientes</span>') +
+        '<i aria-hidden="true">›</i><span>' + esc(c.nome) + '</span>' + (!geral && rotSec ? '<i aria-hidden="true">›</i><span>' + esc(rotSec) + '</span>' : '') + '</p>' +
+      (geral ? '<p class="cli-tit-geral" aria-hidden="true">Cliente</p>' : '') +
       '<header class="cli-cab">' +
         B7.UI.avatarCliente(c.nome, c.logo_url, 'cli-av') +
         '<div class="cli-cab-tx"><h1>' + esc(c.nome) + '</h1>' +
@@ -1200,6 +1215,7 @@ B7.Dashboard = (function () {
             (modosDe(c).join() !== 'linha' ? modosDe(c).map(k => '<span class="cli-modo-chip">' + esc(MODOS_CLIENTE.find(x => x[0] === k)[1]) + '</span>').join('') : '') +
             esc(quandoTx) + '</p>' : '') + '</div>' +
         (gestor ? '<div class="cli-acoes">' +
+          (ehAdmin() ? '<button class="b cli-ver-como" data-ir="#/previa/' + esc(c.id) + '">' + IC_OLHO + '<span>Ver como cliente</span></button>' : '') +
           /* zzz274: no cliente avulso, o botão principal abre um projeto (o projeto já monta gravação, roteiro e edição) */
           (avulso && criaProjeto ? '<button class="b pri fina cli-so-largo" data-novo-projeto>' + IC.mais + '<span>Novo projeto</span></button>'
             : criaGravacao ? '<button class="b pri fina cli-so-largo" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + '<span>Nova gravação</span></button>' : '') +
@@ -1224,6 +1240,7 @@ B7.Dashboard = (function () {
     '</div></nav>';
   }
   const IC_VOLTAR = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
+  const IC_OLHO = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 
   /* liga as ações do cabeçalho onde quer que ele esteja (telas do
      conteudo.js não passam pelo ligar() geral desta tela) */
@@ -1729,10 +1746,16 @@ B7.Dashboard = (function () {
   }
 
   function visaoGeralCliente(c, gravacoes, roteiros, emAndamento, conta, ultima, linhas, semanas) {
-    const numero = (n, rot, tom) => '<div class="vg-num vg-tom-' + tom + '"><b data-vg-conta="' + (+n || 0) + '">' + (+n || 0) + '</b><span>' + rot + '</span></div>';
+    /* Espectro (quadro "Cliente · visão geral"): cada número é um cartão com rótulo, valor e uma linha de apoio
+       (tirada dos mesmos dados desta função) */
+    const numero = (n, rot, tom, apoio) => '<div class="vg-num vg-tom-' + tom + '"><b data-vg-conta="' + (+n || 0) + '">' + (+n || 0) + '</b><span>' + rot + '</span>' +
+      (apoio ? '<small>' + apoio + '</small>' : '') + '</div>';
+    const nProntas = conta('Pronto para gravar'), nRasc = conta('Rascunho');
     const numeros = '<div class="vg-numeros">' +
-      numero(gravacoes.length, 'gravações', 'rosa') + numero(c.total_roteiros, 'roteiros', 'violeta') +
-      numero(emAndamento, 'em andamento', 'ambar') + numero(conta('Gravado'), 'gravadas', 'verde') + '</div>';
+      numero(gravacoes.length, 'gravações', 'rosa', nProntas + (nProntas === 1 ? ' pronta' : ' prontas') + ' para gravar') +
+      numero(c.total_roteiros, 'roteiros', 'violeta', roteiros.length ? 'último editado ' + esc(B7.UI.quando(roteiros[0].updated_at)) : 'nenhum ainda') +
+      numero(emAndamento, 'em andamento', 'ambar', nRasc + ' em rascunho') +
+      numero(conta('Gravado'), 'gravadas', 'verde', 'de ' + gravacoes.length + (gravacoes.length === 1 ? ' gravação' : ' gravações')) + '</div>';
     /* atalhos: o que era "Ações rápidas" (mesmas ações e handlers) */
     const atalho = (attrs, ic, rot, pri) => '<button type="button" class="vg-atalho' + (pri ? ' pri' : '') + '" ' + attrs + '>' + ic + '<span>' + rot + '</span></button>';
     const atalhos = '<div class="vg-atalhos" role="toolbar" aria-label="Atalhos do cliente">' +

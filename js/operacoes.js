@@ -56,11 +56,12 @@ B7.Operacoes = (function () {
     const m = params && params.get && params.get('mes');
     if (m && /^\d{4}-\d{2}$/.test(m)) { ano = +m.slice(0, 4); mes = +m.slice(5); }
     painel().innerHTML = '<div class="conteudo entra op-tela">' +
-      '<div class="cb-topo"><div class="cb-titulo"><h1>Operações</h1><p class="op-intro">Cada cliente numa linha, cada serviço numa coluna. A situação vem do que a equipe já faz no sistema' + (gestao() ? '; toque numa célula para ajustar.' : '.') + '</p></div>' +
-        '<div class="cb-topo-acoes op-mes"><button class="cb-ic" data-mes="-1" aria-label="Mês anterior">‹</button><b id="op-mes-rot"></b><button class="cb-ic" data-mes="1" aria-label="Próximo mês">›</button></div></div>' +
-      '<div class="op-resumo" id="op-resumo"></div>' +
+      '<div class="cb-topo op-cab"><div class="cb-titulo"><p class="op-kicker">Cliente por serviço, no mês</p><h1>Operações</h1><p class="op-intro">Cada cliente numa linha, cada serviço numa coluna. A situação vem do que a equipe já faz no sistema' + (gestao() ? '; toque numa célula para ajustar.' : '.') + '</p></div></div>' +
+      '<div class="op-mesbar"><div class="op-mes"><button class="cb-ic" data-mes="-1" aria-label="Mês anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button><b id="op-mes-rot"></b><button class="cb-ic" data-mes="1" aria-label="Próximo mês"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>' +
+        '<div class="op-legenda" aria-hidden="true">' + [['ok', 'Feito'], ['and', 'Andamento'], ['atraso', 'Atraso'], ['pend', 'A fazer'], ['na', 'Não se aplica']].map(([t, r]) => '<span class="op-' + t + '"><i class="op-pt"></i>' + r + '</span>').join('') + '</div></div>' +
       '<div class="op-barra"><div class="filtro op-filtro">' + [['todos', 'Todos'], ['abertos', 'Com pendência'], ['concluidos', 'Mês concluído']].map(([k, r]) =>
         '<button data-f="' + k + '"' + (filtro === k ? ' class="on"' : '') + '>' + r + '</button>').join('') + '</div>' +
+        '<div class="op-resumo" id="op-resumo"></div>' +
         '<input class="campo op-busca" type="search" placeholder="Buscar cliente" value="' + esc(busca) + '"></div>' +
       '<div id="op-corpo">' + B7.UI.skeleton('tabela', { n: 8, cols: 6 }) + '</div></div>';
     const p = painel();
@@ -97,28 +98,29 @@ B7.Operacoes = (function () {
     const pend = {}; COLS.forEach(([k]) => { pend[k] = linhas.filter(l => { const s = celula(l, k).status; return s && !FEITO.includes(s) && !NAO_SE_APLICA.includes(s); }).length; });
     const rs = document.getElementById('op-resumo');
     if (rs) rs.innerHTML = '<div class="op-r"><b>' + ok + '<small>/' + total + '</small></b><span>clientes com o mês concluído</span><i style="--w:' + (total ? ok * 100 / total : 0) + '%"></i></div>' +
-      '<div class="op-r"><b>' + conf + '<small>/' + total + '</small></b><span>conferidos</span><i style="--w:' + (total ? conf * 100 / total : 0) + '%"></i></div>' +
-      COLS.map(([k, r]) => '<div class="op-r mini' + (pend[k] ? ' tem' : '') + '"><b>' + pend[k] + '</b><span>' + esc(r) + ' em aberto</span></div>').join('');
+      '<div class="op-r"><b>' + conf + '<small>/' + total + '</small></b><span>conferidos</span><i style="--w:' + (total ? conf * 100 / total : 0) + '%"></i></div>';
     let lista = linhas;
     if (filtro === 'abertos') lista = lista.filter(l => !concluido(l));
     if (filtro === 'concluidos') lista = lista.filter(concluido);
     if (busca) lista = lista.filter(l => String(l.nome || '').toLowerCase().includes(busca));
     if (!lista.length) { cx.innerHTML = '<div class="estado-b7"><div class="b7-marca fraca"></div><p>' + (linhas.length ? 'Nenhum cliente neste filtro.' : 'Nenhum cliente ativo.') + '</p></div>'; return; }
     cx.innerHTML = '<div class="op-rolo"><table class="op-tab"><thead><tr><th class="op-cli">Cliente</th>' +
-      COLS.map(([, r]) => '<th>' + esc(r) + '</th>').join('') + '<th>Mês</th></tr></thead><tbody>' +
+      COLS.map(([k, r]) => '<th title="' + esc(r) + ': ' + pend[k] + ' em aberto">' + esc(r.replace(/ editorial$/, '')) + (pend[k] ? '<small class="op-pn">' + pend[k] + '</small>' : '') + '</th>').join('') + '<th>Mês</th></tr></thead><tbody>' +
       lista.map(l => {
         const c = conferido(l), fim = concluido(l);
-        return '<tr data-l="' + esc(l.id) + '"><th class="op-cli" scope="row"><a href="#/cliente/' + esc(l.id) + '"><span class="op-logo">' +
-            (l.logo_url ? '<img src="' + esc(l.logo_url) + '" alt="" loading="lazy">' : esc(String(l.nome || '?').charAt(0))) + '</span><span>' + esc(l.nome) + '</span></a></th>' +
+        const pal = String(l.nome || '?').split(/\s+/).filter(w => w && !/\.$/.test(w) && /[\p{L}\d]/u.test(w[0])), ini = ((pal[0] || '?')[0] + (pal[1] ? pal[1][0] : '')).toUpperCase();
+        const cor = [...String(l.id || l.nome || '')].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % 5;
+        return '<tr data-l="' + esc(l.id) + '"><th class="op-cli" scope="row"><a href="#/cliente/' + esc(l.id) + '"><span class="op-logo' + (l.logo_url ? ' img' : ' c' + cor) + '">' +
+            (l.logo_url ? '<img src="' + esc(l.logo_url) + '" alt="" loading="lazy">' : esc(ini)) + '</span><span>' + esc(l.nome) + '</span></a></th>' +
           COLS.map(([k]) => {
             const v = celula(l, k), t = tom(v.status);
             const conta = !v.manual && v.total ? '<small>' + v.feitas + '/' + v.total + '</small>' : '';
             const dica = v.manual ? 'Ajustado por ' + (v.por || 'alguém') + (v.nota ? ': ' + v.nota : '') + ' (automático: ' + ((v.auto || {}).status || '—') + ')' : 'Automático' + (v.proxima ? ' · próxima ' + B7.UI.dataBR(v.proxima) : '');
-            return '<td><button class="op-cel op-' + t + (v.manual ? ' manual' : '') + '" data-c="' + k + '" title="' + esc(dica) + '"><span>' + esc(v.status || '—') + '</span>' + conta + '</button></td>';
+            return '<td><button class="op-cel op-' + t + (v.manual ? ' manual' : '') + '" data-c="' + k + '" title="' + esc(dica) + '"><i class="op-pt"></i><span>' + esc(v.status || '—') + '</span>' + conta + '</button></td>';
           }).join('') +
           '<td><button class="op-cel op-mesc ' + (c ? 'op-ok conf' : fim ? 'op-ok' : 'op-pend') + '" data-c="mes" title="' +
             esc(c ? 'Conferido por ' + (c.por || '') : fim ? 'Tudo feito. ' + (admin() ? 'Toque para marcar como conferido.' : '') : 'Ainda tem coisa em aberto') + '">' +
-            '<span>' + (c ? '✓ Conferido' : fim ? 'Mês concluído' : 'Em aberto') + '</span></button></td></tr>';
+            '<i class="op-pt"></i><span>' + (c ? '✓ Conferido' : fim ? 'Mês concluído' : 'Em aberto') + '</span></button></td></tr>';
       }).join('') + '</tbody></table></div>';
     if (gestao()) cx.querySelectorAll('[data-c]').forEach(b => b.onclick = () => editar(b.closest('tr').dataset.l, b.dataset.c));
     else cx.querySelectorAll('[data-c]').forEach(b => { b.disabled = true; b.classList.add('so-ver'); });

@@ -83,7 +83,7 @@ B7.Cadastro = (function () {
       return '<div class="cd-nome">' + campo('NOME DO CLIENTE', 'cd-nome', c.nome, { obr: true, foco: true, ph: 'Ex: Mercato Sadia', max: 120 }) + '</div>' +
         '<fieldset class="cd-grupo"><legend>Empresa</legend><div class="cd-grade">' +
           campo('ÁREA DE ATUAÇÃO', 'cd-nicho', p.nicho, { meio: true, ph: 'Ex: Clínica odontológica' }) +
-          campo('CNPJ', 'cd-cnpj', fmtCnpj(i.cnpj), { meio: true, ph: '00.000.000/0000-00', modo: 'numeric', max: 18 }) +
+          campo('<span class="cd-sigla">CNPJ</span>', 'cd-cnpj', fmtCnpj(i.cnpj), { meio: true, ph: '00.000.000/0000-00', modo: 'numeric', max: 18 }) +
           campo('CIDADE / ESTADO', 'cd-cidade', i.cidade, { meio: true, ph: 'Ex: Vitória da Conquista - BA' }) +
           campo('INÍCIO DO SERVIÇO', 'cd-inicio', i.inicio_servico || '', { meio: true, tipo: 'date' }) +
           campo('INSTAGRAM', 'cd-insta', p.instagram ? '@' + p.instagram : '', { meio: true, ph: '@usuario', max: 60 }) +
@@ -238,6 +238,8 @@ B7.Cadastro = (function () {
     apoio().then(a => { cx = a; if (passo >= 2 && m.isConnected) pintar(); });
     const m = B7.UI.modal(
       '<div class="cd-w"><aside class="cd-trilho"><h3>Novo cliente</h3>' +
+        /* Espectro (quadro "Novo cliente"): o X de fechar no cabeçalho da janela */
+        (B7.Identidade && B7.Identidade.ligada() ? '<button type="button" class="cd-fechar" data-cd-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' : '') +
         '<p class="cd-trilho-sub">Só o nome é obrigatório. O resto você completa agora ou depois, na aba Cadastro.</p>' +
         '<ol class="cd-passos" data-cd-passos></ol></aside>' +
       '<section class="cd-palco"><header class="cd-palco-cab" data-cd-cab></header>' +
@@ -288,6 +290,7 @@ B7.Cadastro = (function () {
     }
     q('[data-cd-ok]').onclick = () => seguir();
     q('[data-cd-voltar]').onclick = () => { if (!ocupado) anda(-1); };
+    if (q('[data-cd-fechar]')) q('[data-cd-fechar]').onclick = () => m.fechar();
     q('[data-cd-pular]').onclick = () => { if (!ocupado) (passo === BLOCOS.length - 1 ? m.fechar() : anda(1)); };
     m.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input:not([type=checkbox]):not([type=color])')) { e.preventDefault(); seguir(); } });
     pintar();

@@ -55,6 +55,22 @@ B7.Pacotes = (function () {
     catch (e) { alvo.innerHTML = '<p class="cfg-g-nota">Não foi possível carregar os serviços contratados. ' + esc((e && e.message) || '') + '</p>'; return; }
     if (!alvo.isConnected) return;
     const ed = podeEditar();
+    /* Espectro, na Gestão: a tabela do quadro "Serviços contratados" (styles/espectro/gestao.css).
+       Nas Configurações e no visual antigo segue a lista de sempre, logo abaixo. */
+    if (op.gestao && document.documentElement.dataset.identidade === 'espectro') {
+      const cel = (rot, v) => '<span class="pcg-c" data-rot="' + rot + '">' + v + '</span>';
+      alvo.innerHTML = '<section class="pcg"><h2 class="pcg-t">Serviços contratados</h2>' +
+        '<div class="pcg-tab"><div class="pcg-cab" aria-hidden="true"><span>Serviço</span><span>Por mês</span><span>O que vem</span><span>Dias de postagem</span><span>Clientes</span></div>' +
+          (lista.length ? lista.map(p => '<' + (ed ? 'button type="button" data-pc-editar="' + esc(p.id) + '" title="Editar ' + esc(p.nome) + '"' : 'div') + ' class="pcg-l">' +
+              '<span class="pcg-nome"><span class="avatar sm" aria-hidden="true">' + esc(B7.UI.iniciais(p.nome)) + '</span><span class="pcg-nome-tx"><b>' + esc(p.nome) + '</b>' + (p.descricao ? '<small>' + esc(p.descricao) + '</small>' : '') + '</span></span>' +
+              cel('Por mês', total(p) + (total(p) === 1 ? ' conteúdo' : ' conteúdos')) +
+              cel('O que vem', esc(resumo(p).split(' · ')[0])) +
+              cel('Dias de postagem', DIAS.filter(d => (p.dias_semana || []).includes(d[0])).map(d => d[1]).join(', ') || '—') +
+              cel('Clientes', '<i>' + (uso[p.id] ? uso[p.id] + (uso[p.id] === 1 ? ' cliente' : ' clientes') : 'nenhum cliente') + '</i>') + '</' + (ed ? 'button' : 'div') + '>').join('')
+            : '<div class="pcg-l pcg-vazio"><span class="pcg-nome"><span class="pcg-nome-tx"><b>Nenhum serviço cadastrado ainda</b>' + (ed ? '<small>crie o primeiro abaixo</small>' : '') + '</span></span></div>') +
+          (ed ? '<button type="button" class="pcg-l pcg-novo" data-pc-novo><span class="pcg-nome"><span class="avatar sm" aria-hidden="true">+</span><span class="pcg-nome-tx"><b>Novo serviço</b><small>ex.: 8 cards + 4 carrosséis + 4 reels</small></span></span></button>' : '') +
+        '</div><p class="pcg-nota">O que a B7 vende: cada serviço diz o que o cliente recebe por mês — é a entrega mínima dele. Os serviços de cada cliente são escolhidos no cadastro dele, e lá dá para ajustar as quantidades só para ele.</p></section>';
+    } else
     alvo.innerHTML = '<section class="cfg-g"><h2 class="cfg-g-t">' + 'Serviços contratados</h2>' +
       '<p class="cfg-g-nota">' + (op.gestao ? 'O que a B7 vende: cada serviço diz o que o cliente recebe por mês — é a entrega mínima dele. Os serviços de cada cliente são escolhidos no cadastro dele, e lá dá para ajustar as quantidades só para ele.'
         : 'O que cada cliente contrata por mês. Ao criar uma linha editorial com os serviços contratados, os conteúdos já nascem com o tipo e a data espalhada pelo mês. Os serviços de cada cliente ficam no cadastro dele.') + '</p>' +

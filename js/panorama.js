@@ -25,7 +25,7 @@ B7.Panorama = (function () {
   const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
   const agora = new Date();
-  let S = { ano: agora.getFullYear(), mes: agora.getMonth() + 1, filtro: 'todos', busca: '', ordem: 'atencao', dados: null, dir: 0 };
+  let S = { ano: agora.getFullYear(), mes: agora.getMonth() + 1, filtro: 'todos', busca: '', ordem: 'atencao', dados: null, dir: 0, tudo: false };
 
   const sv = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
   const IC = {
@@ -117,54 +117,111 @@ B7.Panorama = (function () {
   function mesRotulo() { return MESES[S.mes - 1] + ' de ' + S.ano; }
   const ehMesAtual = () => S.ano === agora.getFullYear() && S.mes === agora.getMonth() + 1;
 
-  function anel(pct, rotulo) {
-    const r = 34, c = 2 * Math.PI * r, p = Math.max(0, Math.min(1, pct || 0));
-    return '<div class="pan-anel" role="img" aria-label="' + esc(rotulo) + '">' +
-      '<svg viewBox="0 0 80 80"><defs><linearGradient id="panAnelG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF7AC0"/><stop offset="1" stop-color="#8E6BFF"/></linearGradient></defs>' +
-      '<circle class="pan-anel-f" cx="40" cy="40" r="' + r + '"/>' +
-      '<circle class="pan-anel-v" cx="40" cy="40" r="' + r + '" style="--c:' + c.toFixed(1) + ';--o:' + (c * (1 - p)).toFixed(1) + '"/></svg>' +
-      '<b><span data-conta="' + Math.round(p * 100) + '">0</span><i>%</i></b></div>';
+  /* --- Espectro: quatro cartões do mês, a tabela "cliente a cliente" e a coluna do que espera ação.
+     Tudo sai do mesmo panorama_mes: nada é inventado aqui. */
+  const num = v => Number(v) || 0;
+  const ROT_ESTADO = { atraso: 'Atrasado', atencao: 'Atenção', andamento: 'Em dia', ok: 'Entregue', vazio: 'Sem movimento' };
+  const ROT_ETAPA = { linha: 'Linha editorial', roteiros: 'Roteiros', gravacoes: 'Gravação', video: 'Edição', design: 'Design', aprovacoes: 'Aprovação', publicacoes: 'Publicações' };
+  function totais(linhas) {
+    const t = { n: { atraso: 0, atencao: 0, andamento: 0, ok: 0, vazio: 0 }, soma: 0, com: 0, atrasados: 0, cliAtraso: 0, aprov: 0, cliAprov: 0, pub: 0, pubTotal: 0 };
+    linhas.forEach(l => {
+      const c = l.c; t.n[l.estado]++; if (l.etapas) { t.soma += l.pct; t.com++; }
+      const a = num(c.video && c.video.atrasados) + num(c.design && c.design.atrasados) + num(c.publicacoes && c.publicacoes.atrasados) + num(c.gravacoes && c.gravacoes.atrasadas);
+      t.atrasados += a; if (l.atraso) t.cliAtraso++;
+      const ap = num(c.aprovacoes); t.aprov += ap; if (ap) t.cliAprov++;
+      t.pub += num(c.publicacoes && c.publicacoes.publicados); t.pubTotal += num(c.publicacoes && c.publicacoes.total);
+    });
+    return t;
+  }
+  /* o que espera ação: cada etapa em atraso ou pedindo atenção, cliente a cliente */
+  function esperando(linhas) {
+    const peso = { atraso: 0, atencao: 1 }, itens = [];
+    linhas.forEach(l => ETAPAS.forEach(([k]) => {
+      const x = l.cels[k], c = l.c; if (x.estado !== 'atraso' && x.estado !== 'atencao') return;
+      let tit, sub, ic = IC[k], tom = x.estado === 'atraso' ? 'erro' : 'ambar';
+      if (k === 'aprovacoes') { tit = plural(num(c.aprovacoes), 'peça em aprovação', 'peças em aprovação'); sub = 'Aguardando aprovação'; tom = 'violeta'; }
+      else if (k === 'gravacoes') { tit = x.estado === 'atraso' ? 'Gravação com data vencida' : 'Gravação sem data'; sub = 'Gravações · ' + x.valor + ' gravadas'; }
+      else if (k === 'video') { tit = plural(num(c.video.atrasados), 'vídeo atrasado', 'vídeos atrasados'); sub = 'Edição · ' + x.valor + ' entregues'; ic = IC.alerta; }
+      else if (k === 'design') { tit = plural(num(c.design.atrasados), 'arte atrasada', 'artes atrasadas'); sub = 'Design · ' + x.valor + ' finalizadas'; ic = IC.alerta; }
+      else { tit = plural(num(c.publicacoes.atrasados), 'publicação atrasada', 'publicações atrasadas'); sub = 'Publicações · ' + x.valor + ' publicadas'; ic = IC.alerta; }
+      itens.push({ id: c.id, tit: tit + ' · ' + (c.nome || ''), sub, ic, tom, p: peso[x.estado] });
+    }));
+    return itens.sort((a, b) => a.p - b.p);
   }
 
-  function heroi(linhas) {
-    const n = { atraso: 0, atencao: 0, andamento: 0, ok: 0, vazio: 0 };
-    let soma = 0, com = 0;
-    linhas.forEach(l => { n[l.estado]++; if (l.etapas) { soma += l.pct; com++; } });
-    const chip = (k, rot, v) => '<button type="button" class="pan-kpi pan-e-' + k + (S.filtro === k ? ' on' : '') + '" data-filtro="' + k + '" aria-pressed="' + (S.filtro === k) + '">' +
-      '<b data-conta="' + v + '">0</b><span>' + rot + '</span></button>';
-    return '<section class="pan-heroi" aria-label="Resumo do mês">' +
-      '<i class="pan-heroi-luz" aria-hidden="true"></i><i class="pan-heroi-luz dois" aria-hidden="true"></i>' +
-      '<div class="pan-heroi-esq">' + anel(com ? soma / com : 0, 'Andamento médio do mês') +
-        '<div class="pan-heroi-tx"><span>Andamento do mês</span><strong>' + esc(mesRotulo()) + '</strong>' +
-        '<small>' + plural(com, 'cliente com movimento', 'clientes com movimento') + ' de ' + linhas.length + '</small></div></div>' +
-      '<div class="pan-kpis">' +
-        chip('atraso', 'com atraso', n.atraso) + chip('atencao', 'pedem atenção', n.atencao) +
-        chip('andamento', 'em andamento', n.andamento) + chip('ok', 'em dia', n.ok) + chip('vazio', 'sem movimento', n.vazio) +
-      '</div></section>';
+  function cartoesHTML(todas) {
+    const t = totais(todas), esp = esperando(todas).length;
+    const pct = t.pubTotal ? Math.round(t.pub / t.pubTotal * 100) : 0;
+    const cartao = (cor, rot, valor, sub) => '<div class="pano-kpi pano-kpi-' + cor + '"><i class="pano-kpi-luz" aria-hidden="true"></i>' +
+      '<div class="pano-kpi-tx"><p class="pano-kpi-rot">' + rot + '</p><p class="pano-kpi-n">' + valor + '</p><p class="pano-kpi-sub">' + esc(sub) + '</p></div></div>';
+    const n = v => '<span data-conta="' + v + '">0</span>';
+    return '<section class="pano-kpis" aria-label="Resumo do mês">' +
+      cartao('coral', 'Atrasados', n(t.atrasados), t.cliAtraso ? plural(t.cliAtraso, 'cliente com peça vencida', 'clientes com peça vencida') : 'Nenhum cliente com peça vencida') +
+      cartao('roxo', 'Em aprovação', n(t.aprov), t.aprov ? 'Aguardando retorno · ' + plural(t.cliAprov, 'cliente', 'clientes') : 'Nada aguardando aprovação') +
+      cartao('violeta', 'Esperando você', n(esp), 'Atrasos, aprovações e gravações sem data') +
+      cartao('matriz', 'Mês entregue', n(pct) + '%', t.pubTotal ? t.pub + ' de ' + plural(t.pubTotal, 'publicação', 'publicações') : 'Nenhuma publicação no mês') +
+    '</section>';
   }
 
-  function celHTML(x, k, rot) {
-    const pct = x.pct === null || x.pct === undefined ? null : Math.round(Math.max(0, Math.min(1, x.pct)) * 100);
-    const marca = x.estado === 'ok' ? '<i class="pan-cel-ic">' + IC.ok + '</i>' : x.estado === 'atraso' ? '<i class="pan-cel-ic">' + IC.alerta + '</i>' : '';
-    return '<div class="pan-cel pan-e-' + x.estado + '" data-etapa="' + k + '" title="' + esc(rot + ': ' + (x.valor ? x.valor + ' ' : '') + x.sub) + '">' +
-      '<span class="pan-cel-rot">' + IC[k] + '<em>' + esc(rot) + '</em></span>' +
-      (x.estado === 'vazio'
-        ? '<span class="pan-cel-vazio">' + (k === 'aprovacoes' ? '—' : '·') + '</span>'
-        : '<span class="pan-cel-topo"><b>' + esc(x.valor || '') + '</b>' + marca + '</span>' +
-          (pct !== null ? '<span class="pan-barra"><i style="--p:' + pct + '%"></i></span>' : '') +
-          '<small>' + esc(x.sub) + '</small>') +
-    '</div>';
+  function pendente(l) {
+    const c = l.c, p = [];
+    if (l.estado === 'atraso') {
+      if (num(c.video && c.video.atrasados)) p.push(plural(num(c.video.atrasados), 'vídeo', 'vídeos'));
+      if (num(c.design && c.design.atrasados)) p.push(plural(num(c.design.atrasados), 'arte', 'artes'));
+      if (num(c.publicacoes && c.publicacoes.atrasados)) p.push(plural(num(c.publicacoes.atrasados), 'publicação', 'publicações'));
+      if (l.cels.gravacoes.estado === 'atraso') p.push('Gravação');
+      return p.slice(0, 2).join(' · ');
+    }
+    if (l.estado === 'atencao') {
+      if (l.cels.aprovacoes.estado === 'atencao') p.push(plural(num(c.aprovacoes), 'peça', 'peças'));
+      if (l.cels.gravacoes.estado === 'atencao') p.push('Gravação');
+      return p.join(' · ');
+    }
+    if (l.estado === 'andamento') { const e = ETAPAS.find(([k]) => l.cels[k].estado === 'andamento'); return e ? ROT_ETAPA[e[0]] : '—'; }
+    return '—';
   }
   function linhaHTML(l, i) {
     const c = l.c, pct = Math.round(l.pct * 100);
-    const rot = { atraso: 'com atraso', atencao: 'pede atenção', andamento: 'em andamento', ok: 'em dia', vazio: 'sem movimento' }[l.estado];
-    return '<a class="pan-linha pan-e-' + l.estado + '" href="#/cliente/' + esc(c.id) + '" style="--i:' + Math.min(i, 24) + '" data-nome="' + esc((c.nome || '').toLowerCase()) + '">' +
-      '<div class="pan-quem">' + B7.UI.avatarCliente(c.nome, c.logo_url, 'pan-av') +
-        '<div class="pan-quem-tx"><b>' + esc(c.nome) + '</b>' +
-          '<span class="pan-quem-sub"><i class="pan-ponto"></i>' + rot + (l.etapas ? ' · ' + pct + '%' : '') + '</span></div></div>' +
-      '<div class="pan-cels">' + ETAPAS.map(([k, r]) => celHTML(l.cels[k], k, r)).join('') + '</div>' +
-      '<span class="pan-ir" aria-hidden="true">' + IC.seta + '</span>' +
+    let tom = { atraso: 'erro', atencao: 'ambar', andamento: 'ok', ok: 'ok', vazio: 'neutro' }[l.estado], rot = ROT_ESTADO[l.estado];
+    if (l.estado === 'atencao') { if (l.cels.aprovacoes.estado === 'atencao') { tom = 'violeta'; rot = 'Em aprovação'; } else rot = 'Sem data'; }
+    const pecas = num(c.publicacoes && c.publicacoes.total);
+    const sub = [typeof c.servico === 'string' && c.servico ? c.servico : '', pecas ? plural(pecas, 'publicação', 'publicações') : (l.estado === 'vazio' ? 'nada no mês' : '')].filter(Boolean).join(' · ');
+    const dica = ETAPAS.map(([k, r]) => r + ': ' + (l.cels[k].valor ? l.cels[k].valor + ' ' : '') + l.cels[k].sub).join(' · ');
+    let h = 0; String(c.nome || '').split('').forEach(ch => { h = (h * 31 + ch.charCodeAt(0)) % 997; });
+    return '<a class="pano-linha pano-e-' + l.estado + '" href="#/cliente/' + esc(c.id) + '" style="--i:' + Math.min(i, 24) + '" data-nome="' + esc((c.nome || '').toLowerCase()) + '" title="' + esc(dica) + '">' +
+      '<div class="pano-quem">' + B7.UI.avatarCliente(c.nome, c.logo_url, 'pano-av pano-av-' + (h % 4)) +
+        '<div class="pano-quem-tx"><b>' + esc(c.nome) + '</b>' + (sub ? '<span>' + esc(sub) + '</span>' : '') + '</div></div>' +
+      '<div class="pano-prog" data-rot="Andamento">' + (l.etapas
+        ? '<span class="pano-trilho"><i style="--p:' + pct + '%"></i></span><b>' + pct + '%</b>'
+        : '<span class="pano-trilho"></span><b>—</b>') + '</div>' +
+      '<div class="pano-sit"><span class="pano-pill pano-t-' + tom + '"><i></i>' + rot + '</span></div>' +
+      '<span class="pano-pend">' + esc(pendente(l)) + '</span>' +
+      '<span class="pano-ir" aria-hidden="true">' + IC.seta + '</span>' +
     '</a>';
+  }
+
+  function ladoHTML(todas) {
+    const t = totais(todas), itens = esperando(todas), media = t.com ? Math.round(t.soma / t.com * 100) : 0;
+    const resumo = [t.com ? 'Média de ' + media + '% nas etapas' : '', t.n.atraso ? t.n.atraso + ' com atraso' : '', t.n.ok ? plural(t.n.ok, 'entregue', 'entregues') : ''].filter(Boolean).join(' · ');
+    const rel = B7.Relatorio && B7.Auth.ehEquipe && B7.Auth.ehEquipe(), vis = S.tudo ? itens : itens.slice(0, 4);
+    return '<aside class="pano-lado">' +
+      '<div class="pano-mes-cartao"><i class="pano-mes-luz" aria-hidden="true"></i><div class="pano-mes-tx">' +
+        '<p class="pano-mes-rot">ANDAMENTO DO MÊS</p>' +
+        '<p class="pano-mes-tit">' + plural(t.com, 'cliente com movimento', 'clientes com movimento') + '</p>' +
+        '<p class="pano-mes-sub">' + esc('de ' + todas.length + ' em ' + mesRotulo() + (resumo ? ' · ' + resumo : '')) + '</p>' +
+        (rel || B7.Retro ? '<div class="pano-mes-acoes">' +
+          /* zzz254: entregas, prazos e aprovações do mês, por cliente e por pessoa */
+          (rel ? '<button type="button" class="pano-mes-bt-claro" data-relatorio>' + IC.roteiros + 'Relatório do mês</button>' : '') +
+          /* zzz280: o mês contado em histórias */
+          (B7.Retro ? '<button type="button" class="pano-mes-bt-vidro" data-retro>Retrospectiva</button>' : '') + '</div>' : '') +
+      '</div></div>' +
+      '<div class="pano-cartao pano-espera"><div class="pano-espera-cab"><p class="pano-cartao-tit">Esperando você</p><span class="pano-pill pano-t-violeta"><i></i>' + itens.length + '</span></div>' +
+        (itens.length
+          ? '<div class="pano-espera-lista">' + vis.map(x => '<a class="pano-item" href="#/cliente/' + esc(x.id) + '"><span class="pano-item-ic pano-t-' + x.tom + '">' + x.ic + '</span>' +
+              '<span class="pano-item-tx"><b>' + esc(x.tit) + '</b><small>' + esc(x.sub) + '</small></span></a>').join('') + '</div>' +
+            (itens.length > 4 ? '<button type="button" class="pano-ver-tudo" data-tudo>' + (S.tudo ? 'Ver menos' : 'Ver tudo') + '</button>' : '')
+          : '<p class="pano-espera-nada">Nada esperando ação neste mês.</p>') +
+      '</div></aside>';
   }
 
   function ordenar(linhas) {
@@ -180,43 +237,44 @@ B7.Panorama = (function () {
   function corpoHTML() {
     const todas = (S.dados || []).map(ler);
     const vis = ordenar(filtrar(todas));
-    const cab = '<div class="pan-cab" aria-hidden="true"><span class="pan-cab-quem">Cliente</span><div class="pan-cels">' +
-      ETAPAS.map(([k, r]) => '<span class="pan-cab-et">' + IC[k] + '<em>' + r + '</em></span>').join('') + '</div><span class="pan-ir"></span></div>';
-    return heroi(todas) +
-      '<div class="pan-barra-f">' +
-        '<label class="pan-busca">' + IC.lupa + '<input type="search" id="pan-busca" placeholder="Buscar cliente…" value="' + esc(S.busca) + '" aria-label="Buscar cliente"></label>' +
-        '<div class="pan-seg" role="group" aria-label="Ordem">' +
-          '<button type="button" data-ordem="atencao" class="' + (S.ordem === 'atencao' ? 'on' : '') + '">Quem precisa primeiro</button>' +
-          '<button type="button" data-ordem="az" class="' + (S.ordem === 'az' ? 'on' : '') + '">A–Z</button></div>' +
-        (S.filtro !== 'todos' ? '<button type="button" class="pan-limpa" data-filtro="todos">Mostrar todos</button>' : '') +
-      '</div>' +
-      (vis.length
-        ? '<div class="pan-tabela">' + cab + '<div class="pan-linhas">' + vis.map(linhaHTML).join('') + '</div></div>'
-        : '<div class="estado-b7 pan-nada"><b>' + (todas.length ? 'Nenhum cliente nesse recorte.' : 'Nenhum cliente por aqui ainda.') + '</b>' +
-          (todas.length ? '<p>Tire o filtro ou a busca para ver todos.</p>' : '') + '</div>');
+    const filtro = (k, rot) => '<button type="button" data-filtro="' + k + '" class="' + (S.filtro === k ? 'on' : '') + '" aria-pressed="' + (S.filtro === k) + '">' + rot + '</button>';
+    const ordem = (k, rot) => '<button type="button" data-ordem="' + k + '" class="' + (S.ordem === k ? 'on' : '') + '" title="Ordenar por ' + rot.toLowerCase() + '">' + rot + '<i aria-hidden="true"></i></button>';
+    const cab = '<div class="pano-cab"><span>' + ordem('az', 'Cliente') + '</span><span>Andamento do mês</span><span>' + ordem('atencao', 'Situação') + '</span><span>Pendente</span><span></span></div>';
+    return cartoesHTML(todas) +
+      '<div class="pano-grade">' +
+        '<div class="pano-cartao pano-tabela">' +
+          '<div class="pano-tabela-cab"><p class="pano-cartao-tit">O mês, cliente a cliente</p>' +
+            '<label class="pano-busca">' + IC.lupa + '<input type="search" id="pan-busca" placeholder="Buscar cliente" value="' + esc(S.busca) + '" aria-label="Buscar cliente"></label>' +
+            '<div class="pano-seg" role="group" aria-label="Filtro">' +
+              filtro('todos', 'Todos') + filtro('atraso', 'Com atraso') + filtro('atencao', 'Atenção') + filtro('andamento', 'Em dia') + filtro('ok', 'Entregue') + filtro('vazio', 'Sem movimento') +
+            '</div></div>' +
+          cab +
+          '<div class="pano-linhas">' + (vis.length ? vis.map(linhaHTML).join('')
+            : '<div class="pano-sem">' + (todas.length ? 'Nenhum cliente nesse recorte. Tire o filtro ou a busca para ver todos.' : 'Nenhum cliente por aqui ainda.') + '</div>') + '</div>' +
+        '</div>' +
+        ladoHTML(todas) +
+      '</div>';
   }
 
   function esqueleto() {
-    return '<div class="pan-heroi pan-carrega"></div>' +
-      '<div class="pan-tabela"><div class="pan-linhas">' + Array.from({ length: 7 }).map((_, i) => '<div class="pan-linha pan-carrega" style="--i:' + i + '"></div>').join('') + '</div></div>';
+    return '<div class="pano-kpis">' + Array.from({ length: 4 }).map(() => '<div class="pano-kpi pano-carrega"></div>').join('') + '</div>' +
+      '<div class="pano-grade"><div class="pano-cartao pano-tabela pano-carrega"></div><div class="pano-lado"><div class="pano-mes-cartao pano-carrega"></div><div class="pano-cartao pano-carrega"></div></div></div>';
   }
 
+  function saudacao() {
+    const d = new Date(), h = d.getHours(), u = (B7.Auth.usuario && B7.Auth.usuario()) || {};
+    const nome = String(u.nome || '').trim().split(/\s+/)[0];
+    return (h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite') + (nome ? ', ' + nome : '') + ' · ' + d.getDate() + ' de ' + MESES[d.getMonth()].toLowerCase();
+  }
   function topoHTML() {
-    return '<header class="pan-topo">' +
-      '<div class="pan-tit"><h1>Panorama</h1><p>Como está cada cliente no mês, etapa por etapa.</p></div>' +
-      '<div class="pan-mes" role="group" aria-label="Mês">' +
-        '<button type="button" class="pan-mes-bt" data-mes="-1" aria-label="Mês anterior">' + IC.esq + '</button>' +
-        '<b id="pan-mes-rot" aria-live="polite">' + esc(mesRotulo()) + '</b>' +
-        '<button type="button" class="pan-mes-bt" data-mes="1" aria-label="Próximo mês">' + IC.dir + '</button>' +
-        '<button type="button" class="pan-hoje" data-mes="0"' + (ehMesAtual() ? ' disabled' : '') + '>Este mês</button>' +
-      '</div>' +
-      /* zzz283: os atalhos do mês ficam num grupo à parte (no celular, dentro
-         do seletor de mês, espremiam o nome do mês até virar uma letra por linha) */
-      '<div class="pan-acoes">' +
-        /* zzz254: entregas, prazos e aprovações do mês, por cliente e por pessoa */
-        (B7.Relatorio && B7.Auth.ehEquipe && B7.Auth.ehEquipe() ? '<button type="button" class="pan-hoje pan-relatorio" data-relatorio>Relatório do mês</button>' : '') +
-        /* zzz280: o mês contado em histórias */
-        (B7.Retro ? '<button type="button" class="pan-hoje pan-relatorio" data-retro>✨ Retrospectiva</button>' : '') +
+    return '<header class="pano-topo">' +
+      '<p class="pano-sauda">' + esc(saudacao()) + '</p>' +
+      /* zzz283: os atalhos do mês (relatório, retrospectiva) ficam à parte, no cartão "Andamento do mês" */
+      '<div class="pano-mes" role="group" aria-label="Mês">' +
+        '<h1 id="pan-mes-rot" aria-live="polite">' + esc(mesRotulo()) + '</h1>' +
+        '<button type="button" class="pano-mes-bt" data-mes="-1" aria-label="Mês anterior">' + IC.esq + '</button>' +
+        '<button type="button" class="pano-mes-bt" data-mes="1" aria-label="Próximo mês">' + IC.dir + '</button>' +
+        '<button type="button" class="pano-hoje" data-mes="0"' + (ehMesAtual() ? ' disabled' : '') + '>Este mês</button>' +
       '</div></header>';
   }
 
@@ -242,20 +300,22 @@ B7.Panorama = (function () {
     ligarCorpo(cx);
   }
   function ligarCorpo(cx) {
+    const troca = () => { const al = cx.querySelector('.pano-linhas'); if (al) { al.classList.remove('pano-troca'); void al.offsetWidth; al.classList.add('pano-troca'); } };
     cx.querySelectorAll('[data-filtro]').forEach(b => b.onclick = () => {
-      S.filtro = S.filtro === b.dataset.filtro ? 'todos' : b.dataset.filtro; S.dir = 0; pintarCorpo(false);
-      const al = cx.querySelector('.pan-linhas'); if (al) { al.classList.remove('pan-troca'); void al.offsetWidth; al.classList.add('pan-troca'); }
+      S.filtro = S.filtro === b.dataset.filtro ? 'todos' : b.dataset.filtro; S.dir = 0; pintarCorpo(false); troca();
     });
-    cx.querySelectorAll('[data-ordem]').forEach(b => b.onclick = () => { if (S.ordem === b.dataset.ordem) return; S.ordem = b.dataset.ordem; S.dir = 0; pintarCorpo(false);
-      const al = cx.querySelector('.pan-linhas'); if (al) al.classList.add('pan-troca'); });
+    cx.querySelectorAll('[data-ordem]').forEach(b => b.onclick = () => { if (S.ordem === b.dataset.ordem) return; S.ordem = b.dataset.ordem; S.dir = 0; pintarCorpo(false); troca(); });
     const bs = cx.querySelector('#pan-busca');
     if (bs) bs.oninput = () => {
       S.busca = bs.value;
       const todas = (S.dados || []).map(ler), vis = ordenar(filtrar(todas));
-      const al = cx.querySelector('.pan-linhas');
-      if (al) al.innerHTML = vis.map(linhaHTML).join('') || '<div class="pan-sem">Nenhum cliente com esse nome.</div>';
-      if (al) al.classList.add('pan-sem-anim');
+      const al = cx.querySelector('.pano-linhas');
+      if (al) al.innerHTML = vis.map(linhaHTML).join('') || '<div class="pano-sem">Nenhum cliente com esse nome.</div>';
+      if (al) al.classList.add('pano-sem-anim');
     };
+    const rel = cx.querySelector('[data-relatorio]'); if (rel) rel.onclick = () => B7.Relatorio.abrir(S.ano, S.mes);
+    const rt = cx.querySelector('[data-retro]'); if (rt) rt.onclick = () => B7.Retro.abrir(S.ano, S.mes);
+    const tudo = cx.querySelector('[data-tudo]'); if (tudo) tudo.onclick = () => { S.tudo = !S.tudo; S.dir = 0; pintarCorpo(false); };
   }
 
   let pedido = 0;
@@ -289,12 +349,10 @@ B7.Panorama = (function () {
       if (d === 0) { S.dir = (agora.getFullYear() * 12 + agora.getMonth() + 1) > (S.ano * 12 + S.mes) ? 1 : -1; S.ano = agora.getFullYear(); S.mes = agora.getMonth() + 1; }
       else { S.dir = d; let m = S.mes + d, a = S.ano; if (m < 1) { m = 12; a--; } if (m > 12) { m = 1; a++; } S.mes = m; S.ano = a; }
       const rot = document.getElementById('pan-mes-rot');
-      if (rot) { rot.textContent = mesRotulo(); rot.classList.remove('pan-vira'); void rot.offsetWidth; rot.classList.add('pan-vira'); }
-      const hj = raiz.querySelector('.pan-hoje'); if (hj) hj.disabled = ehMesAtual();
+      if (rot) { rot.textContent = mesRotulo(); rot.classList.remove('pano-vira'); void rot.offsetWidth; rot.classList.add('pano-vira'); }
+      const hj = raiz.querySelector('.pano-hoje'); if (hj) hj.disabled = ehMesAtual();
       carregar(true);
     });
-    const rel = raiz.querySelector('[data-relatorio]'); if (rel) rel.onclick = () => B7.Relatorio.abrir(S.ano, S.mes);
-    const rt = raiz.querySelector('[data-retro]'); if (rt) rt.onclick = () => B7.Retro.abrir(S.ano, S.mes);
     S.dir = 0;
     await carregar(true);
   }

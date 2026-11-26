@@ -1,1 +1,142 @@
 /* Espectro · clientes — redesenho fiel ao artefato. Tudo sob html[data-identidade="espectro"]. */
+/* Quadro "Clientes": rótulo + título 42 · linha de pílulas (34px) com as ações à direita ·
+   grade de 4 colunas, cartões raio 24 com logo 48, estrela de fixar, nome 15 e apoio 12.5. */
+
+/* ---------------------------------------------------------------- cabeçalho */
+html[data-identidade="espectro"] .clx .cab-conteudo.clx-cab{display:flex;flex-direction:row;align-items:flex-end;gap:10px;margin:4px 0 24px;animation:none;}
+html[data-identidade="espectro"] .clx-tit{flex:1;min-width:0;}
+html[data-identidade="espectro"] .clx-tit .v4-sobre{margin:0 0 8px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);line-height:1.45;}
+html[data-identidade="espectro"] .clx-tit h1{margin:0;font-size:42px !important;line-height:1;letter-spacing:0;color:var(--ink);}
+html[data-identidade="espectro"] .clx-ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+
+/* busca da carteira: o campo de 260×48 da linha do título */
+html[data-identidade="espectro"] .clx-busca{display:flex;align-items:center;gap:10px;flex:none;width:260px;height:48px;padding:0 18px;border-radius:24px;box-sizing:border-box;
+  background:var(--card);border:1px solid rgba(10,16,51,.06);color:var(--ink-3);box-shadow:0 8px 24px rgba(10,16,51,.04);transition:border-color .18s, box-shadow .18s;}
+html[data-identidade="espectro"] .clx-busca .clx-ic{width:18px;height:18px;}
+html[data-identidade="espectro"] .clx-busca input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:14px;color:var(--ink);box-shadow:none;padding:0;}
+html[data-identidade="espectro"] .clx-busca input::placeholder{color:var(--ink-3);opacity:1;}
+html[data-identidade="espectro"] .clx-busca:focus-within{border-color:#7328A5;box-shadow:0 0 0 3px rgba(115,40,165,.18);}
+
+/* ordem (Recentes / A–Z): duas pílulas dentro de uma cápsula de 48 */
+html[data-identidade="espectro"] .clx-ordem{display:flex;align-items:center;gap:2px;flex:none;height:48px;padding:0 6px;border-radius:24px;box-sizing:border-box;
+  background:var(--card);border:1px solid rgba(10,16,51,.06);}
+html[data-identidade="espectro"] .clx-ordem button{height:34px;padding:0 14px;border:0;border-radius:17px;background:transparent;font:inherit;font-size:13px;color:var(--ink-3);cursor:pointer;white-space:nowrap;
+  transition:background-color .18s, color .18s, transform .12s;}
+html[data-identidade="espectro"] .clx-ordem button:hover{color:var(--ink);}
+html[data-identidade="espectro"] .clx-ordem button:active{transform:scale(.97);}
+html[data-identidade="espectro"] .clx-ordem button.on{background:var(--suave);color:var(--ink);}
+html[data-identidade="espectro"] .clx-ordem button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+
+/* ------------------------------------------------- pílulas + ações (uma linha) */
+html[data-identidade="espectro"] .clx-barra{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 18px;}
+html[data-identidade="espectro"] .clx-pils{display:flex;gap:6px;flex-wrap:wrap;min-width:0;}
+html[data-identidade="espectro"] .clx-pil{height:34px;padding:0 16px;border-radius:17px;display:inline-flex;align-items:center;flex:none;font:inherit;font-size:13px;white-space:nowrap;cursor:pointer;
+  color:var(--ink-3);background:var(--card);border:1px solid var(--borda-forte);transition:background-color .18s, color .18s, border-color .18s, transform .12s;}
+html[data-identidade="espectro"] .clx-pil:hover{color:var(--ink);}
+html[data-identidade="espectro"] .clx-pil:active{transform:scale(.97);}
+html[data-identidade="espectro"] .clx-pil.on{background:#001561;border-color:#001561;color:#fff;}
+html[data-identidade="espectro"] .clx-pil:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .clx-acoes{display:flex;gap:8px;flex:none;align-items:center;}
+html[data-identidade="espectro"] .clx-acoes .b{min-height:34px;height:34px;padding:0 16px;border-radius:17px;font-size:13px;gap:8px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;}
+html[data-identidade="espectro"] .clx-acoes .b.contorno{background:var(--card);color:var(--ink);border:1px solid var(--borda);}
+html[data-identidade="espectro"] .clx-acoes .b.contorno:hover{background:var(--suave);color:var(--ink);border-color:var(--borda);}
+html[data-identidade="espectro"] .clx-acoes .b.pri{background:#7328A5;color:#fff;border:0;box-shadow:0 8px 22px rgba(115,40,165,.32);}
+html[data-identidade="espectro"] .clx-acoes .b.pri:hover{background:#520083;}
+
+/* -------------------------------------------------------------------- grade */
+html[data-identidade="espectro"] .clx-grade{display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:16px;}
+html[data-identidade="espectro"] .clx .cl2-card.clx-card{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:18px;border-radius:24px;cursor:pointer;min-width:0;
+  background:var(--card);border:1px solid var(--borda);box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;
+  animation:clxSobe .7s var(--b7-ease) both;animation-delay:calc(.2s + var(--i,0) * 40ms);
+  transition:transform .25s var(--b7-ease), border-color .18s, box-shadow .25s;}
+html[data-identidade="espectro"] .clx .cl2-card.clx-card::before{content:none;}
+html[data-identidade="espectro"] .clx .cl2-card.clx-card:hover{transform:translateY(-2px);border-color:var(--borda-forte);box-shadow:0 20px 50px rgba(10,16,51,.08);z-index:2;}
+html[data-identidade="espectro"] .clx .cl2-card.clx-card:active{transform:scale(.99);}
+html[data-identidade="espectro"] .clx .cl2-card.clx-card:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .clx .cl2-card.clx-card:focus-within{z-index:3;}
+@keyframes clxSobe{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+
+html[data-identidade="espectro"] .clx-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+html[data-identidade="espectro"] .clx-logo{width:48px;height:48px;flex:none;display:inline-flex;}
+html[data-identidade="espectro"] .clx-logo .avatar{width:48px;height:48px;min-width:0;margin:0;border-radius:22px;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;
+  background:#7328A5;color:#fff;font-size:19px;line-height:1;letter-spacing:0;border:0;box-shadow:none;padding:0;}
+html[data-identidade="espectro"] .clx-logo[data-tom="1"] .avatar{background:#001561;}
+html[data-identidade="espectro"] .clx-logo[data-tom="2"] .avatar{background:#E02F75;}
+html[data-identidade="espectro"] .clx-logo[data-tom="3"] .avatar{background:#520083;}
+html[data-identidade="espectro"] .clx-logo[data-tom="4"] .avatar{background:#C7442F;}
+html[data-identidade="espectro"] .clx-logo[data-tom="5"] .avatar{background:#0E6B8C;}
+html[data-identidade="espectro"] .clx-logo .avatar.com-logo{background:#fff;border:1px solid var(--borda);box-sizing:border-box;}
+html[data-identidade="espectro"] .clx-logo .avatar img{width:100%;height:100%;object-fit:cover;display:block;padding:0;margin:0;border-radius:0;max-width:none;max-height:none;}
+
+html[data-identidade="espectro"] .clx-card-acoes{display:flex;align-items:center;gap:2px;flex:none;margin:-4px -4px 0 0;}
+html[data-identidade="espectro"] .clx-card-acoes .ico{width:28px;height:28px;border-radius:14px;border:0;background:transparent;color:var(--ink-4);font-size:16px;line-height:1;opacity:1;position:static;transform:none;}
+html[data-identidade="espectro"] .clx-card-acoes .menu > .ico{opacity:0;transition:opacity .18s, background-color .18s, color .18s;}
+html[data-identidade="espectro"] .clx-card:hover .menu > .ico,
+html[data-identidade="espectro"] .clx-card:focus-within .menu > .ico,
+html[data-identidade="espectro"] .clx-card .menu.aberto > .ico{opacity:1;}
+html[data-identidade="espectro"] .clx-card-acoes .menu > .ico:hover{background:var(--suave);color:var(--ink);}
+html[data-identidade="espectro"] .clx-card-acoes .clx-pin{color:var(--borda);transition:color .18s, transform .12s;}
+html[data-identidade="espectro"] .clx-card-acoes .clx-pin svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+html[data-identidade="espectro"] .clx-card-acoes .clx-pin:hover{background:transparent;color:var(--ink-4);}
+html[data-identidade="espectro"] .clx-card-acoes .clx-pin.fixado,
+html[data-identidade="espectro"] .clx-card-acoes .clx-pin.fixado:hover{color:#7328A5;}
+html[data-identidade="espectro"] .clx-card-acoes .clx-pin:active{transform:scale(.9);}
+html[data-identidade="espectro"] .clx-card-acoes .ico:focus-visible{outline:none;opacity:1;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+
+html[data-identidade="espectro"] .clx-tx{display:flex;flex-direction:column;min-width:0;}
+html[data-identidade="espectro"] .clx-tx b{font-size:15px;line-height:1.45;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+html[data-identidade="espectro"] .clx-sub{font-size:12.5px;line-height:1.45;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+html[data-identidade="espectro"] .clx-pe{margin:0;font-size:12px;line-height:1.45;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+html[data-identidade="espectro"] .clx-tx :is(.tag-teste, .tag-inativo){font-weight:400;font-size:10px;letter-spacing:.08em;padding:1px 8px;margin-left:6px;border-radius:999px;}
+html[data-identidade="espectro"] .clx .cl2-card.clx-card.inativo .clx-logo{filter:grayscale(1);opacity:.6;}
+html[data-identidade="espectro"] .clx .cl2-card.clx-card.inativo .clx-tx b{color:var(--ink-3);}
+
+html[data-identidade="espectro"] .clx-vazio{padding:46px 20px;text-align:center;color:var(--ink-3);background:var(--card);border:1px solid var(--borda);border-radius:24px;}
+html[data-identidade="espectro"] .clx-vazio b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px;}
+html[data-identidade="espectro"] .clx-vazio p{margin:0;font-size:12.5px;}
+
+/* ------------------------------------------------------------------- escuro */
+html[data-identidade="espectro"][data-theme="dark"] .clx-busca,
+html[data-identidade="espectro"][data-theme="dark"] .clx-ordem{border-color:var(--borda);box-shadow:none;}
+html[data-identidade="espectro"][data-theme="dark"] .clx-busca:focus-within{border-color:#B57BE6;box-shadow:0 0 0 3px rgba(181,123,230,.22);}
+html[data-identidade="espectro"][data-theme="dark"] .clx-pil.on{background:#7328A5;border-color:#7328A5;color:#fff;}
+html[data-identidade="espectro"][data-theme="dark"] .clx-card-acoes .clx-pin{color:var(--borda-forte);}
+html[data-identidade="espectro"][data-theme="dark"] .clx-card-acoes .clx-pin.fixado,
+html[data-identidade="espectro"][data-theme="dark"] .clx-card-acoes .clx-pin.fixado:hover{color:#B57BE6;}
+html[data-identidade="espectro"][data-theme="dark"] .clx .cl2-card.clx-card{background:var(--card);border-color:var(--borda);}
+html[data-identidade="espectro"][data-theme="dark"] .clx .cl2-card.clx-card:hover{box-shadow:0 20px 50px rgba(0,0,0,.4);}
+html[data-identidade="espectro"][data-theme="dark"] .clx-logo .avatar.com-logo{border-color:transparent;}
+
+/* ------------------------------------------------------------ telas médias */
+@media (max-width:1280px){
+  html[data-identidade="espectro"] .clx-grade{grid-template-columns:repeat(3, minmax(0, 1fr));}
+  html[data-identidade="espectro"] .clx-barra{flex-wrap:wrap;}
+}
+@media (max-width:1000px){
+  html[data-identidade="espectro"] .clx-grade{grid-template-columns:repeat(2, minmax(0, 1fr));}
+}
+
+/* ------------------------------------------------------------------ celular */
+@media (max-width:760px){
+  html[data-identidade="espectro"] .clx .cab-conteudo.clx-cab{flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 16px;}
+  html[data-identidade="espectro"] .clx-tit{flex:1 1 100%;}
+  html[data-identidade="espectro"] .clx-tit h1{font-size:32px !important;}
+  html[data-identidade="espectro"] .clx-busca{flex:1 1 0;width:auto;min-width:0;}
+  html[data-identidade="espectro"] .clx-ordem button{padding:0 11px;}
+  html[data-identidade="espectro"] .clx-barra{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:12px;margin-bottom:16px;}
+  html[data-identidade="espectro"] .clx-pils{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 calc(-1 * var(--gutter, 14px));padding:0 var(--gutter, 14px);}
+  html[data-identidade="espectro"] .clx-pils::-webkit-scrollbar{display:none;}
+  html[data-identidade="espectro"] .clx-acoes{min-width:0;gap:6px;}
+  html[data-identidade="espectro"] .clx-acoes .b{width:auto !important;min-width:0;padding:0 11px;gap:6px;flex:1 1 auto;}
+  html[data-identidade="espectro"] .clx-acoes .b span{overflow:hidden;text-overflow:ellipsis;}
+  html[data-identidade="espectro"] .clx-grade{grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px;background:none;border:0;border-radius:0;overflow:visible;}
+  html[data-identidade="espectro"] .clx .cl2-card.clx-card{padding:14px;border-radius:20px;gap:12px;border:1px solid var(--borda);background:var(--card);}
+  html[data-identidade="espectro"] .clx .cl2-card.clx-card:hover{transform:none;box-shadow:none;}
+  html[data-identidade="espectro"] .clx .cl2-card.clx-card:active{background:var(--card);transform:scale(.99);}
+  html[data-identidade="espectro"] .clx-card-acoes .menu > .ico{opacity:1;}
+  html[data-identidade="espectro"] .clx-tx b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;}
+  html[data-identidade="espectro"] .clx-pe{white-space:normal;}
+}
+@media (prefers-reduced-motion: reduce){
+  html[data-identidade="espectro"] .clx .cl2-card.clx-card{animation:none !important;transition:none !important;}
+}
