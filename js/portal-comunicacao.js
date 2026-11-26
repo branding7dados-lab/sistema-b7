@@ -31,7 +31,7 @@ B7.PortalComunicacao = (function () {
     alvo.innerHTML = l.map((r, i) => '<div class="prc prc-' + esc(r.tipo) + '" style="--i:' + i + '" data-id="' + esc(r.id) + '">' +
       '<span class="prc-ic" aria-hidden="true">' + (ICONE[r.tipo] || ICONE.info) + '</span>' +
       '<div class="prc-tx"><small>Recado da Branding7</small><b>' + esc(r.titulo) + '</b>' + (r.texto ? '<p>' + esc(r.texto) + '</p>' : '') + '</div>' +
-      '<button type="button" class="prc-x" aria-label="Dispensar recado" title="Dispensar">×</button></div>').join('');
+      '<button type="button" class="prc-x" aria-label="Dispensar recado" title="Dispensar">Entendi</button></div>').join('');
     alvo.querySelectorAll('.prc-x').forEach(b => b.onclick = () => {
       const c = b.closest('.prc');
       try { localStorage.setItem(chave(c.dataset.id), '1'); } catch (e) {}

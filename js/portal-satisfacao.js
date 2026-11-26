@@ -17,16 +17,17 @@ B7.PortalSatisfacao = (function () {
     let pend = false;
     try { pend = await B7.DB.rpc('satisfacao_pendente', { p_client: emp.id }); } catch (e) { return; }
     if (!pend || !alvo.isConnected) return;
+    const MES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][new Date().getMonth()];
     alvo.innerHTML = '<section class="psat" aria-label="Pesquisa de satisfação">' +
-      '<div class="psat-cab"><span class="psat-ic" aria-hidden="true">💬</span><div><b>De 0 a 10, quanto você recomendaria a Branding7 este mês?</b>' +
-        '<small>Leva 10 segundos e ajuda muito a gente a melhorar.</small></div>' +
-        '<button type="button" class="psat-x" aria-label="Agora não" title="Agora não">×</button></div>' +
+      '<div class="psat-cab"><span class="psat-ic" aria-hidden="true">💬</span><div><small class="psat-sobre">Pesquisa de ' + MES + '</small>' +
+        '<b>De 0 a 10, quanto você recomendaria a Branding7 este mês?</b>' +
+        '<small>Leva 10 segundos e ajuda muito a gente a melhorar.</small></div></div>' +
       '<div class="psat-notas" role="group" aria-label="Nota de 0 a 10">' +
         Array.from({ length: 11 }, (_, n) => '<button type="button" class="psat-n n' + (n <= 6 ? 'b' : n <= 8 ? 'm' : 'a') + '" data-n="' + n + '">' + n + '</button>').join('') + '</div>' +
-      '<div class="psat-eixo"><span>nada provável</span><span>muito provável</span></div>' +
+      '<div class="psat-eixo"><span>Nada provável</span><span>Com certeza</span></div>' +
       '<div class="psat-mais" hidden><label class="rot" for="psat-com"></label>' +
-        '<textarea class="campo" id="psat-com" rows="2" maxlength="1000" placeholder="Opcional"></textarea>' +
-        '<div class="acoes"><button type="button" class="b pri" data-enviar>Enviar</button></div></div>' +
+        '<textarea class="campo" id="psat-com" rows="2" maxlength="1000" placeholder="Opcional"></textarea></div>' +
+      '<div class="acoes psat-acoes"><button type="button" class="b psat-x">Agora não</button><button type="button" class="b pri" data-enviar disabled>Enviar</button></div>' +
     '</section>';
     const cx = alvo.querySelector('.psat');
     let nota = null;
@@ -34,7 +35,7 @@ B7.PortalSatisfacao = (function () {
     cx.querySelectorAll('[data-n]').forEach(b => b.onclick = () => {
       nota = +b.dataset.n;
       cx.querySelectorAll('[data-n]').forEach(x => x.classList.toggle('on', x === b));
-      const mais = cx.querySelector('.psat-mais'); mais.hidden = false;
+      const mais = cx.querySelector('.psat-mais'); mais.hidden = false; cx.querySelector('[data-enviar]').disabled = false;
       mais.querySelector('label').textContent = FRASE(nota);
     });
     cx.querySelector('[data-enviar]').onclick = async e => {
