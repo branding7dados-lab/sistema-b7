@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.12.0', versao: '5.12.0', em: '2026-11-26T14:00:00-03:00',
+    titulo: 'B7 no celular na identidade nova',
+    itens: ['No celular, a tela inicial (B7 de hoje), a barra de baixo, a folha Mais e as janelas ganharam o desenho novo da Branding7.'] },
   { id: 'v-5.11.0', versao: '5.11.0', em: '2026-11-26T14:00:00-03:00',
     titulo: 'Notificações, perfil e assistente na identidade nova',
     itens: ['O painel de notificações, o perfil lateral e o assistente de IA ganharam o desenho novo da Branding7.'] },

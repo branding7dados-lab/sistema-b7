@@ -583,8 +583,8 @@ B7.Nav = (function () {
       const d = dados(id), on = ativo === id || (EXTRA[id] && naRota(id));
       return '<a class="nm-item' + (on ? ' on' : '') + '"' + (on ? ' aria-current="page"' : '') +
         (d.rota ? ' href="' + d.rota + '"' : ' href="#" role="button"') + ' data-mais="' + id + '"' + (extra || '') +
-        ' data-busca="' + esc(semAcento(d.rotulo)) + '">' +
-        '<span class="nm-ic" aria-hidden="true">' + d.ic + '</span><span class="nm-tx">' + esc(d.rotulo) + '</span>' +
+        ' data-busca="' + esc(semAcento(d.rotulo)) + '" title="' + esc(d.rotulo) + '">' +
+        '<span class="nm-ic" aria-hidden="true">' + d.ic + '</span><span class="nm-tx">' + esc(ITENS[id] ? curtoDe(id) : d.rotulo) + '</span>' +
         (on ? '<span class="nm-aqui">Você está aqui</span>' : '') + '</a>';
     };
     const secao = (titulo, ids, extraHtml) => (ids.length || extraHtml) ? '<section class="nm-secao"><h4>' + titulo + '</h4><div class="nm-grade">' +
@@ -611,24 +611,22 @@ B7.Nav = (function () {
     const primeiro = String((u && (u.nome || u.username)) || '').trim().split(/\s+/)[0];
     const h = new Date().getHours();
     const sauda = (h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite') + (primeiro ? ', ' + esc(primeiro) : '');
-    let dataTx = '';
-    try { dataTx = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }); dataTx = dataTx.charAt(0).toUpperCase() + dataTx.slice(1); } catch (e) {}
     const temHoje = B7.Hoje && !ehCli;
     const bt = document.querySelector('#nav-inferior [data-inf="mais"]');
     if (bt) bt.setAttribute('aria-expanded', 'true');
     folhaMais = B7.UI.modal(
       '<header class="nm-topo">' +
-        '<span class="nm-topo-marca" aria-hidden="true"></span>' +
-        '<div class="nm-topo-tx"><small>' + esc(dataTx) + '</small><h3>' + sauda + '</h3></div>' +
+        '<div class="nm-topo-tx"><small>' + sauda + '</small><h3>O que você procura?</h3></div>' +
         '<button type="button" class="nm-fechar" data-fecha aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
-        (temHoje ? '<button type="button" class="nm-hoje" data-hoje><span class="nm-hoje-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>' +
-          '<span><b>Meu dia em 30 segundos</b><small>O que entra no ar, gravações e atrasos</small></span></button>' : '') +
       '</header>' +
       '<label class="nm-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>' +
-        '<input type="search" placeholder="Procurar uma tela" autocomplete="off" enterkeyhint="go" aria-label="Procurar uma tela"></label>' +
+        '<input type="search" placeholder="Buscar telas" autocomplete="off" enterkeyhint="go" aria-label="Buscar telas"></label>' +
+      (temHoje ? '<button type="button" class="nm-hoje" data-hoje><span class="nm-hoje-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>' +
+        '<span class="nm-hoje-tx"><b>Meu dia em 30 segundos</b><small>O que entra no ar, gravações e atrasos</small></span>' +
+        '<svg class="nm-hoje-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>' : '') +
       '<nav class="nm-corpo" aria-label="Mais destinos">' +
         (usados.length ? '<section class="nm-usados"><h4>Usados por você</h4><div class="nm-usados-fila">' +
-          usados.map(id => '<a class="nm-chip" href="' + ITENS[id].rota + '" data-mais="' + id + '"><span class="nm-ic" aria-hidden="true">' + IC[id] + '</span>' + esc(curtoDe(id)) + '</a>').join('') +
+          usados.map(id => '<a class="nm-chip" href="' + ITENS[id].rota + '" data-mais="' + id + '" title="' + esc(rotuloDe(id)) + '"><span class="nm-ic" aria-hidden="true">' + IC[id] + '</span><span class="nm-tx">' + esc(curtoDe(id)) + '</span></a>').join('') +
           '</div></section>' : '') +
         (html || '<p class="nm-vazio">Nada além da barra.</p>') +
         '<p class="nm-vazio nm-sem" hidden>Nenhuma tela com esse nome.</p>' +
