@@ -26,8 +26,8 @@ window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
   { id: 'v-5.6.0', versao: '5.6.0', em: '2026-11-26T14:00:00-03:00',
-    titulo: 'Conversas na identidade nova',
-    itens: ['A tela de Conversas (Central do WhatsApp) ganhou o desenho novo da Branding7.'] },
+    titulo: 'Conversas, Painel e Projetos na identidade nova',
+    itens: ['Conversas (Central do WhatsApp), o Painel da coordenação e Projetos/Arquivo ganharam o desenho novo da Branding7. Com isso, todas as telas principais da equipe estão na identidade nova.'] },
   { id: 'v-5.5.0', versao: '5.5.0', em: '2026-11-26T14:00:00-03:00',
     titulo: 'Configurações na identidade nova',
     itens: ['As Configurações ganharam o desenho novo da Branding7.'] },
