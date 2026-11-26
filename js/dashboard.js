@@ -2352,10 +2352,13 @@ B7.Dashboard = (function () {
     if (!SECOES.some(x => x[0] === abaAtual)) abaAtual = SECOES[0][0];
     const dentro = !!pedida && SECOES.some(x => x[0] === pedida);
     const secDe = id => SECOES.find(x => x[0] === id);
+    /* Espectro: "Você › Perfil" acima do título (quadros Config-*) */
+    const espCfg = document.documentElement.getAttribute('data-identidade') === 'espectro';
+    const trilhaCfg = id => { const s = secDe(id); return s ? esc(((BLOCOS.find(b => b[0] === s[5]) || [])[1] || '') + ' › ' + s[1]) : ''; };
 
     painel().innerHTML = '<div class="conteudo entra cfg-tela cfg-v2' + (dentro ? ' cfg-dentro' : '') + '">' +
       '<div class="cfg-grade"><aside class="cfg-lado">' +
-        '<header class="cfg-topo"><h1 class="cfg-titulo">Configurações</h1>' +
+        '<header class="cfg-topo">' + (espCfg ? '<p class="cfg-trilha" data-cfg-trilha>' + trilhaCfg(abaAtual) + '</p>' : '') + '<h1 class="cfg-titulo">Configurações</h1>' +
           '<p class="cfg-sub">Sua conta e o jeito do B7' + (ehAdm ? ' — e o da equipe' : '') + '.</p></header>' +
         (u ? '<button type="button" class="cfg-eu" data-abrir-perfil><span class="cfg-eu-marca" aria-hidden="true"></span>' + (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-eu-av') : '') +
           '<span class="cfg-eu-tx"><b>' + esc(u.nome || u.username || '') + '</b><small>' + esc((u.papel === 'admin' && (B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro()) ? 'Financeiro' : PAPEL_CFG[u.papel]) || u.papel || '') +
@@ -2434,6 +2437,7 @@ B7.Dashboard = (function () {
       B7.pref.gravar('cfg_aba', id);
       carregarHospede(id);
       p.querySelectorAll('[data-painel]').forEach(x => { x.hidden = x.dataset.painel !== id; });
+      const tr = p.querySelector('[data-cfg-trilha]'); if (tr) tr.innerHTML = trilhaCfg(id);
       p.querySelectorAll('.cfg-nav-i').forEach(b => { const on = b.dataset.secao === id; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
       try { history.replaceState(history.state, '', '#/config?s=' + id); } catch (e) {}
       requestAnimationFrame(() => p.querySelectorAll('.cfg-seg').forEach(x => moverPilula(x, false)));
