@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.15.0', versao: '5.15.0', em: '2026-11-26T16:00:00-03:00',
+    titulo: 'Retrospectiva na identidade nova',
+    itens: ['A Retrospectiva do mês ganhou o cartão em degradê da Branding7, com os números em blocos de vidro e as cores da marca em cada história. Ela continua igual de usar: toque dos lados para avançar ou voltar e segure para pausar.'] },
   { id: 'v-5.14.0', versao: '5.14.0', em: '2026-11-26T14:00:00-03:00',
     titulo: 'Aberturas e carregamentos novos',
     itens: ['O B7 abre com as animações novas da marca: Faísca (a padrão), Corte Espectro e Pulso. Ao recarregar, entram os carregamentos novos: Corte do B7, Lâmpada, Faixa, Três pontos, Anel e Hexágono. Dá para escolher em Configurações → Abertura e sons.'] },
