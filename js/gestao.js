@@ -31,7 +31,7 @@ B7.Gestao = (function () {
     if (!B7.Auth.ehAdmin()) { painel().innerHTML = '<div class="conteudo"><div class="estado-b7"><b>Só o administrador abre a Gestão.</b></div></div>'; return; }
     /* Espectro: o rótulo acima do título diz onde se está (na Visão geral, "Só administração · mês") */
     const ABAS = [['geral', 'Visão geral'], ['riscos', 'Clientes em risco'], ['contratado', 'Contratado × entregue'], ['prazos', 'Prazos e retrabalho'], ['pacotes', 'Serviços contratados'], ['equipe', 'Equipe'], ['saude', 'Saúde dos clientes'], ['avulsos', 'Avulsos'], ['pedidos', 'Pedidos'], ['recados', 'Recados']];
-    const sobre = () => aba === 'geral' ? 'Só administração · ' + new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : (ABAS.find(a => a[0] === aba) || ABAS[0])[1];
+    const sobre = () => aba === 'geral' ? 'Só administração · ' + new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) : aba === 'pedidos' || aba === 'recados' ? 'Pedidos e recados' : (ABAS.find(a => a[0] === aba) || ABAS[0])[1];
     painel().innerHTML = '<div class="conteudo entra gs">' +
       '<div class="cb-topo"><div class="cb-titulo"><p class="v4-sobre" data-gt-sobre>' + esc(sobre()) + '</p><h1>Gestão</h1></div></div>' +
       '<div class="filtro rolavel gt-abas" role="tablist">' + ABAS.filter(([k]) => (k !== 'avulsos' || B7.Projetos) && (k !== 'equipe' || B7.Colaboradores) && (!['riscos', 'contratado', 'prazos'].includes(k) || B7.GestaoExtra) && (k !== 'pacotes' || B7.Pacotes)).map(([k, r]) =>
