@@ -1,0 +1,78 @@
+/* Espectro — carregamentos DENTRO do sistema (5.16.0), quadros "Carregamentos" e "Anim-Carregando"
+   (esqueleto) do artefato. A abertura e o recarregar ficam em aberturas.css / aberturas-cine.css.
+     • esqueleto das telas (B7.UI.skeleton, .esqueleto, os blocos do Painel): o brilho neutro do quadro,
+       claro passando da esquerda para a direita em 1,2 s, sem a onda violeta antiga; cartões de 22 px
+       com a capa encostada nas bordas;
+     • LÂMPADA (.b7-load, o carregamento padrão): a lâmpada da marca respira e brilha em coral, no
+       lugar do símbolo antigo com anel girando;
+     • FAIXA 60° (.barra-load): barra listrada no ângulo da marca;
+     • TRÊS PONTOS (.b7-spin, dentro dos botões): no lugar das 12 barrinhas girando;
+     • ANEL ESPECTRO (os anéis redondos do WhatsApp e do Meu dia): o anel em degradê girando.
+   Só aparência: as mesmas classes e a mesma marcação. Com "reduzir movimento", tudo parado.
+   Toda regra começa com html[data-identidade="espectro"]. */
+
+/* ------------------------------------------------------------------ esqueleto */
+html[data-identidade="espectro"] :is(.esqueleto-tela .esq, .esqueleto){background:var(--esq-1);}
+html[data-identidade="espectro"] :is(.esqueleto-tela .esq, .esqueleto)::after{
+  background:linear-gradient(110deg, transparent 30%, var(--esq-2) 45%, transparent 60%);
+  transform:translate3d(-100%,0,0);animation:espEsq 1.2s linear infinite;animation-delay:0s;}
+@keyframes espEsq{from{transform:translate3d(-100%,0,0)}to{transform:translate3d(100%,0,0)}}
+html[data-identidade="espectro"] .esqueleto-tela .esq-linha{border-radius:6px;}
+html[data-identidade="espectro"] .esqueleto-tela .esq-linha.fina{border-radius:5px;}
+html[data-identidade="espectro"] .esqueleto-tela .esq-grade{gap:16px;}
+html[data-identidade="espectro"] .esqueleto-tela .esq-card{padding:0;border-radius:22px;overflow:hidden;border:1px solid var(--borda);background:var(--card);}
+html[data-identidade="espectro"] .esqueleto-tela .esq-card .esq-capa{height:170px;border-radius:0;margin:0;}
+html[data-identidade="espectro"] .esqueleto-tela .esq-card .esq-linhas{padding:14px;margin:0;gap:8px;}
+html[data-identidade="espectro"] .esqueleto-tela .esq-card .esq-linha:nth-child(1){height:10px;width:40% !important;border-radius:5px;}
+html[data-identidade="espectro"] .esqueleto-tela .esq-card .esq-linha:nth-child(2){height:14px;width:80% !important;}
+
+/* ------------------------------------------------------------------ 01 · LÂMPADA (.b7-load) */
+html[data-identidade="espectro"] .b7-load .simbolo{width:46px;height:54px;border-radius:0;}
+html[data-identidade="espectro"] .b7-load .simbolo::after{display:none;}
+html[data-identidade="espectro"] .b7-load .simbolo::before{inset:0;background:var(--acento);
+  -webkit-mask:url('../../assets/brand/espectro/lampada-branco.svg') center/contain no-repeat;mask:url('../../assets/brand/espectro/lampada-branco.svg') center/contain no-repeat;
+  animation:espLampada 1.6s ease-in-out infinite;}
+@keyframes espLampada{0%,100%{opacity:.35;filter:drop-shadow(0 0 0 rgba(255,90,87,0))}50%{opacity:1;filter:drop-shadow(0 0 14px rgba(255,90,87,.9))}}
+html[data-identidade="espectro"] .b7-load .txt{font-size:13.5px;color:var(--ink-3);}
+
+/* ------------------------------------------------------------------ 02 · FAIXA 60° (.barra-load) */
+html[data-identidade="espectro"] .barra-load{width:220px;height:8px;border-radius:8px;background:var(--esq-1);position:relative;overflow:hidden;}
+html[data-identidade="espectro"] .barra-load i{position:absolute;inset:0;width:40%;height:100%;border-radius:8px;
+  background:repeating-linear-gradient(120deg, #7328A5 0 10px, #E02F75 10px 20px);animation:espFaixa 1.5s cubic-bezier(.6,0,.4,1) infinite;}
+@keyframes espFaixa{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
+
+/* ------------------------------------------------------------------ 03 · TRÊS PONTOS (.b7-spin, dentro dos botões) */
+html[data-identidade="espectro"] .b7-spin{display:inline-flex;align-items:center;gap:calc(var(--b7-spin) * .19);width:auto;height:var(--b7-spin);vertical-align:-2px;}
+html[data-identidade="espectro"] .b7-spin i{display:none;}
+html[data-identidade="espectro"] .b7-spin i:nth-child(-n+3){display:block;position:static;width:calc(var(--b7-spin) * .3);height:calc(var(--b7-spin) * .3);border-radius:2px;
+  background:currentColor;opacity:.5;transform:none;animation:espPontos 1.2s ease-in-out infinite;animation-delay:0s;}
+html[data-identidade="espectro"] .b7-spin i:nth-child(2){animation-delay:.15s;}
+html[data-identidade="espectro"] .b7-spin i:nth-child(3){animation-delay:.3s;}
+@keyframes espPontos{0%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(calc(var(--b7-spin) * -.32));opacity:1}}
+
+/* botão ocupado (.b.carregando / aria-busy): os mesmos três pontos no meio do botão, no lugar do círculo */
+html[data-identidade="espectro"] :is(.b.carregando, .b[aria-busy="true"])::after{--pt:var(--ink-3);width:6px;height:6px;margin:-3px 0 0 -3px;border:0;border-radius:2px;
+  background:var(--pt);box-shadow:-10px 0 0 var(--pt), 10px 0 0 var(--pt);animation:espPontosB 1.2s ease-in-out infinite;}
+html[data-identidade="espectro"] :is(.b.pri.carregando, .b.pri[aria-busy="true"])::after{--pt:#FFFFFF;}
+@keyframes espPontosB{
+  0%,100%{background:color-mix(in srgb, var(--pt) 45%, transparent);box-shadow:-10px 0 0 var(--pt), 10px 0 0 color-mix(in srgb, var(--pt) 45%, transparent);}
+  33%{background:var(--pt);box-shadow:-10px 0 0 color-mix(in srgb, var(--pt) 45%, transparent), 10px 0 0 color-mix(in srgb, var(--pt) 45%, transparent);}
+  66%{background:color-mix(in srgb, var(--pt) 45%, transparent);box-shadow:-10px 0 0 color-mix(in srgb, var(--pt) 45%, transparent), 10px 0 0 var(--pt);}}
+
+/* ------------------------------------------------------------------ 04 · ANEL ESPECTRO (anéis redondos) */
+html[data-identidade="espectro"] .carregando:not(.b)::after,
+html[data-identidade="espectro"] .hj-carregando span{border:0;border-radius:50%;
+  background:conic-gradient(#001561, #520083, #7328A5, #E02F75, #FF5A57, transparent 85%);
+  -webkit-mask:radial-gradient(circle, transparent 58%, #000 60%);mask:radial-gradient(circle, transparent 58%, #000 60%);
+  animation:espAnel 1s linear infinite;}
+@keyframes espAnel{to{transform:rotate(360deg)}}
+
+/* ------------------------------------------------------------------ reduzir movimento */
+@media (prefers-reduced-motion: reduce){
+  html[data-identidade="espectro"] :is(.esqueleto-tela .esq, .esqueleto)::after{animation:none;opacity:0;}
+  html[data-identidade="espectro"] .b7-load .simbolo::before{animation:none;opacity:1;}
+  html[data-identidade="espectro"] .barra-load i{animation:none;transform:translateX(75%);}
+  html[data-identidade="espectro"] .b7-spin i{animation:none !important;opacity:.8 !important;}
+  html[data-identidade="espectro"] .carregando:not(.b)::after, html[data-identidade="espectro"] .hj-carregando span{animation-duration:3s;}
+  html[data-identidade="espectro"] :is(.b.carregando, .b[aria-busy="true"])::after{animation:none !important;}
+}

@@ -620,7 +620,8 @@ B7.Rota = (function () {
      (streaming 4,9 s; big bang e clássica 6,4 s) */
   /* zzz231: streaming encurtou (as faixas abrem direto o sistema) e entrou o hiperespaço */
   /* zzz234: tinta · glitch · aurora · neon · mosaico */
-  const DURACAO_ESTILO = { faisca: 4200, corte: 3600, pulso: 3000, streaming: 3600, hiper: 4000, bigbang: 6400, classica: 6400, tinta: 4200, glitch: 4200, aurora: 4200, neon: 3800, mosaico: 4200, estudio: 4200, programador: 4200 };
+  /* 5.16.0: as aberturas Cine do Espectro saem quando a cena assenta (styles/espectro/aberturas-cine.css) */
+  const DURACAO_ESTILO = { ignicao: 7000, hiperespaco: 6300, 'aurora-espectro': 4400, streaming: 3600, hiper: 4000, bigbang: 6400, classica: 6400, tinta: 4200, glitch: 4200, aurora: 4200, neon: 3800, mosaico: 4200, estudio: 4200, programador: 4200 };
   const duracaoAbertura = () => reduzMov() ? 6400 : (DURACAO_ESTILO[document.documentElement.getAttribute('data-ab-estilo')] || 6400);
   B7.duracaoAbertura = duracaoAbertura;
   /* qual abertura vale para esta pessoa neste aparelho (a mesma regra do <head> do index.html) */
@@ -633,7 +634,9 @@ B7.Rota = (function () {
   /* 5.14.0 identidade nova (quadros Aberturas e Carregamentos): as 10 aberturas viram 3 e os
      carregamentos viram os 6 do Espectro (CSS em styles/espectro/aberturas.css). O que a pessoa
      tinha escolhido no visual antigo cai no padrão novo; quem voltar ao visual antigo reencontra o seu. */
-  const ESTILOS_ESP = [['faisca', 'Faísca'], ['corte', 'Corte Espectro'], ['pulso', 'Pulso']];
+  /* 5.16.0: as 3 aberturas são as "Cine" do artefato (Ignição, Hiperespaço, Aurora); Faísca, Corte e Pulso
+     saíram (quem tinha escolhido uma delas cai na Ignição) */
+  const ESTILOS_ESP = [['ignicao', 'Ignição'], ['hiperespaco', 'Hiperespaço'], ['aurora-espectro', 'Aurora']];
   const CARGAS_ESP = [['corte', 'Corte do B7'], ['lampada', 'Lâmpada'], ['faixa', 'Faixa 60°'], ['tres-pontos', 'Três pontos'], ['anel', 'Anel Espectro'], ['hexagono', 'Hexágono']];
   const espAb = () => document.documentElement.getAttribute('data-identidade') === 'espectro';
   B7.Abertura = {
@@ -642,7 +645,7 @@ B7.Rota = (function () {
     get SO_PROG() { return espAb() ? [] : SO_PROG; },
     valido: e => (espAb() ? ESTILOS_ESP : ESTILOS_AB.concat(SO_PROG)).some(x => x[0] === e) ? e : null,
     cargaValida: e => (espAb() ? CARGAS_ESP : CARGAS.concat(SO_PROG)).some(x => x[0] === e) ? e : null,
-    padraoDoSistema() { const p = espAb() ? 'faisca' : 'streaming'; try { return B7.Abertura.valido(localStorage.getItem('b7_ab_padrao')) || p; } catch (e) { return p; } },
+    padraoDoSistema() { const p = espAb() ? 'ignicao' : 'streaming'; try { return B7.Abertura.valido(localStorage.getItem('b7_ab_padrao')) || p; } catch (e) { return p; } },
     cargaDoSistema() { const p = espAb() ? 'corte' : 'relampago'; try { return B7.Abertura.cargaValida(localStorage.getItem('b7_carga_padrao')) || p; } catch (e) { return p; } },
     resolver() {
       const minha = B7.Abertura.valido(B7.pref ? B7.pref.ler('abertura_estilo', null) : null);
@@ -845,7 +848,7 @@ B7.Rota = (function () {
          presa na tela. */
       const linha = document.timeline && document.timeline.currentTime;
       let inicio = null;
-      for (const sel of ['.ab-marca', '.ab-palco', '.ab-simbolo', '.ab-ceu i']) {
+      for (const sel of ['.cine-relogio', '.ab-marca', '.ab-palco', '.ab-simbolo', '.ab-ceu i']) {
         const peca = el.querySelector(sel);
         const anim = peca && peca.getAnimations ? peca.getAnimations()[0] : null;
         if (anim && anim.startTime != null) { inicio = Number(anim.startTime); break; }
@@ -893,16 +896,20 @@ B7.Rota = (function () {
     if (inicial) { try { sessionStorage.setItem('b7_abertura', '1'); } catch (e) {} }
     /* a onda mede as peças ANTES do sistema começar a assentar (o corpo
        entra deslocado e reduzido): os contornos ficam no lugar final */
-    ondaDeLuz();
+    /* 5.16.0 identidade nova: a saída é a do quadro do artefato (a câmera aproxima e a cena apaga,
+       styles/espectro/aberturas-cine.css). Nada da saída antiga: sem a onda de luz contornando as
+       peças, sem o sistema "assentando" e sem o voo do logo. */
+    const nova = espAb();
+    if (!nova) ondaDeLuz();
     /* o sistema assenta por baixo do céu que se dissolve (uma vez) */
-    if (!reduzMov()) {
+    if (!nova && !reduzMov()) {
       document.body.classList.add('ab-revela');
       setTimeout(() => document.body.classList.remove('ab-revela'), 1000);
     }
     el.classList.add('saindo');
     if (B7.SomAbertura) B7.SomAbertura.aoSair();
     pintarBarraDoSistema();
-    const tempo = voarLogo(el);
+    const tempo = nova ? (reduzMov() ? 0 : 600) : voarLogo(el);
     /* remove só depois do pouso e do céu sumir: tirar antes devolve o
        corte seco que a abertura existe para evitar */
     setTimeout(() => { el.remove(); document.documentElement.classList.remove('ab-sem'); }, Math.max(tempo, reduzMov() ? 220 : 640));
@@ -918,6 +925,7 @@ B7.Rota = (function () {
     el.className = 'b7-abertura inicial';
     el.setAttribute('role', 'status'); el.setAttribute('aria-label', 'Abertura do Sistema B7');
     el.innerHTML = MOLDE_ABERTURA;
+    if (window.B7CinePreparar) window.B7CinePreparar(el);
     /* é um teste: nada está carregando, então a frase de espera não entra */
     const esp = el.querySelector('.ab-espera'); if (esp) esp.remove();
     document.body.appendChild(el);

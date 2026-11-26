@@ -25,6 +25,12 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.16.0', versao: '5.16.0', em: '2026-11-26T18:00:00-03:00',
+    titulo: 'Aberturas novas: Ignição, Hiperespaço e Aurora',
+    itens: ['O B7 abre com as três aberturas de cinema da marca: Ignição (a padrão), Hiperespaço e Aurora, cada uma com a sua trilha sonora. Dá para escolher em Configurações → Aparência.',
+      'No fim da abertura a cena só apaga e o sistema aparece: saiu a animação da abertura antiga que acendia contornos na tela.',
+      'Os carregamentos dentro do sistema também mudaram: a lâmpada da marca no lugar do símbolo girando, três pontinhos nos botões, a faixa listrada e as telas carregando com um brilho neutro.',
+      'O botão Novidades não fica mais por cima do título das telas.'] },
   { id: 'v-5.15.0', versao: '5.15.0', em: '2026-11-26T16:00:00-03:00',
     titulo: 'Retrospectiva na identidade nova',
     itens: ['A Retrospectiva do mês ganhou o cartão em degradê da Branding7, com os números em blocos de vidro e as cores da marca em cada história. Ela continua igual de usar: toque dos lados para avançar ou voltar e segure para pausar.'] },
