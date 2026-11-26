@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.8.1', versao: '5.8.1', em: '2026-11-26T14:00:00-03:00',
+    titulo: 'Troca de tela mais suave',
+    itens: ['A troca de tela ficou mais limpa: a tela anterior sai, a nova sobe de leve, e a página não escurece mais no meio do caminho.'] },
   { id: 'v-5.8.0', versao: '5.8.0', em: '2026-11-26T14:00:00-03:00',
     titulo: 'Portal do cliente todo na identidade nova',
     itens: ['O Portal do cliente inteiro ganhou o desenho novo da Branding7: início, status, histórico, perfil, linha editorial, produção, gravações, aprovações, calendário, pedidos, pesquisa, comunicados, equipe e suporte.'] },
