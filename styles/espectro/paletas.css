@@ -1,0 +1,34 @@
+/* Espectro — as 3 paletas (5.17.0), quadro "Config-aparencia" do artefato: "As 11 paletas antigas viram 3,
+   todas dentro da nova marca." Padrão B7 (sem atributo: as cores de sempre), Matriz e Laser.
+   A paleta é escolhida em Configurações → Aparência (para a pessoa, neste aparelho) ou em Sistema da equipe
+   (o padrão de todos) e vira html[data-paleta] (js/admin-extra.js, B7.Aparencia; e o <head> do index.html).
+   Como funciona: o Espectro escreve o violeta, o roxo e o magenta da marca como var(--esp-v/-r/-m, cor),
+   então trocar essas três variáveis (e a versão em "r,g,b" para as transparências) troca o destaque do
+   sistema inteiro. A abertura e o carregamento ficam sempre nas cores da marca (aberturas*.css não usam). */
+
+/* MATRIZ — do Azul Matriz ao azul claro */
+html[data-identidade="espectro"][data-paleta="matriz"]{
+  --esp-v:#2A4BC0; --esp-v-rgb:42,75,192; --esp-r:#0A2A8A; --esp-r-rgb:10,42,138; --esp-m:#6E86E0; --esp-m-rgb:110,134,224;
+  --b7-espectro:linear-gradient(120deg,#001561 0%,#0A2A8A 30%,#2A4BC0 55%,#6E86E0 80%,#C9D3F5 100%);
+  --b7-espectro-curto:linear-gradient(120deg,#0A2A8A 0%,#2A4BC0 55%,#6E86E0 100%);}
+html[data-identidade="espectro"][data-paleta="matriz"][data-theme="dark"]{
+  --acento:#8EA2EC; --acento-suave:rgba(142,162,236,.14); --violeta-bg:rgba(42,75,192,.26); --magenta:#9DB0F0; --roxo:#6E86E0;}
+
+/* LASER — do Roxo Neural ao coral claro */
+html[data-identidade="espectro"][data-paleta="laser"]{
+  --esp-v:#E02F75; --esp-v-rgb:224,47,117; --esp-r:#520083; --esp-r-rgb:82,0,131; --esp-m:#FF5A57; --esp-m-rgb:255,90,87;
+  --b7-espectro:linear-gradient(120deg,#520083 0%,#E02F75 40%,#FF5A57 70%,#FF8E6B 88%,#FFD2C2 100%);
+  --b7-espectro-curto:linear-gradient(120deg,#E02F75 0%,#FF5A57 60%,#FF8E6B 100%);}
+html[data-identidade="espectro"][data-paleta="laser"][data-theme="dark"]{
+  --acento:#FF6F9F; --acento-suave:rgba(255,111,159,.14); --violeta-bg:rgba(224,47,117,.24); --magenta:#FF8E6B; --roxo:#E02F75;}
+
+/* os cartões de paleta em Configurações (o quadro: faixa com as 5 cores e o nome) */
+html[data-identidade="espectro"] .cfg-cores.cfg-pals{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:14px;}
+html[data-identidade="espectro"] .cfg-cor.cfg-pal{display:block;width:auto;height:auto;padding:14px;border-radius:22px;background:var(--card);border:1px solid var(--borda);text-align:left;cursor:pointer;}
+html[data-identidade="espectro"] .cfg-cor.cfg-pal.on{border:2px solid var(--acento);padding:13px;}
+html[data-identidade="espectro"] .cfg-pal-faixa{display:flex;height:44px;border-radius:14px;overflow:hidden;}
+html[data-identidade="espectro"] .cfg-pal-faixa b{flex:1;display:block;}
+html[data-identidade="espectro"] .cfg-pal-pe{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:14px;color:var(--ink);}
+html[data-identidade="espectro"] .cfg-pal-pe svg{width:18px;height:18px;fill:none;stroke:var(--acento);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;opacity:0;}
+html[data-identidade="espectro"] .cfg-cor.cfg-pal.on .cfg-pal-pe svg{opacity:1;}
+@media (max-width:620px){ html[data-identidade="espectro"] .cfg-cores.cfg-pals{grid-template-columns:minmax(0, 1fr);} }

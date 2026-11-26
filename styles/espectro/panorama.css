@@ -39,8 +39,8 @@ html[data-identidade="espectro"] .pano-hoje:disabled{display:none;}
 html[data-identidade="espectro"] .pano-kpis{display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:16px;margin-bottom:20px;}
 html[data-identidade="espectro"] .pano-kpi{position:relative;overflow:hidden;min-width:0;border-radius:26px;padding:20px 22px;color:#FFFFFF;min-height:132px;box-sizing:border-box;}
 html[data-identidade="espectro"] .pano-kpi-coral{background:#FF5A57;}
-html[data-identidade="espectro"] .pano-kpi-roxo{background:#520083;}
-html[data-identidade="espectro"] .pano-kpi-violeta{background:#7328A5;}
+html[data-identidade="espectro"] .pano-kpi-roxo{background:var(--esp-r,#520083);}
+html[data-identidade="espectro"] .pano-kpi-violeta{background:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"] .pano-kpi-matriz{background:#001561;}
 html[data-identidade="espectro"] .pano-kpi-luz{position:absolute;right:-40px;bottom:-60px;width:240px;height:240px;pointer-events:none;opacity:.5;
   background:url('../../assets/brand/espectro/padrao-lampada-violeta.svg') 70% 70%/auto 240px no-repeat;
@@ -92,10 +92,10 @@ html[data-identidade="espectro"] .pano-linhas:is(.pano-sem-anim, .pano-troca) .p
 @keyframes panoSobe{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 html[data-identidade="espectro"] .pano-quem{display:flex;align-items:center;gap:12px;min-width:0;}
 html[data-identidade="espectro"] .pano-av{width:34px;height:34px;min-width:34px;border-radius:11px;font-family:var(--b7-fonte);font-size:13px;color:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex:none;overflow:hidden;box-shadow:none;border:0;}
-html[data-identidade="espectro"] .pano-av-0{background:#7328A5;}
+html[data-identidade="espectro"] .pano-av-0{background:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"] .pano-av-1{background:#001561;}
-html[data-identidade="espectro"] .pano-av-2{background:#E02F75;}
-html[data-identidade="espectro"] .pano-av-3{background:#520083;}
+html[data-identidade="espectro"] .pano-av-2{background:var(--esp-m,#E02F75);}
+html[data-identidade="espectro"] .pano-av-3{background:var(--esp-r,#520083);}
 html[data-identidade="espectro"] .pano-av.com-logo{background:var(--suave);}
 html[data-identidade="espectro"] .pano-av img{width:100%;height:100%;object-fit:cover;}
 html[data-identidade="espectro"] .pano-quem-tx{min-width:0;display:flex;flex-direction:column;}
@@ -113,8 +113,8 @@ html[data-identidade="espectro"] .pano-t-erro{--pt:var(--erro);--pt-bg:var(--err
 html[data-identidade="espectro"] .pano-t-ambar{--pt:var(--ambar);--pt-bg:var(--ambar-bg);}
 html[data-identidade="espectro"] .pano-t-ok{--pt:var(--ok);--pt-bg:var(--ok-bg);}
 html[data-identidade="espectro"] .pano-t-neutro{--pt:var(--neutro);--pt-bg:var(--neutro-bg);}
-html[data-identidade="espectro"] .pano-t-violeta{--pt:#7328A5;--pt-bg:#F0E8F8;}
-html[data-identidade="espectro"][data-theme="dark"] .pano-t-violeta{--pt:#B57BE6;--pt-bg:rgba(115,40,165,.24);}
+html[data-identidade="espectro"] .pano-t-violeta{--pt:var(--esp-v,#7328A5);--pt-bg:#F0E8F8;}
+html[data-identidade="espectro"][data-theme="dark"] .pano-t-violeta{--pt:#B57BE6;--pt-bg:rgba(var(--esp-v-rgb,115,40,165),.24);}
 html[data-identidade="espectro"] .pano-pend{font-size:13px;color:var(--ink-2);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 html[data-identidade="espectro"] .pano-ir{display:inline-flex;align-items:center;justify-content:center;color:var(--ink-3);transition:transform var(--t), color var(--t);}
 html[data-identidade="espectro"] .pano-ir svg{width:18px;height:18px;}

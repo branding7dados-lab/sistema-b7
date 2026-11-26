@@ -10,7 +10,7 @@
 html[data-identidade="espectro"] .rtv{background:rgba(4,8,32,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   font-family:'Grimblade', system-ui, sans-serif;font-weight:400;font-synthesis:none;line-height:1.45;}
 html[data-identidade="espectro"] .rtv *{font-family:inherit;font-weight:400;font-synthesis:none;}
-html[data-identidade="espectro"] .rtv-palco{--a:#7328A5;--b:#E02F75;
+html[data-identidade="espectro"] .rtv-palco{--a:var(--esp-v,#7328A5);--b:var(--esp-m,#E02F75);
   width:min(920px, calc(100vw - 48px));height:min(760px, calc(100dvh - 48px));border-radius:28px;
   background:var(--b7-espectro);box-shadow:0 40px 100px rgba(0,0,0,.5);transition:background .6s var(--b7-ease);}
 /* a textura de lâmpadas do Espectro, por cima do degradê */
@@ -21,15 +21,15 @@ html[data-identidade="espectro"] .rtv-palco::before{content:"";position:absolute
 }
 
 /* cada história, um degradê da paleta (120°, como o Espectro) */
-html[data-identidade="espectro"] .rtv-palco:is([data-tema=capa],[data-tema=fim]){--a:#7328A5;--b:#FF5A57;background:var(--b7-espectro);}
-html[data-identidade="espectro"] .rtv-palco[data-tema=roxo]{--a:#7328A5;--b:#E02F75;background:linear-gradient(120deg,#001561 0%,#520083 50%,#7328A5 100%);}
-html[data-identidade="espectro"] .rtv-palco[data-tema=rosa]{--a:#E02F75;--b:#FF5A57;background:linear-gradient(120deg,#7328A5 0%,#E02F75 60%,#FF5A57 100%);}
-html[data-identidade="espectro"] .rtv-palco[data-tema=azul]{--a:#7328A5;--b:#E02F75;background:linear-gradient(120deg,#001561 0%,#001561 30%,#7328A5 100%);}
-html[data-identidade="espectro"] .rtv-palco[data-tema=laranja]{--a:#E02F75;--b:#FF5A57;background:linear-gradient(120deg,#520083 0%,#E02F75 55%,#FF5A57 100%);}
-html[data-identidade="espectro"] .rtv-palco[data-tema=verde]{--a:#7328A5;--b:#E02F75;background:linear-gradient(120deg,#520083 0%,#7328A5 45%,#E02F75 100%);}
-html[data-identidade="espectro"] .rtv-palco[data-tema=ouro]{--a:#E02F75;--b:#FF5A57;background:linear-gradient(120deg,#7328A5 0%,#E02F75 45%,#FF5A57 100%);}
-html[data-identidade="espectro"] .rtv-palco[data-tema=noite]{--a:#7328A5;--b:#E02F75;background:linear-gradient(120deg,#001561 0%,#520083 70%,#7328A5 100%);}
-html[data-identidade="espectro"] .rtv-palco[data-tema=voce]{--a:#7328A5;--b:#FF5A57;background:linear-gradient(120deg,#520083 0%,#7328A5 40%,#E02F75 85%,#FF5A57 100%);}
+html[data-identidade="espectro"] .rtv-palco:is([data-tema=capa],[data-tema=fim]){--a:var(--esp-v,#7328A5);--b:#FF5A57;background:var(--b7-espectro);}
+html[data-identidade="espectro"] .rtv-palco[data-tema=roxo]{--a:var(--esp-v,#7328A5);--b:var(--esp-m,#E02F75);background:linear-gradient(120deg,#001561 0%,var(--esp-r,#520083) 50%,var(--esp-v,#7328A5) 100%);}
+html[data-identidade="espectro"] .rtv-palco[data-tema=rosa]{--a:var(--esp-m,#E02F75);--b:#FF5A57;background:linear-gradient(120deg,var(--esp-v,#7328A5) 0%,var(--esp-m,#E02F75) 60%,#FF5A57 100%);}
+html[data-identidade="espectro"] .rtv-palco[data-tema=azul]{--a:var(--esp-v,#7328A5);--b:var(--esp-m,#E02F75);background:linear-gradient(120deg,#001561 0%,#001561 30%,var(--esp-v,#7328A5) 100%);}
+html[data-identidade="espectro"] .rtv-palco[data-tema=laranja]{--a:var(--esp-m,#E02F75);--b:#FF5A57;background:linear-gradient(120deg,var(--esp-r,#520083) 0%,var(--esp-m,#E02F75) 55%,#FF5A57 100%);}
+html[data-identidade="espectro"] .rtv-palco[data-tema=verde]{--a:var(--esp-v,#7328A5);--b:var(--esp-m,#E02F75);background:linear-gradient(120deg,var(--esp-r,#520083) 0%,var(--esp-v,#7328A5) 45%,var(--esp-m,#E02F75) 100%);}
+html[data-identidade="espectro"] .rtv-palco[data-tema=ouro]{--a:var(--esp-m,#E02F75);--b:#FF5A57;background:linear-gradient(120deg,var(--esp-v,#7328A5) 0%,var(--esp-m,#E02F75) 45%,#FF5A57 100%);}
+html[data-identidade="espectro"] .rtv-palco[data-tema=noite]{--a:var(--esp-v,#7328A5);--b:var(--esp-m,#E02F75);background:linear-gradient(120deg,#001561 0%,var(--esp-r,#520083) 70%,var(--esp-v,#7328A5) 100%);}
+html[data-identidade="espectro"] .rtv-palco[data-tema=voce]{--a:var(--esp-v,#7328A5);--b:#FF5A57;background:linear-gradient(120deg,var(--esp-r,#520083) 0%,var(--esp-v,#7328A5) 40%,var(--esp-m,#E02F75) 85%,#FF5A57 100%);}
 
 /* as manchas de luz ficam brancas e discretas (o degradê já dá a cor) */
 html[data-identidade="espectro"] .rtv-fundo{z-index:0;}
@@ -123,6 +123,6 @@ html[data-identidade="espectro"] .rtv-palco[data-tema=fim] .rtv-nav{top:88px;}
 /* ------------------------------------------------------------------ chuva de posts e confete: só a paleta */
 html[data-identidade="espectro"] .rtv-chuva i{border-radius:8px;border:0;background:rgba(255,255,255,.16);}
 html[data-identidade="espectro"] .rtv-confete i{background:#FF5A57;}
-html[data-identidade="espectro"] .rtv-confete i:nth-child(3n){background:#7328A5;}
+html[data-identidade="espectro"] .rtv-confete i:nth-child(3n){background:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"] .rtv-confete i:nth-child(4n){background:#FFFFFF;}
-html[data-identidade="espectro"] .rtv-confete i:nth-child(5n){background:#E02F75;}
+html[data-identidade="espectro"] .rtv-confete i:nth-child(5n){background:var(--esp-m,#E02F75);}

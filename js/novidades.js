@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.17.0', versao: '5.17.0', em: '2026-11-26T20:00:00-03:00',
+    titulo: 'Aparência na identidade nova: 3 paletas da marca',
+    itens: ['Em Configurações → Aparência, as 11 paletas antigas viraram 3, todas dentro da nova marca: Padrão B7, Matriz (azuis) e Laser (rosa e coral).',
+      'As opções antigas de cor, menu, botões, cantos e datas especiais não pintam mais o sistema. Em Sistema da equipe, o administrador escolhe a paleta padrão de todos.'] },
   { id: 'v-5.16.1', versao: '5.16.1', em: '2026-11-26T19:00:00-03:00',
     titulo: 'Carregamento nas cores da marca',
     itens: ['Com uma data especial ligada (as cores de estação), a abertura e a tela de carregamento ficavam verdes e azuis. Agora ficam sempre nas cores da Branding7.',

@@ -25,13 +25,13 @@ html[data-identidade="espectro"] .gx-cab-lin{padding:10px 18px;font-size:11.5px;
 html[data-identidade="espectro"] .gx-tab .gx-lin{align-items:center;width:100%;margin:0;border:0;border-top:1px solid var(--borda);border-radius:0;background:transparent;text-align:left;font:inherit;font-size:13.5px;color:var(--ink);cursor:pointer;transition:background-color .18s;}
 html[data-identidade="espectro"] .gx-tab .gx-lin + .gx-lin{border-top:1px solid var(--borda);border-radius:0;}
 html[data-identidade="espectro"] .gx-tab .gx-lin:hover{background:var(--acento-suave);}
-html[data-identidade="espectro"] .gx-tab .gx-lin:focus-visible{outline:none;box-shadow:inset 0 0 0 2px rgba(115,40,165,.35);}
+html[data-identidade="espectro"] .gx-tab .gx-lin:focus-visible{outline:none;box-shadow:inset 0 0 0 2px rgba(var(--esp-v-rgb,115,40,165),.35);}
 html[data-identidade="espectro"] .gx-tab .gx-lin > *{min-width:0;}
 html[data-identidade="espectro"] .gx-tab :is(b, small, em, i, h2){font-weight:400;font-style:normal;}
 
 /* cliente: avatar de cor cheia + nome */
 html[data-identidade="espectro"] .gx-cli{display:flex;align-items:center;gap:10px;min-width:0;}
-html[data-identidade="espectro"] .gx-tab .gx-av{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:14px;overflow:hidden;background:var(--av, #7328A5);color:#FFFFFF;font-family:var(--b7-fonte);font-size:12px;font-weight:400;}
+html[data-identidade="espectro"] .gx-tab .gx-av{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:14px;overflow:hidden;background:var(--av, var(--esp-v,#7328A5));color:#FFFFFF;font-family:var(--b7-fonte);font-size:12px;font-weight:400;}
 html[data-identidade="espectro"] .gx-tab .gx-av b{color:#FFFFFF;font-weight:400;}
 html[data-identidade="espectro"] .gx-tab .gx-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:var(--card);}
 html[data-identidade="espectro"] .gx-contr .gx-av{width:28px;height:28px;border-radius:12px;font-size:11px;}
@@ -77,7 +77,7 @@ html[data-identidade="espectro"] .gx-saude small{font-size:12px;color:var(--ink-
 html[data-identidade="espectro"] .gx-acao{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:34px;padding:0 16px;border-radius:17px;font:inherit;font-size:13px;font-weight:400;white-space:nowrap;cursor:pointer;background:var(--card);color:var(--ink);border:1px solid var(--borda);transition:transform .12s, filter .18s, background-color .18s;}
 html[data-identidade="espectro"] .gx-acao:hover{background:var(--suave);}
 html[data-identidade="espectro"] .gx-acao:active{transform:scale(.97);}
-html[data-identidade="espectro"] .gx-acao:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.35);}
+html[data-identidade="espectro"] .gx-acao:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(var(--esp-v-rgb,115,40,165),.35);}
 
 /* contratado: números e barra de 6 no gradiente */
 html[data-identidade="espectro"] .gx-num{font-variant-numeric:tabular-nums;white-space:nowrap;}
