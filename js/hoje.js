@@ -49,6 +49,11 @@ B7.Hoje = (() => {
     const d = new Date();
     return DIAS[d.getDay()] + ', ' + d.getDate() + ' de ' + MESES[d.getMonth()];
   }
+  /* "Quarta, 25 de novembro" (topo do carrossel) */
+  function dataCurta() {
+    const t = dataLonga().replace('-feira', '');
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
   function saudacao() {
     const h = new Date().getHours();
     return h < 5 ? 'Boa madrugada' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
@@ -172,7 +177,7 @@ B7.Hoje = (() => {
         '<p class="hj-sub">' + (nada ? 'Dia tranquilo por aqui. Nada vencendo e nada atrasado.' : 'Este é o seu dia no B7' + (d.gestao ? ' (visão da operação)' : '') + '.') + '</p>' +
         '<div class="hj-numeros">' + numeros.map((x, i) =>
           '<div class="hj-num' + (x.alerta ? ' alerta' : '') + '" style="--i:' + i + '"><b>' + x.n + '</b><span>' + x.r + '</span></div>').join('') + '</div>' +
-        '<p class="hj-dica">Toque para passar · segure para pausar</p></div>'
+        '<p class="hj-dica">Segure para pausar</p></div>'
     });
 
     /* 2. no ar hoje */
@@ -180,7 +185,8 @@ B7.Hoje = (() => {
       const feitas = d.publicacoes.length - nPub;
       t.push({
         id: 'publicacoes', cor: 'pub', rota: '#/publicacoes', rotulo: 'Ver publicações',
-        html: '<p class="hj-kicker">No ar hoje</p><h2>' + plural(d.publicacoes.length, 'publicação', 'publicações') + '</h2>' +
+        html: '<p class="hj-kicker">Publicações</p><p class="hj-grande">' + d.publicacoes.length + '</p>' +
+          '<h2>' + (d.publicacoes.length === 1 ? 'peça sai' : 'peças saem') + ' hoje em ' + plural(new Set(d.publicacoes.map(p => p.cliente || p.id)).size, 'cliente', 'clientes') + '</h2>' +
           '<p class="hj-sub">' + (feitas ? feitas + ' já ' + (feitas === 1 ? 'publicada' : 'publicadas') + ' · ' : '') + (nPub ? nPub + ' para subir' : 'tudo no ar 🎉') + '</p>' +
           lista(d.publicacoes, p => logo(p.logo, p.cliente) +
             '<span class="hj-tx"><b>' + esc(p.titulo) + '</b><small>' + esc([p.cliente, p.tipo || p.canal].filter(Boolean).join(' · ')) + '</small></span>' +
@@ -193,7 +199,7 @@ B7.Hoje = (() => {
       const amanha = d.gravacoes.length - gHoje.length;
       t.push({
         id: 'gravacoes', cor: 'grav', rota: '#/gravacoes', rotulo: 'Ver gravações',
-        html: '<p class="hj-kicker">Gravações</p><h2>' + (gHoje.length ? plural(gHoje.length, 'gravação hoje', 'gravações hoje') : 'Nenhuma hoje') + '</h2>' +
+        html: '<p class="hj-kicker">Gravações</p><p class="hj-grande">' + gHoje.length + '</p><h2>' + (gHoje.length === 1 ? 'gravação hoje' : 'gravações hoje') + '</h2>' +
           '<p class="hj-sub">' + (amanha ? plural(amanha, 'marcada para amanhã', 'marcadas para amanhã') : 'nada marcado para amanhã') + '</p>' +
           lista(d.gravacoes, x => logo(x.logo, x.cliente) +
             '<span class="hj-tx"><b>' + esc(x.nome) + '</b><small>' + esc([x.cliente, x.local, d.gestao ? x.videomaker : ''].filter(Boolean).join(' · ')) + '</small></span>' +
@@ -205,7 +211,7 @@ B7.Hoje = (() => {
     if (d.prazos.length) {
       t.push({
         id: 'prazos', cor: 'prazo', rota: d.prazos.every(x => x.tipo === 'design') ? '#/design' : '#/video', rotulo: 'Abrir produção',
-        html: '<p class="hj-kicker">Vence hoje</p><h2>' + plural(d.prazos.length, 'entrega', 'entregas') + '</h2>' +
+        html: '<p class="hj-kicker">Prazos</p><p class="hj-grande">' + d.prazos.length + '</p><h2>' + (d.prazos.length === 1 ? 'entrega vence hoje' : 'entregas vencem hoje') + '</h2>' +
           '<p class="hj-sub">' + (d.gestao ? 'da operação, ainda não entregues' : 'suas, ainda não entregues') + '</p>' +
           lista(d.prazos, x => logo(x.logo, x.cliente) +
             '<span class="hj-tx"><b>' + esc(x.titulo) + '</b><small>' + esc([x.tipo === 'video' ? 'Vídeo' : 'Design', x.cliente, x.quem].filter(Boolean).join(' · ')) + '</small></span>')
@@ -216,8 +222,8 @@ B7.Hoje = (() => {
     if (d.atrasados.length) {
       t.push({
         id: 'atrasados', cor: 'atraso', rota: d.atrasados.every(x => x.tipo === 'design') ? '#/design' : '#/video', rotulo: 'Resolver atrasos',
-        html: '<p class="hj-kicker">Atenção</p><h2>' + plural(d.atrasados.length, 'atrasado', 'atrasados') + '</h2>' +
-          '<p class="hj-sub">passaram do prazo e ainda não foram entregues</p>' +
+        html: '<p class="hj-kicker">Atrasados</p><p class="hj-grande">' + d.atrasados.length + '</p><h2>' + (d.atrasados.length === 1 ? 'passou do prazo' : 'passaram do prazo') + '</h2>' +
+          '<p class="hj-sub">e ainda não ' + (d.atrasados.length === 1 ? 'foi entregue' : 'foram entregues') + '</p>' +
           lista(d.atrasados, x => logo(x.logo, x.cliente) +
             '<span class="hj-tx"><b>' + esc(x.titulo) + '</b><small>' + esc([x.tipo === 'video' ? 'Vídeo' : 'Design', x.cliente, x.quem].filter(Boolean).join(' · ')) + '</small></span>' +
             '<span class="hj-atraso">' + diasAtras(x.prazo) + 'd</span>')
@@ -257,7 +263,7 @@ B7.Hoje = (() => {
       '<div class="hj-grao" aria-hidden="true"></div><div class="hj-vinheta" aria-hidden="true"></div>' +
       '<div class="hj-faixa cima" aria-hidden="true"></div><div class="hj-faixa baixo" aria-hidden="true"></div>' +
       '<div class="hj-barras"></div>' +
-      '<div class="hj-topo"><span class="hj-marca"><img src="assets/brand/symbol-white.png" alt=""> Meu dia</span>' +
+      '<div class="hj-topo"><span class="hj-marca"><img src="assets/brand/symbol-white.png" alt=""><span class="hj-marca-tx"><b>B7 de hoje</b><small>' + esc(dataCurta()) + '</small></span></span>' +
       '<button type="button" class="hj-x" aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
       '<div class="hj-palco"><div class="hj-carregando"><span></span>Montando o seu dia…</div></div>' +
       '<div class="hj-rodape"></div>';
@@ -321,7 +327,7 @@ B7.Hoje = (() => {
     sec.querySelectorAll('h2').forEach(h => { h.innerHTML = palavrasHTML(h.textContent); });
     /* números que contam de 0 até o valor */
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    sec.querySelectorAll('.hj-num b').forEach((b, i) => {
+    sec.querySelectorAll('.hj-num b, .hj-grande').forEach((b, i) => {
       const alvo = +b.textContent || 0;
       if (!alvo) return;
       b.textContent = '0';
@@ -364,7 +370,8 @@ B7.Hoje = (() => {
     palco.appendChild(sec);
     animarTexto(sec);
     const rod = S.el.querySelector('.hj-rodape');
-    rod.innerHTML = tela.rota && podeVer(tela.rota.slice(2)) ? '<a class="hj-cta" href="' + esc(tela.rota) + '" data-ir>' + esc(tela.rotulo) + ' <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></a>' : '';
+    rod.innerHTML = (tela.rota && podeVer(tela.rota.slice(2)) ? '<a class="hj-cta" href="' + esc(tela.rota) + '" data-ir>' + esc(tela.rotulo) + ' <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></a>' : '') +
+      (tela.id !== 'fim' ? '<p class="hj-toque">Toque para avançar</p>' : '');
     S.el.querySelectorAll('.hj-barras > span').forEach((b, k) => {
       b.classList.toggle('feita', k < n);
       b.querySelector('i').style.transform = 'scaleX(' + (k < n ? 1 : 0) + ')';
