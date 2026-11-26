@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.93.0', versao: '4.93.0', em: '2026-11-26T20:00:00-03:00',
+    titulo: 'Identidade nova da Branding7 (em teste)',
+    itens: ['Em Configurações → Aparência → "Usar a identidade nova" dá para testar a nova marca no sistema: cores, fonte e logos novos, menu flutuante e topo redesenhado.',
+      'Vale só para o aparelho de quem ligar. Os clientes continuam vendo o visual atual até a liberação geral.'] },
   { id: 'v-4.92.0', versao: '4.92.0', em: '2026-11-26T18:00:00-03:00',
     titulo: 'Desligar um módulo para a agência inteira',
     itens: ['Em Configurações → Sistema da equipe → Módulos da agência, o administrador desliga um módulo (ex.: WhatsApp) para todo mundo: ele some do menu, da busca, do “Criar” e dos botões das telas.',
