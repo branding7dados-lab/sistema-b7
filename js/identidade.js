@@ -39,18 +39,42 @@ B7.Identidade = (function () {
     }));
   }
 
+  /* o menu flutuante pode ABRIR (ícone + nome, 248 px) — botão no pé do menu, guardado no aparelho */
+  const MENU_ABERTO = 'esp-menu-aberto';
+  const SETAS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l5 5-5 5M13 7l5 5-5 5"/></svg>';
+  function menuAberto() { try { return !!B7.pref.ler('esp_menu_aberto', false); } catch (e) { return false; } }
+  function aplicarMenu() {
+    const aberto = ligada() && menuAberto();
+    html.classList.toggle(MENU_ABERTO, aberto);
+    const pe = document.querySelector('.lateral .pe-lateral');
+    let bt = document.querySelector('.esp-alterna-menu');
+    if (!ligada()) { if (bt) bt.remove(); return; }
+    if (!pe) return;
+    if (!bt) {
+      bt = document.createElement('button');
+      bt.type = 'button'; bt.className = 'esp-alterna-menu';
+      bt.innerHTML = SETAS + '<span>Fechar menu</span>';
+      bt.onclick = () => { try { B7.pref.gravar('esp_menu_aberto', !menuAberto()); } catch (e) {} aplicarMenu(); };
+      pe.insertBefore(bt, pe.firstChild);
+    }
+    bt.setAttribute('aria-expanded', String(aberto));
+    bt.setAttribute('aria-label', aberto ? 'Fechar o menu' : 'Abrir o menu com os nomes');
+    bt.title = aberto ? 'Fechar o menu' : 'Abrir o menu';
+  }
+
   function definir(ligar) {
     try { B7.pref.gravar('identidade', ligar ? ESPECTRO : null); } catch (e) {}
     if (ligar && !ehCliente()) html.setAttribute('data-identidade', ESPECTRO); else html.removeAttribute('data-identidade');
-    aplicarLogos();
+    aplicarLogos(); aplicarMenu();
   }
 
   /* o Portal do cliente fica no visual atual (aparelho compartilhado, chave ligada por outra pessoa) */
-  function conferirPapel() { if (ehCliente() && ligada()) { html.removeAttribute('data-identidade'); aplicarLogos(); } }
+  function conferirPapel() { if (ehCliente() && ligada()) html.removeAttribute('data-identidade'); aplicarLogos(); aplicarMenu(); }
 
   /* o tema troca os logos da casca (o menu é branco no claro e vidro no escuro) */
   new MutationObserver(() => { if (ligada()) aplicarLogos(); }).observe(html, { attributes: true, attributeFilter: ['data-theme'] });
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', aplicarLogos); else aplicarLogos();
+  const iniciar = () => { aplicarLogos(); aplicarMenu(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 
-  return { ligada, definir, aplicarLogos, conferirPapel };
+  return { ligada, definir, aplicarLogos, aplicarMenu, conferirPapel };
 })();

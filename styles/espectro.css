@@ -203,20 +203,20 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
   html[data-identidade="espectro"] body[data-shell="interno"] .nav .ng + .ng:before{content:"";position:absolute;top:0;left:30px;right:30px;height:1px;background:var(--esp-menu-borda);}
   html[data-identidade="espectro"] body[data-shell="interno"] .nav .ng .ng-painel,
   html[data-identidade="espectro"] body[data-shell="interno"] .nav .ng.fechado .ng-painel{display:block !important;grid-template-rows:1fr !important;opacity:1 !important;visibility:visible !important;height:auto !important;}
-  html[data-identidade="espectro"] body[data-shell="interno"] .nav .ng-in{overflow:visible;display:flex;flex-direction:column;align-items:center;gap:6px;}
-  html[data-identidade="espectro"] body[data-shell="interno"] .nav .ng-lista{display:flex;flex-direction:column;align-items:center;gap:6px;padding:0;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .nav .ng-in{overflow:visible;display:flex;flex-direction:column;align-items:center;gap:4px;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .nav .ng-lista{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0;}
 
   /* cada item: 52 × 52, ícone solto, cinza; ativo em Violeta Quantum com brilho */
   html[data-identidade="espectro"] body[data-shell="interno"] .nav a,
   html[data-identidade="espectro"] body[data-shell="interno"] .nav.multi[data-shell="interno"] .ng a{
-    width:52px !important;height:52px;min-height:52px !important;padding:0 !important;margin:0 auto !important;flex:none;
-    display:flex;align-items:center;justify-content:center;gap:0 !important;border-radius:24px !important;
+    width:48px !important;height:48px;min-height:48px !important;padding:0 !important;margin:0 auto !important;flex:none;
+    display:flex;align-items:center;justify-content:center;gap:0 !important;border-radius:18px !important;
     background:transparent !important;border:0 !important;box-shadow:none !important;color:var(--esp-menu-icone) !important;
     transition:background-color var(--t), color var(--t), transform var(--t-micro) !important;}
   html[data-identidade="espectro"] body[data-shell="interno"] .nav a span,
   html[data-identidade="espectro"] body[data-shell="interno"] .nav a .ni-ic + span{display:none !important;}
   /* os ícones do menu são preenchidos (Phosphor duotone): só tamanho e cor; o miolo claro do duotone fica */
-  html[data-identidade="espectro"] body[data-shell="interno"] .nav a svg{width:24px !important;height:24px !important;opacity:1 !important;color:inherit;
+  html[data-identidade="espectro"] body[data-shell="interno"] .nav a svg{width:22px !important;height:22px !important;opacity:1 !important;color:inherit;
     background:none !important;padding:0 !important;margin:0 !important;border-radius:0 !important;box-shadow:none !important;}
   /* duotone: miolo (--duo1) suave e traço (--duo2) na cor do ícone; ativo em branco sobre o Violeta */
   html[data-identidade="espectro"] body[data-shell="interno"] .lateral .nav a > svg.phi.phd{--duo1:rgba(95,101,132,.16) !important;--duo2:var(--esp-menu-icone) !important;}
@@ -257,7 +257,47 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
   html[data-identidade="espectro"] body[data-shell="interno"] .topo-global #area-sessao{order:6;}
   html[data-identidade="espectro"] body[data-shell="interno"] .topo-global #topo-interno-dir{order:7;display:contents;}
   html[data-identidade="espectro"] body[data-shell="interno"] .topo-global :is(.topo-criar, .tp-sino, .sino-bt){order:7;}
-  html[data-identidade="espectro"] body[data-shell="interno"] .topo-global :is(.sino, .tp-sino, [data-sino], .bt-sino){width:48px;height:48px;border-radius:24px;background:var(--card);border:1px solid var(--esp-cartao-borda);}
+  /* ajuda, conversas e sino entram antes da conta (js/ajuda.js, conversas.js, notificacoes.js): à direita, antes da busca */
+  html[data-identidade="espectro"] body[data-shell="interno"] .topo-global .aj-bt{order:3;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .topo-global .conv-bt{order:3;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .topo-global .sino{order:4;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .topo-global :is(.aj-bt, .conv-bt, .sino){width:48px;height:48px;min-width:48px;border-radius:24px;flex:none;
+    background:var(--card);border:1px solid var(--esp-cartao-borda);color:var(--ink);box-shadow:0 8px 24px rgba(10,16,51,.04);display:inline-flex;align-items:center;justify-content:center;position:relative;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .topo-global :is(.aj-bt, .conv-bt, .sino):hover{background:var(--suave);}
+  html[data-identidade="espectro"] body[data-shell="interno"] .topo-global :is(.sino-n, .conv-n){background:#FF5A57;box-shadow:0 0 10px rgba(255,90,87,.6);}
+
+  /* botão de abrir/fechar o menu (js/identidade.js) */
+  html[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu{width:48px;height:40px;border-radius:18px;border:0;background:transparent;color:var(--esp-menu-icone);
+    display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font:inherit;font-size:13.5px;transition:background-color var(--t), color var(--t);}
+  html[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu:hover{background:var(--suave);color:var(--ink);}
+  html[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu:focus-visible{outline:2px solid #7328A5;outline-offset:2px;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu svg{width:20px;height:20px;flex:none;transition:transform var(--t);}
+  html[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu span{display:none;}
+
+  /* MENU ABERTO: 248 px, ícone + nome, título dos grupos, logo completo */
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .lateral{width:248px !important;transition:width var(--t-modal);}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .marca-lateral{padding:24px 22px 12px !important;justify-content:flex-start;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .marca-clique{justify-content:flex-start;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .marca-lateral img.simbolo{display:none !important;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .marca-lateral img.lockup{display:block !important;height:30px;width:auto;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .nav .ng-cab{display:flex !important;min-height:22px;padding:0 24px;margin:4px 0 2px;background:none !important;
+    color:var(--ink-3) !important;cursor:default;pointer-events:none;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .nav .ng-cab .ng-tit{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:400;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .nav .ng-cab :is(.ng-seta, .ng-ponto){display:none;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .nav .ng + .ng:before{left:22px;right:22px;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .nav .nav-acordeao,
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .nav :is(.ng-in, .ng-lista){align-items:stretch;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .nav a,
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .nav.multi[data-shell="interno"] .ng a{
+    width:auto !important;height:44px;min-height:44px !important;margin:0 12px !important;padding:0 14px !important;justify-content:flex-start;gap:12px !important;border-radius:16px !important;font-size:14px;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .nav a span{display:inline !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .pe-lateral{align-items:stretch;padding:8px 12px 16px !important;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu{width:100%;justify-content:flex-start;padding:0 14px;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu svg{transform:rotate(180deg);}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu span{display:inline;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-bt{width:100% !important;justify-content:flex-start !important;padding:0 14px !important;gap:12px;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-bt span{display:inline !important;}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-caixa{left:260px !important;}
 
   /* o conteúdo respira como no Espectro */
   html[data-identidade="espectro"] body[data-shell="interno"] .area{padding-left:4px;}
@@ -269,6 +309,115 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
   html[data-identidade="espectro"] .nav-inferior .on{color:#7328A5;}
   html[data-identidade="espectro"][data-theme="dark"] .nav-inferior .on{color:#C99BF0;}
   html[data-identidade="espectro"] .tp-criar{min-height:42px;}
+}
+
+/* o botão de abrir o menu é só da casca da equipe */
+html[data-identidade="espectro"] body:not([data-shell="interno"]) .esp-alterna-menu{display:none !important;}
+
+/* ------------------------------------------------------------ PORTAL DO CLIENTE (4.94.0)
+   A barra lateral vira o TOPO do Portal (88 px): o cliente à esquerda, as abas em pílula
+   no meio (a ativa em Azul Matriz) e ajuda, sino e conta à direita. A saudação do início
+   vira a faixa em Azul Matriz com o padrão da lâmpada. O cliente só vê isto na liberação
+   geral; até lá, a equipe confere pela Prévia do Portal com a chave ligada. */
+@media (min-width:1081px){
+  html[data-identidade="espectro"] body[data-shell="portal"] #app{flex-direction:column;position:relative;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .lateral{
+    width:auto !important;height:88px;flex:none;flex-direction:row;align-items:center;gap:16px;padding:0 300px 0 40px;margin:0;
+    background:transparent !important;color:var(--ink);box-shadow:none !important;border:0;overflow:visible;z-index:5;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .lateral:after{display:none !important;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .marca-lateral{display:none !important;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav{flex:1;min-width:0;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:4px;
+    padding:0 28px 0 4px !important;margin:0;overflow-x:auto;overflow-y:visible;scrollbar-width:none;background:none;scroll-padding-left:220px;
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 32px), transparent);mask-image:linear-gradient(90deg, #000 calc(100% - 32px), transparent);}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav::-webkit-scrollbar{display:none;}
+  /* o cliente (marcador) à esquerda, as abas num trilho branco */
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-marcador{flex:none;margin:0 8px 0 -4px;padding:0 12px 0 4px;border:0;box-shadow:none;border-radius:0;
+    position:sticky;left:0;z-index:2;background:var(--fundo) !important;align-self:stretch;display:flex;flex-direction:column;justify-content:center;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-marcador-rot{color:var(--ink-3);font-size:11px;letter-spacing:.14em;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-marcador-emp{color:var(--ink);font-size:16px;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > a{flex:none;height:40px;padding:0 16px;border-radius:26px;display:flex;align-items:center;gap:0;
+    font-size:13.5px;white-space:nowrap;color:var(--ink-3);background:var(--card);box-shadow:0 10px 30px rgba(10,16,51,.06);border:0;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > a svg{display:none;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > a:hover{color:var(--ink);background:var(--suave);}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > a.on{background:#001561 !important;color:#fff !important;box-shadow:0 10px 24px rgba(0,21,97,.28);}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > a.on:before{display:none;}
+  html[data-identidade="espectro"][data-theme="dark"] body[data-shell="portal"] .nav > a.on{background:#2A3FA8 !important;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav-trilha{display:none !important;}
+  /* pé: "Voltar ao Admin" vira uma pílula; o resto sai */
+  html[data-identidade="espectro"] body[data-shell="portal"] .pe-lateral{flex:none;flex-direction:row;border:0 !important;padding:0 !important;background:none;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pe-lateral :is(.ver-como, .bt-recolher){display:none !important;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-sair{height:40px;padding:0 16px;border-radius:20px;background:var(--card);color:var(--ink-2);border:1px solid var(--borda);gap:8px;}
+  /* ajuda, conversas, sino e conta: à direita, na mesma faixa do topo */
+  html[data-identidade="espectro"] body[data-shell="portal"] .topo-global{position:absolute;top:0;right:40px;height:88px;padding:0 !important;gap:10px;z-index:6;
+    background:transparent !important;border:0 !important;box-shadow:none !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .topo-global:after{display:none !important;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .topo-global :is(.aj-bt, .conv-bt, .sino){width:46px;height:46px;border-radius:23px;background:var(--card);border:0;box-shadow:0 8px 24px rgba(10,16,51,.06);}
+  html[data-identidade="espectro"] body[data-shell="portal"] .topo-global :is(.topo-ctx, .busca-gatilho){display:none !important;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .area{min-height:0;}
+}
+/* a saudação do início: faixa em Azul Matriz com o padrão da lâmpada */
+html[data-identidade="espectro"] .portal-home .ph-cab{position:relative;overflow:hidden;border-radius:24px;background:#001561;color:#fff;padding:32px 36px;margin-bottom:24px;}
+html[data-identidade="espectro"] .portal-home .ph-cab:after{content:"";position:absolute;right:-100px;top:-80px;width:520px;height:520px;pointer-events:none;
+  background:url('../assets/brand/espectro/padrao-lampada-matriz.svg') center/contain no-repeat;opacity:.55;}
+html[data-identidade="espectro"] .portal-home .ph-cab > *{position:relative;z-index:1;}
+html[data-identidade="espectro"] .portal-home .ph-cab h1{color:#fff;font-size:clamp(28px, 3vw, 40px) !important;}
+html[data-identidade="espectro"] .portal-home .ph-cab .ph-emp{color:#C3C7E0;font-size:14.5px;}
+html[data-identidade="espectro"] .portal-home :is(.ph-titulo h2){font-size:17px;font-weight:400;}
+html[data-identidade="espectro"] .portal-home :is(.ph-vazio, .ph-lista > *, .ph-card){border-radius:22px;border:1px solid var(--borda);box-shadow:var(--sh-2);}
+
+/* ------------------------------------------------------------ LOGIN (4.94.0)
+   Aurora escura nos dois temas, cartão de vidro de 480 px, campos e botões em pílula,
+   Entrar no Espectro curto. O símbolo aceso no alto, o logo no canto e a assinatura. */
+html[data-identidade="espectro"] .tela-login{
+  background:
+    radial-gradient(900px 700px at 8% 0%, rgba(0,21,97,.55), transparent 70%),
+    radial-gradient(800px 600px at 62% -8%, rgba(82,0,131,.55), transparent 70%),
+    radial-gradient(800px 700px at 40% 85%, rgba(115,40,165,.32), transparent 70%),
+    radial-gradient(600px 500px at 92% 55%, rgba(224,47,117,.28), transparent 70%),
+    radial-gradient(500px 400px at 100% 100%, rgba(255,90,87,.22), transparent 70%),
+    #02030C;
+  color:#F3F4FA;}
+html[data-identidade="espectro"] .login-fundo .um{background:radial-gradient(circle, rgba(224,47,117,.38), transparent 66%);filter:blur(60px);}
+html[data-identidade="espectro"] .login-fundo .dois{background:radial-gradient(circle, rgba(115,40,165,.5), transparent 68%);filter:blur(60px);}
+/* os raios de luz do centro (repeating-conic), no lugar da malha */
+html[data-identidade="espectro"] .login-fundo .malha{opacity:1;background:repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,.05) 0deg 2deg, transparent 2deg 12deg);
+  -webkit-mask-image:radial-gradient(circle at 50% 50%, #000, transparent 55%);mask-image:radial-gradient(circle at 50% 50%, #000, transparent 55%);}
+html[data-identidade="espectro"] .login-fundo .rastro{display:none;}
+html[data-identidade="espectro"] .login-vitrine{display:none !important;}
+html[data-identidade="espectro"] .login-caixa{width:min(480px,100%);padding:40px;border-radius:40px;text-align:left;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  -webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px);box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 40px 90px -30px rgba(0,0,0,.5);}
+html[data-identidade="espectro"] .login-caixa:before{display:none;}
+html[data-identidade="espectro"] .login-marca{width:84px;height:auto;margin:0 auto 26px;filter:drop-shadow(0 0 8px rgba(255,90,87,.9));}
+html[data-identidade="espectro"] .login-caixa h1{font-size:clamp(34px, 6vw, 48px);line-height:1;text-align:center;color:#F3F4FA;letter-spacing:0;}
+html[data-identidade="espectro"] .login-caixa .login-sub{text-align:center;font-size:15px;color:#AEB4D6;margin:10px auto 4px;max-width:380px;}
+html[data-identidade="espectro"] .login-caixa .rot{color:#AEB4D6;margin-top:18px;}
+html[data-identidade="espectro"] .login-caixa .campo{height:58px;min-height:58px;border-radius:29px;padding:0 22px;font-size:16px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);color:#fff;}
+html[data-identidade="espectro"] .login-caixa .campo::placeholder{color:rgba(174,180,214,.7);}
+html[data-identidade="espectro"] .login-caixa .campo:focus{border-color:rgba(201,162,240,.8);box-shadow:0 0 0 4px rgba(115,40,165,.25);background:rgba(255,255,255,.09);}
+html[data-identidade="espectro"] .login-caixa .login-olho{color:#AEB4D6;right:12px;}
+html[data-identidade="espectro"] .login-caixa .login-entrar{width:100%;min-height:58px;border-radius:29px;font-size:17px;margin-top:18px;
+  background:var(--b7-espectro-curto) !important;box-shadow:0 16px 40px rgba(224,47,117,.45) !important;}
+html[data-identidade="espectro"] .login-caixa .login-entrar:hover{filter:brightness(1.08);}
+html[data-identidade="espectro"] .login-caixa :is(.lg-google, .lg-n7, .b.contorno){min-height:50px;border-radius:25px;background:transparent;border:1px solid rgba(255,255,255,.14);color:#fff;}
+html[data-identidade="espectro"] .login-caixa :is(.lg-google, .lg-n7, .b.contorno):hover{background:rgba(255,255,255,.06);}
+html[data-identidade="espectro"] .login-caixa .lg-ou span{color:#AEB4D6;}
+html[data-identidade="espectro"] .login-caixa :is(.lg2-link, .login-legal a){color:#C9A2F0;}
+html[data-identidade="espectro"] .login-caixa .login-legal{color:rgba(174,180,214,.7);}
+html[data-identidade="espectro"] .login-caixa .login-aviso{border-radius:18px;}
+html[data-identidade="espectro"] .esp-login-logo{position:absolute;left:48px;top:40px;height:32px;z-index:1;}
+html[data-identidade="espectro"] .esp-login-assinatura{position:absolute;right:48px;bottom:40px;margin:0;font-size:14px;color:rgba(255,255,255,.75);z-index:1;}
+@media (max-width:760px){
+  /* celular: o símbolo no alto e o formulário numa folha de vidro que sobe de baixo */
+  html[data-identidade="espectro"] .tela-login{align-items:flex-end;padding:0;}
+  html[data-identidade="espectro"] .login-caixa{width:100%;border-radius:32px 32px 0 0;padding:28px 24px calc(28px + env(safe-area-inset-bottom, 0px));border-width:1px 0 0;}
+  html[data-identidade="espectro"] .login-marca{width:120px;margin:-170px auto 92px;}
+  html[data-identidade="espectro"] .login-caixa h1{font-size:28px;text-align:left;}
+  html[data-identidade="espectro"] .login-caixa .login-sub{text-align:left;margin-left:0;font-size:14px;}
+  html[data-identidade="espectro"] .login-caixa .campo{height:50px;min-height:50px;border-radius:25px;}
+  html[data-identidade="espectro"] .login-caixa .login-entrar{min-height:54px;border-radius:27px;}
+  html[data-identidade="espectro"] :is(.esp-login-logo, .esp-login-assinatura){display:none;}
 }
 
 @media (prefers-reduced-motion:reduce){

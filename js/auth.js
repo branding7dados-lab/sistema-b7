@@ -24,7 +24,7 @@ B7.Auth = (function () {
        3.0.0 → 3.0.1  correção ou ajuste
      A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
      programa do Windows. O aviso de atualização só compara se mudou. */
-  const VERSAO = '4.93.0';
+  const VERSAO = '4.94.0';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -444,6 +444,13 @@ B7.Auth = (function () {
         '<p class="login-legal"><a href="privacidade.html" target="_blank" rel="noopener">Privacidade</a> · <a href="termos.html" target="_blank" rel="noopener">Termos de Serviço</a></p>' +
       '</form>';
 
+    /* 4.94.0: identidade nova (Espectro) — o símbolo aceso, o logo no canto e a assinatura da marca */
+    if (B7.Identidade && B7.Identidade.ligada()) {
+      const mc = tela.querySelector('.login-marca'); if (mc) mc.src = 'assets/brand/espectro/simbolo-mono-branco.svg';
+      const h1 = tela.querySelector('.login-caixa h1'); if (h1) h1.textContent = 'Entrar no B7';
+      tela.insertAdjacentHTML('beforeend', '<img class="esp-login-logo" src="assets/brand/espectro/horizontal-branco.svg" alt="" aria-hidden="true">' +
+        '<p class="esp-login-assinatura" aria-hidden="true">Criatividade que transforma negócios em marcas.</p>');
+    }
     document.body.appendChild(tela);
     document.body.classList.add('sem-sessao');
 

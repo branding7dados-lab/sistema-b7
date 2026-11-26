@@ -19,6 +19,7 @@ const ctx = await nav.newContext({ viewport: { width: 1440, height: 900 }, devic
 await ctx.route(/supabase\.co\//, rota => {
   const url = new URL(rota.request().url()), obj = /vnd\.pgrst\.object/.test(rota.request().headers().accept || '');
   if (url.pathname.includes('/rpc/')) return rota.fulfill({ status: 200, contentType: 'application/json', body: 'null' });
+  if (url.pathname === '/rest/v1/clientes_resumo') { const c = { id: 'c1', nome: 'Alfa', contrato: 'mensal', modo: 'linha', servico: 'ativo', logo_url: null }; return rota.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(obj ? c : [c]) }); }
   if (url.pathname.startsWith('/rest/v1/')) return rota.fulfill({ status: 200, contentType: 'application/json', headers: { 'content-range': '0-0/0' }, body: obj ? '{}' : '[]' });
   return rota.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
 });
@@ -59,11 +60,45 @@ const pri = await pg.evaluate(() => { const b = document.querySelector('.tp-cria
 ok(/linear-gradient/.test(pri) && /224, 47, 117|255, 90, 87/.test(pri), 'o Criar usa o Espectro curto (' + pri.slice(0, 80) + ')');
 await print(pg, 'identidade-claro');
 
+/* o menu flutuante abre com os nomes e fecha de novo (escolha guardada no aparelho) */
+const bt = await pg.$('.esp-alterna-menu');
+ok(!!bt, 'o pé do menu tem o botão de abrir');
+if (bt) { await bt.click(); await pg.waitForTimeout(450); }
+let ab = await pg.evaluate(() => ({ w: Math.round(document.querySelector('.lateral').getBoundingClientRect().width),
+  nome: getComputedStyle(document.querySelector('.nav a span')).display, pref: localStorage.getItem('b7_pref_esp_menu_aberto') }));
+ok(ab.w === 248 && ab.nome !== 'none' && ab.pref === 'true', 'aberto: 248 px com o nome de cada tela (' + JSON.stringify(ab) + ')');
+await print(pg, 'identidade-menu-aberto');
+if (bt) { await pg.click('.esp-alterna-menu'); await pg.waitForTimeout(900); }
+ab = await pg.evaluate(() => Math.round(document.querySelector('.lateral').getBoundingClientRect().width));
+ok(Math.abs(ab - 84) <= 1, 'fechar volta ao menu de ícones (' + ab + ')');
+
 await pg.evaluate(() => { document.documentElement.setAttribute('data-theme', 'dark'); }); await pg.waitForTimeout(300);
 e = await estado();
 ok(/simbolo-mono-branco\.svg$/.test(e.simbolo), 'no escuro, o símbolo branco (logo branco sobre fundo escuro)');
 await print(pg, 'identidade-escuro');
 await pg.evaluate(() => { document.documentElement.setAttribute('data-theme', 'light'); });
+
+/* ---------------------------------------------------- login no Espectro */
+await pg.evaluate(() => { document.querySelectorAll('.tela-login').forEach(e => e.remove()); B7.Auth.telaLogin(); });
+await pg.waitForTimeout(700);
+const lg = await pg.evaluate(() => { const c = document.querySelector('.login-caixa'), e = document.querySelector('.login-entrar');
+  return { raio: getComputedStyle(c).borderTopLeftRadius, h1: document.querySelector('.login-caixa h1').textContent, marca: document.querySelector('.login-marca').getAttribute('src'),
+    entrar: getComputedStyle(e).backgroundImage, logo: !!document.querySelector('.esp-login-logo'), assinatura: (document.querySelector('.esp-login-assinatura') || {}).textContent || '' }; });
+ok(lg.raio === '40px' && lg.h1 === 'Entrar no B7' && /espectro\/simbolo-mono-branco/.test(lg.marca) && /linear-gradient/.test(lg.entrar) && lg.logo && /transforma negócios em marcas/.test(lg.assinatura),
+  'login: cartão de vidro, "Entrar no B7", símbolo aceso, Entrar no Espectro, logo no canto e a assinatura');
+await print(pg, 'identidade-login');
+await pg.evaluate(() => { document.querySelectorAll('.tela-login').forEach(e => e.remove()); document.body.classList.remove('sem-sessao'); });
+
+/* ---------------------------------------------------- Portal (pela Prévia do Portal, com a chave ligada) */
+await pg.evaluate(() => { location.hash = '#/previa/c1'; }); await pg.waitForTimeout(1500);
+const pt = await pg.evaluate(() => { const l = document.querySelector('.lateral'), a = document.querySelector('.nav > a.on'), cab = document.querySelector('.portal-home .ph-cab');
+  return { shell: document.body.dataset.shell, altura: l ? Math.round(l.getBoundingClientRect().height) : 0, ativa: a ? getComputedStyle(a).backgroundColor : '', faixa: cab ? getComputedStyle(cab).backgroundColor : '',
+    botaoMenu: !!document.querySelector('.esp-alterna-menu') && getComputedStyle(document.querySelector('.esp-alterna-menu')).display }; });
+ok(pt.shell === 'portal' && pt.altura === 88 && pt.ativa === 'rgb(0, 21, 97)', 'Portal: a barra lateral vira o topo de 88 px com a aba ativa em Azul Matriz (' + JSON.stringify(pt) + ')');
+ok(pt.faixa === 'rgb(0, 21, 97)', 'Portal: a saudação vira a faixa em Azul Matriz');
+ok(pt.botaoMenu === 'none' || pt.botaoMenu === false, 'Portal: o botão de abrir o menu da equipe não aparece');
+await print(pg, 'identidade-portal');
+await pg.evaluate(() => { location.hash = '#/'; }); await pg.waitForTimeout(400);
 
 /* ---------------------------------------------------- reabrir: já entra ligada, antes da primeira pintura */
 await pg.goto(URL0 + '?x=1');
@@ -76,6 +111,7 @@ await pg.evaluate(() => { location.hash = '#/config?s=aparencia'; }); await pg.w
 await pg.click('.cfg-alterna:has([data-chave="identidade"])'); await pg.waitForTimeout(600);
 e = await estado();
 ok(!e.attr && e.pref === 'null' && /^Inter/.test(e.fonte) && e.largura > 200 && /symbol-white\.png$/.test(e.simbolo), 'desligar volta o visual, a fonte, a barra e o logo de antes');
+ok(!(await pg.$('.esp-alterna-menu')), 'desligada, o botão de abrir o menu some');
 
 /* ---------------------------------------------------- cliente (Portal): nunca vê */
 await pg.evaluate(() => localStorage.setItem('b7_pref_identidade', JSON.stringify('espectro')));
