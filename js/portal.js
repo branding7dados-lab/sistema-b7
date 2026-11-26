@@ -359,6 +359,16 @@ B7.Portal = (function () {
      produzido; o que mudou há pouco; qual é a linha editorial; o que
      está acontecendo nesta semana.
      ================================================================= */
+  const pa = d => '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+  const PA_IC = {
+    revisar: pa('<circle cx="12" cy="12" r="9"/><path d="M8 12.3l2.8 2.8L16.5 9"/>'),
+    ok: pa('<path d="M4 12.5l5 5L20 6.5"/>'),
+    ajuste: pa('<path d="M14.5 4.5l5 5L8 21H3v-5z"/><path d="M12.5 6.5l5 5"/>'),
+    recusa: pa('<path d="M6 6l12 12M18 6L6 18"/>'),
+    doc: pa('<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>'),
+    baixar: pa('<path d="M12 4v11M7 10l5 5 5-5M4 20h16"/>'),
+    subir: pa('<path d="M12 19V5M6 11l6-6 6 6"/>')
+  };
   async function abrirHome(silencioso) {
     const u = B7.Auth.usuario() || {};
     const emp = prepararTela('', silencioso ? null : 'Carregando seu acompanhamento…');
@@ -395,30 +405,55 @@ B7.Portal = (function () {
        um nome de cliente seria inventar dado. */
     const primeiro = ((u.nome || u.username || '').trim().split(/\s+/)[0]) || '';
 
-    painel().innerHTML = '<div class="conteudo entra portal-home">' +
+    /* Espectro: os números da faixa saem do que já foi carregado */
+    const mesHoje = hoje.slice(0, 7);
+    const doMes = producao.filter(c => String(c.data_postagem || '').slice(0, 7) === mesHoje);
+    const nomeMes = (MESES[(linha && linha.mes ? linha.mes : parseInt(mesHoje.slice(5), 10)) - 1] || '').toUpperCase();
+    const fala = pendentes.length
+      ? pendentes.length + (pendentes.length === 1 ? ' peça espera ' : ' peças esperam ') +
+        (soComenta() ? 'a aprovação da empresa.' : 'a sua aprovação.')
+      : 'Nada esperando a sua aprovação.';
+    const numero = (rot, valor) => '<div class="pa-num"><span>' + esc(rot) + '</span><b>' + esc(valor) + '</b></div>';
+
+    painel().innerHTML = '<div class="conteudo entra portal-home pa-inicio">' +
 
       '<header class="ph-cab">' +
-        '<div>' +
-          '<h1>Olá' + (primeiro ? ', ' + esc(primeiro) : '') + '.</h1>' +
+        '<div class="pa-heroi-tx">' +
+          '<p class="pa-sobre">' + esc(nomeMes) + (linha ? ' · LINHA EDITORIAL' : '') + '</p>' +
+          '<h1><span class="pa-ola">Olá' + (primeiro ? ', ' + esc(primeiro) : '') + '.</span> ' +
+            '<span class="pa-fala">' + esc(fala) + '</span></h1>' +
           '<p class="ph-emp">' + esc(B7.Textos.ler('portal_boas_vindas', { empresa: emp.nome })) + '</p>' +
+          '<div class="pa-heroi-bts">' +
+            (pendentes.length ? '<a class="pa-bt pri" href="' + rota('aprovacoes') + '">' + PA_IC.revisar + 'Revisar agora</a>' : '') +
+            (linha ? '<a class="pa-bt claro" href="' + rota('minha-linha') + '">Ver a linha do mês</a>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="pa-nums">' +
+          numero('Peças no mês', doMes.length) +
+          numero('Já publicadas', doMes.filter(c => c.status_cliente === 'publicado').length) +
+          numero('Próxima gravação', proxima ? B7.UI.dataBR(proxima.data_gravacao).slice(0, 5) : '—') +
         '</div>' +
       '</header>' +
       /* zzz265: pesquisa do mês e recados da B7 entram aqui */
       '<div id="ph-extra"><div id="ph-recados"></div><div id="ph-pesquisa"></div></div>' +
 
-      /* ---- o que depende do cliente vem primeiro ---- */
-      '<section class="ph-secao" id="ph-atencao">' +
-        '<div class="ph-titulo"><h2>' + (soComenta() ? 'Esperando a aprovação da empresa' : 'Precisa da sua atenção') + '</h2>' +
+      '<div class="pa-grade">' +
+        /* ---- o que depende do cliente vem primeiro ---- */
+        '<section class="ph-secao" id="ph-atencao">' +
+          '<div class="ph-titulo"><h2>' + (soComenta() ? 'Esperando a aprovação da empresa' : 'Para aprovar') + '</h2>' +
+            (pendentes.length
+              ? '<span class="ph-conta">' + pendentes.length + '</span>' : '') +
+          '</div>' +
           (pendentes.length
-            ? '<span class="ph-conta">' + pendentes.length + '</span>' : '') +
-        '</div>' +
-        (pendentes.length
-          ? '<div class="ph-lista">' + pendentes.map(cartaoPendente).join('') + '</div>'
-          : '<div class="ph-vazio"><div class="ph-vazio-ic">' + ICONE.aprovacoes + '</div>' +
-            '<b>Tudo certo por aqui.</b>' +
-            '<p>Não há materiais aguardando ' + (soComenta() ? 'aprovação' : 'sua aprovação') + '.</p>' +
-            '</div>') +
-      '</section>' +
+            ? '<div class="ph-lista">' + pendentes.map(cartaoPendente).join('') + '</div>' +
+              (pendentes.length > 1 ? '<p class="pa-deslize">Deslize para a próxima · ' + pendentes.length + ' peças</p>' : '')
+            : '<div class="ph-vazio"><div class="ph-vazio-ic">' + ICONE.aprovacoes + '</div>' +
+              '<b>Tudo certo por aqui.</b>' +
+              '<p>Não há materiais aguardando ' + (soComenta() ? 'aprovação' : 'sua aprovação') + '.</p>' +
+              '</div>') +
+        '</section>' +
+        blocoRecentes(recentes) +
+      '</div>' +
 
       /* ---- resumo da produção, em linguagem de cliente ---- */
       '<section class="ph-secao">' +
@@ -428,9 +463,8 @@ B7.Portal = (function () {
         resumoProducao(producao) +
       '</section>' +
 
-      /* ---- o que mudou, a linha e a semana ---- */
+      /* ---- a linha, a gravação e a semana ---- */
       '<section class="ph-duplo">' +
-        blocoRecentes(recentes) +
         blocoLinha(linha) +
         (proxima ? blocoGravacao(proxima) : '') +
         blocoSemana(semana) +
@@ -483,10 +517,10 @@ B7.Portal = (function () {
 
   function blocoRecentes(lista) {
     if (!lista.length) {
-      return '<div class="ph-bloco vazio"><h3>Aprovado ou alterado recentemente</h3>' +
+      return '<div class="ph-bloco vazio"><h3>Últimas novidades</h3>' +
         '<p>Suas decisões recentes aparecem aqui.</p></div>';
     }
-    return '<div class="ph-bloco largo"><h3>Aprovado ou alterado recentemente</h3>' +
+    return '<div class="ph-bloco largo"><h3>Últimas novidades</h3>' +
       '<div class="ph-recentes">' + lista.map(a =>
         '<a class="ph-rec" href="' + rota('revisar/' + a.id) + '">' +
           '<span class="pt-sit mini ' + esc(a.situacao) + '">' + esc(rotuloSituacao(a.situacao)) + '</span>' +
@@ -612,7 +646,10 @@ B7.Portal = (function () {
 
     painel().innerHTML = '<div class="conteudo entra portal-home">' +
       '<header class="ph-cab"><div><h1>Aprovações</h1>' +
-      '<p class="ph-emp">Materiais que a Branding7 enviou para a ' + esc(emp.nome) + '.</p></div></header>' +
+      /* Espectro (onda 2): o subtítulo diz quanto espera a pessoa */
+      '<p class="ph-emp">' + (conta.pendente ? conta.pendente + (conta.pendente === 1 ? (soComenta() ? ' espera aprovação' : ' espera você') : (soComenta() ? ' esperam aprovação' : ' esperam você')) + ' · '
+        : 'Nada esperando você · ') + 'materiais que a Branding7 enviou para a ' + esc(emp.nome) + '</p></div></header>' +
+      '<div class="ptb ptb-aprov">' +
 
       /* zzz236: sem a classe ap-abas — o CSS das Aprovações internas a esconde no
          celular (lá os números viram abas) e o cliente ficava sem abas */
@@ -625,7 +662,7 @@ B7.Portal = (function () {
       (itens.length
         ? '<div class="ph-lista">' + itens.map(cartaoPendente).join('') + '</div>'
         : '<div class="ph-vazio"><b>Nada por aqui.</b><p>' + esc(vazioTexto) + '</p></div>') +
-    '</div>';
+    '</div></div>';
 
     /* zzz238: a aba vai para o endereço (atualizar a página e voltar mantêm a aba) */
     painel().querySelectorAll('[data-filtro]').forEach(b => b.onclick = () => {
@@ -679,8 +716,8 @@ B7.Portal = (function () {
     if (!linha) {
       return tela('Linha Editorial',
         'O planejamento de conteúdo do mês.',
-        vazio('Nenhum planejamento liberado ainda.',
-              'Assim que a Branding7 publicar a linha editorial do mês, ela aparece aqui.'));
+        '<div class="ptb ptb-linha">' + vazio('Nenhum planejamento liberado ainda.',
+              'Assim que a Branding7 publicar a linha editorial do mês, ela aparece aqui.') + '</div>');
     }
 
     /* zzz238: na ordem das postagens, como um calendário; cada conteúdo traz
@@ -702,28 +739,62 @@ B7.Portal = (function () {
             ? 'A Branding7 enviou este planejamento para sua aprovação. Revisar →'
             : 'Ver a decisão e as observações →') + '</span></a>'
       : '';
-    tela('Linha Editorial', esc(linha.nome || 'Planejamento do mês'),
+    /* Espectro (onda 2): o mês como calendário; cada conteúdo é uma etiqueta
+       na cor do formato, que abre a aprovação quando há uma */
+    const ref = /^(\d{4})-(\d{2})/.exec((doMes.find(c => c.data_postagem) || {}).data_postagem || '');
+    const anoL = Number(linha.ano) || (ref ? +ref[1] : new Date().getFullYear());
+    const mesL = Number(linha.mes) || (ref ? +ref[2] : new Date().getMonth() + 1);
+    const chave = anoL + '-' + String(mesL).padStart(2, '0');
+    const etiqueta = c => {
+      const p = prodDe[c.id] || {};
+      const tag = p.aprovacao_id ? 'a' : 'span';
+      const dica = (c.tipo || 'Conteúdo') + ' · ' + (c.titulo || 'Sem título') +
+        (p.status_cliente ? ' · ' + (statusCli(p.status_cliente) || p.status_cliente) : '') + (c.objetivo ? ' — ' + c.objetivo : '');
+      return '<' + tag + ' class="ptb-cal-et ' + corFormato(c.tipo) + (p.aprovacao_id ? ' abre' : '') + '"' +
+        (p.aprovacao_id ? ' href="' + rota('revisar/' + p.aprovacao_id) + '"' : '') + ' title="' + esc(dica) + '">' +
+        esc(c.titulo || 'Sem título') + '</' + tag + '>';
+    };
+    const noMes = doMes.filter(c => String(c.data_postagem || '').slice(0, 7) === chave);
+    const fora = doMes.filter(c => String(c.data_postagem || '').slice(0, 7) !== chave);
+    const primeiro = new Date(anoL, mesL - 1, 1).getDay(), dias = new Date(anoL, mesL, 0).getDate();
+    const SEM = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    let celulas = SEM.map(s => '<span class="ptb-cal-sem">' + s + '</span>').join('');
+    for (let i = 0; i < primeiro; i++) celulas += '<div class="ptb-cal-dia fora"></div>';
+    for (let d = 1; d <= dias; d++) {
+      const dd = chave + '-' + String(d).padStart(2, '0');
+      const doDia = noMes.filter(c => String(c.data_postagem).slice(0, 10) === dd);
+      celulas += '<div class="ptb-cal-dia' + (doDia.length ? ' tem' : ' vazio') + '"><span class="ptb-cal-n">' + d +
+        '<i>' + SEM[(primeiro + d - 1) % 7] + '</i></span>' + doDia.map(etiqueta).join('') + '</div>';
+    }
+    for (let i = (primeiro + dias) % 7; i && i < 7; i++) celulas += '<div class="ptb-cal-dia fora"></div>';
+    const formatos = [...new Set(doMes.map(c => c.tipo || 'Conteúdo'))];
+    const aprovadaEm = ap && ap.situacao === 'aprovado' && ap.decidido_em ? ' · aprovada em ' + esc(B7.UI.dataBR(ap.decidido_em)) : '';
+
+    tela(nomePeriodo(chave),
+      esc(linha.nome || 'Planejamento do mês') + ' · ' + doMes.length + (doMes.length === 1 ? ' conteúdo' : ' conteúdos') + aprovadaEm,
+      '<div class="ptb ptb-linha">' +
       faixaAp +
       (linha.objetivo
         ? '<div class="pt-destaque"><small>OBJETIVO DO MÊS</small><p>' +
           esc(linha.objetivo) + '</p></div>' : '') +
 
       (doMes.length
-        ? '<div class="pt-grade">' + doMes.map(c => {
-            const p = prodDe[c.id] || {};
-            const tag = p.aprovacao_id ? 'a' : 'article';
-            return '<' + tag + ' class="pt-item' + (p.aprovacao_id ? ' abre' : '') + '"' +
-                (p.aprovacao_id ? ' href="' + rota('revisar/' + p.aprovacao_id) + '"' : '') + '>' +
-              '<span class="pt-formato">' + esc(c.tipo || 'Conteúdo') + '</span>' +
-              '<h4>' + esc(c.titulo || 'Sem título') + '</h4>' +
-              (c.data_postagem
-                ? '<span class="pt-data">' + esc(B7.UI.dataBR(c.data_postagem)) + '</span>' : '') +
-              (c.objetivo ? '<p>' + esc(c.objetivo) + '</p>' : '') +
-              (p.status_cliente ? '<span class="pt-sit mini ' + esc(p.status_cliente) + '">' + esc(statusCli(p.status_cliente) || p.status_cliente) + '</span>' : '') +
-            '</' + tag + '>';
-          }).join('') + '</div>'
+        ? '<div class="ptb-cal-topo"><div class="ptb-legenda">' + formatos.map(t =>
+            '<span><i class="' + corFormato(t) + '"></i>' + esc(t) + '</span>').join('') + '</div></div>' +
+          '<div class="ptb-cal">' + celulas + '</div>' +
+          (fora.length
+            ? '<div class="ptb-cal-fora"><small>' + (fora.some(c => c.data_postagem) ? 'FORA DESTE MÊS OU SEM DATA' : 'SEM DATA DEFINIDA') + '</small><div>' +
+              fora.map(c => etiqueta(c).replace('</', (c.data_postagem ? ' · ' + esc(B7.UI.dataBR(c.data_postagem)) : '') + '</')).join('') + '</div></div>'
+            : '')
         : vazio('O planejamento ainda não tem conteúdos liberados.',
-                'A equipe libera cada peça conforme fica pronta.')));
+                'A equipe libera cada peça conforme fica pronta.')) +
+      '</div>');
+  }
+  /* cor da etiqueta pelo formato do conteúdo (Card, Carrossel, Reel, Story…) */
+  function corFormato(t) {
+    const s = String(t || '').toLowerCase();
+    return /reel/.test(s) ? 'f-reel' : /stor/.test(s) ? 'f-story' : /carross/.test(s) ? 'f-carrossel'
+      : /card|feed|post/.test(s) ? 'f-card' : 'f-outro';
   }
 
   /* =================================================================
@@ -755,9 +826,9 @@ B7.Portal = (function () {
     if (!vale()) return;
 
     if (!lista.length) {
-      return tela('Produção', 'O andamento dos materiais da ' + esc(emp.nome) + '.',
-        vazio('Nada liberado para acompanhamento ainda.',
-              'A Branding7 libera os materiais conforme avança a produção.'));
+      return tela('Minha produção', 'O que a Branding7 está fazendo para a ' + esc(emp.nome) + ' agora',
+        '<div class="ptb ptb-prod">' + vazio('Nada liberado para acompanhamento ainda.',
+              'A Branding7 libera os materiais conforme avança a produção.') + '</div>');
     }
 
     const q = new URLSearchParams((location.hash.split('?')[1]) || '');
@@ -773,7 +844,31 @@ B7.Portal = (function () {
     const chip = (grupo, valor, texto, ativo) =>
       '<button class="pt-chip' + (ativo ? ' on' : '') + '" data-' + grupo + '="' + esc(valor) + '">' + esc(texto) + '</button>';
 
-    tela('Produção', 'O andamento dos materiais da ' + esc(emp.nome) + '.',
+    /* Espectro (onda 2): quatro números do mês no alto, tirados da mesma lista */
+    const hojeISO = (d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'))(new Date());
+    const mesAtual = hojeISO.slice(0, 7);
+    const periodoKpi = lista.some(c => c.periodo === mesAtual) ? mesAtual
+      : (lista.map(c => c.periodo).filter(Boolean).sort().reverse()[0] || mesAtual);
+    const doPeriodo = lista.filter(c => c.periodo === periodoKpi);
+    const pronto = c => ['aprovado', 'programado', 'publicado'].includes(c.status_cliente);
+    const andando = c => ['em_producao', 'em_revisao'].includes(c.status_cliente);
+    const videos = doPeriodo.filter(c => /reel|v[ií]deo/i.test(c.tipo || ''));
+    const proxima = lista.filter(c => c.data_postagem && c.data_postagem.slice(0, 10) >= hojeISO && c.status_cliente !== 'publicado')
+      .sort((a, b) => a.data_postagem.localeCompare(b.data_postagem))[0];
+    const nomeMes = (MESES[parseInt(periodoKpi.slice(5, 7), 10) - 1] || '');
+    const kpi = (cor, rot, valor, sub) => '<div class="ptb-kpi ' + cor + '"><small>' + rot + '</small><b>' + valor + '</b><span>' + sub + '</span></div>';
+
+    tela('Minha produção', 'O que a Branding7 está fazendo para a ' + esc(emp.nome) + ' agora',
+      '<div class="ptb ptb-prod">' +
+      '<div class="ptb-kpis">' +
+        kpi('roxo', 'Peças no mês', doPeriodo.filter(pronto).length + '/' + doPeriodo.length,
+          doPeriodo.filter(andando).length + ' em produção') +
+        kpi('azul', 'Vídeos', videos.filter(pronto).length + '/' + videos.length,
+          videos.filter(andando).length + ' em produção') +
+        kpi('azul', 'Publicadas', doPeriodo.filter(c => c.status_cliente === 'publicado').length, 'em ' + esc(nomeMes)) +
+        kpi('magenta', 'Próxima entrega', proxima ? esc(prazoCurto(proxima.data_postagem)) : '—',
+          proxima ? esc(proxima.titulo || 'Sem título') : 'nada agendado') +
+      '</div>' +
       '<div class="pt-filtros">' +
         '<div class="pt-chips" role="group" aria-label="Tipo">' +
           chip('tipo', '', 'Todos os tipos', !f.tipo) + tipos.map(t => chip('tipo', t, t, f.tipo === t)).join('') +
@@ -786,8 +881,10 @@ B7.Portal = (function () {
       (filtrada.length
         ? periodos.map(p =>
             '<section class="pt-periodo"><h3>' + esc(nomePeriodo(p)) + '</h3>' +
-            '<div class="pt-lista">' + porPeriodo[p].map(itemProducao).join('') + '</div></section>').join('')
-        : vazio('Nenhum material com esse filtro.', 'Experimente outra combinação de tipo e situação.')));
+            '<div class="pt-lista"><div class="ptb-tab-cab" aria-hidden="true"><span>Peça</span><span>Etapa</span><span>Formato</span><span>Previsão</span><span></span></div>' +
+            porPeriodo[p].map(itemProducao).join('') + '</div></section>').join('')
+        : vazio('Nenhum material com esse filtro.', 'Experimente outra combinação de tipo e situação.')) +
+      '</div>');
 
     const c = conteudo();
     const filtrar = novo => {
@@ -805,15 +902,27 @@ B7.Portal = (function () {
   function itemProducao(c) {
     const abre = c.aprovacao_id ? ' data-aprovacao="' + esc(c.aprovacao_id) + '"' : '';
     const tag = c.aprovacao_id ? 'button' : 'div';
+    /* Espectro (onda 2): linha da tabela — Peça · Etapa · Formato · Previsão · ação */
     return '<' + tag + ' class="pt-linha-item' + (c.aprovacao_id ? ' abre' : '') + '"' + abre + '>' +
       '<div><b>' + esc(c.titulo || 'Sem título') + '</b>' +
-      '<span>' + esc(c.tipo || 'Conteúdo') +
-      (c.data_postagem ? ' · ' + esc(B7.UI.dataBR(c.data_postagem)) : '') +
-      (c.aprovacao_versao ? ' · versão ' + c.aprovacao_versao : '') + '</span></div>' +
-      '<span class="pt-sit ' + esc(c.status_cliente) + '">' + esc(statusCli(c.status_cliente) || c.status_cliente) + '</span>' +
+      (c.aprovacao_versao ? '<span>Versão ' + c.aprovacao_versao + '</span>' : '') + '</div>' +
+      '<span class="ptb-etapa"><span class="pt-sit ' + esc(c.status_cliente) + '">' + esc(statusCli(c.status_cliente) || c.status_cliente) + '</span></span>' +
+      '<span class="ptb-formato"><i class="' + corFormato(c.tipo) + '"></i>' + esc(c.tipo || 'Conteúdo') + '</span>' +
+      '<span class="ptb-prev" title="' + esc(c.data_postagem ? B7.UI.dataBR(c.data_postagem) : '') + '">' +
+        (c.data_postagem ? esc(prazoCurto(c.data_postagem)) : 'sem data') + '</span>' +
       (c.aprovacao_id ? '<span class="ph-item-ir">' +
-        (c.status_cliente === 'aguardando_voce' && !soComenta() ? 'Revisar →' : 'Abrir →') + '</span>' : '') +
+        (c.status_cliente === 'aguardando_voce' && !soComenta() ? 'Revisar →' : 'Abrir →') + '</span>' : '<span></span>') +
     '</' + tag + '>';
+  }
+  /* "hoje", "amanhã", "ontem" ou dd/mm */
+  function prazoCurto(data) {
+    const d = String(data || '').slice(0, 10), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+    if (!m) return '';
+    const dia = n => { const x = new Date(); x.setDate(x.getDate() + n); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+    if (d === dia(0)) return 'hoje';
+    if (d === dia(1)) return 'amanhã';
+    if (d === dia(-1)) return 'ontem';
+    return m[3] + '/' + m[2] + (+m[1] !== new Date().getFullYear() ? '/' + m[1] : '');
   }
 
   /* =================================================================
@@ -836,24 +945,53 @@ B7.Portal = (function () {
     if (!vale()) return;
 
     if (!lista.length) {
-      return tela('Gravações', 'As gravações da ' + esc(emp.nome) + ' que a Branding7 liberou para acompanhamento.',
-        vazio('Nenhuma gravação liberada ainda.',
-              'Quando a Branding7 liberar uma gravação para acompanhamento, ela aparece aqui com os roteiros relacionados.'));
+      return tela('Minhas gravações', 'As gravações da ' + esc(emp.nome) + ' que a Branding7 liberou para acompanhamento.',
+        '<div class="ptb ptb-grav">' + vazio('Nenhuma gravação liberada ainda.',
+              'Quando a Branding7 liberar uma gravação para acompanhamento, ela aparece aqui com os roteiros relacionados.') + '</div>');
     }
 
     const ordem = { programada: 0, em_preparacao: 1, gravada: 2, cancelada: 3 };
     lista.sort((a, b) => (ordem[a.status_cliente] - ordem[b.status_cliente]) ||
       String(b.data_gravacao || '').localeCompare(String(a.data_gravacao || '')));
 
-    tela('Gravações', 'As gravações da ' + esc(emp.nome) + ' que a Branding7 liberou para acompanhamento.',
+    /* Espectro (onda 2): à esquerda a próxima gravação (faixa no degradê) e a lista
+       de todas; à direita, um cartão de roteiros por gravação */
+    const hojeG = (d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'))(new Date());
+    const proxima = lista.filter(g => g.status_cliente === 'programada' && String(g.data_gravacao || '') >= hojeG)
+      .sort((a, b) => String(a.data_gravacao).localeCompare(String(b.data_gravacao)))[0] || null;
+    const destaque = proxima || lista[0];
+    const diaSemana = d => { const x = new Date(String(d).slice(0, 10) + 'T12:00:00'); return isNaN(x) ? '' : x.toLocaleDateString('pt-BR', { weekday: 'long' }).replace(/-feira$/, ''); };
+    const dataCurta = d => esc(B7.UI.dataBR(d)).slice(0, 5);
+    const nRot = g => (Array.isArray(g.roteiros) ? g.roteiros.length : 0);
+
+    tela('Minhas gravações', proxima
+        ? 'Próxima: ' + esc(diaSemana(proxima.data_gravacao)) + ', ' + dataCurta(proxima.data_gravacao) + ' · ' + esc(proxima.nome || 'Gravação')
+        : 'As gravações da ' + esc(emp.nome) + ' que a Branding7 liberou para acompanhamento.',
+      '<div class="ptb ptb-grav"><div class="ptb-grav-esq">' +
+        '<div class="ptb-grav-capa ' + esc(destaque.status_cliente) + '">' +
+          '<span class="ptb-grav-quando">' + (destaque.data_gravacao
+            ? esc((diaSemana(destaque.data_gravacao) + ' · ' + dataCurta(destaque.data_gravacao)).toUpperCase())
+            : 'SEM DATA DEFINIDA') + '</span>' +
+          '<p>' + (destaque === proxima ? 'Próxima gravação' : esc(STATUS_GRAVACAO[destaque.status_cliente] || 'Gravação')) +
+            '<small>' + esc(destaque.nome || 'Gravação') + '</small></p>' +
+        '</div>' +
+        '<section class="ptb-cartao"><h3>Todas as gravações</h3><p class="ptb-sub">' + lista.length +
+          (lista.length === 1 ? ' gravação liberada' : ' gravações liberadas') + '</p>' +
+          '<div class="ptb-linhas">' + lista.map(g =>
+            '<div class="ptb-lin"><div><b>' + esc(g.nome || 'Gravação') + '</b><small>' +
+              (g.data_gravacao ? esc(B7.UI.dataBR(g.data_gravacao)) : 'Sem data definida') + ' · ' +
+              nRot(g) + (nRot(g) === 1 ? ' roteiro' : ' roteiros') + '</small></div>' +
+            '<span class="pt-sit ' + esc(g.status_cliente) + '">' + esc(STATUS_GRAVACAO[g.status_cliente] || g.status_cliente) + '</span></div>'
+          ).join('') + '</div></section>' +
+      '</div>' +
       '<div class="pt-gravacoes">' + lista.map(g => {
         const roteiros = Array.isArray(g.roteiros) ? g.roteiros : [];
         return '<article class="pt-grav ' + esc(g.status_cliente) + '">' +
           '<div class="pt-grav-cab">' +
-            '<div><h4>' + esc(g.nome || 'Gravação') + '</h4>' +
-              '<span class="pt-grav-data">' + (g.data_gravacao
-                ? esc(B7.UI.dataBR(g.data_gravacao))
-                : 'Sem data definida') + '</span></div>' +
+            '<div><h4>' + (g === proxima ? 'Roteiros que vamos gravar' : esc(g.nome || 'Gravação')) + '</h4>' +
+              '<span class="pt-grav-data">' + (g === proxima ? esc(g.nome || 'Gravação') + ' · ' : '') +
+                (g.data_gravacao ? esc(B7.UI.dataBR(g.data_gravacao)) : 'Sem data definida') +
+                ' · ' + roteiros.length + (roteiros.length === 1 ? ' roteiro' : ' roteiros') + '</span></div>' +
             '<span class="pt-sit ' + esc(g.status_cliente) + '">' + esc(STATUS_GRAVACAO[g.status_cliente] || g.status_cliente) + '</span>' +
           '</div>' +
           (roteiros.length
@@ -866,7 +1004,7 @@ B7.Portal = (function () {
               ).join('') + '</div>'
             : '<p class="pt-nada">Os roteiros desta gravação ainda não foram enviados para você.</p>') +
         '</article>';
-      }).join('') + '</div>');
+      }).join('') + '</div></div>');
   }
 
   /* =================================================================
@@ -886,9 +1024,11 @@ B7.Portal = (function () {
     if (!vale()) return;
 
     if (!lista.length) {
-      return tela('Status Semanal', 'O acompanhamento de sete dias.',
+      tela('Meus status', 'Relatórios semanais da Branding7.',
         vazio('Nenhum relatório publicado ainda.',
               'A Branding7 publica aqui o resumo de cada semana.'));
+      conteudo().classList.add('pa-tela');
+      return;
     }
 
     const atual = lista.find(s => s.id === id) || lista[0];
@@ -896,38 +1036,49 @@ B7.Portal = (function () {
     const periodo = s => B7.DocSemana ? B7.DocSemana.periodoTexto(s.semana_inicio, s.semana_fim)
       : B7.UI.dataBR(s.semana_inicio) + ' a ' + B7.UI.dataBR(s.semana_fim);
 
-    tela('Status Semanal', 'O acompanhamento de sete dias.',
-      '<div class="pt-destaque pt-status-cab">' +
-        '<div><small>' + esc(periodo(atual)).toUpperCase() + '</small>' +
-        '<p>' + (atual.titulo ? esc(atual.titulo) + ' · ' : '') + 'Publicado ' + esc(B7.UI.quando(atual.publicado_em)) + '.</p></div>' +
-        '<div class="pt-status-bts">' +
-          '<button class="b contorno fina" data-baixar="pdf">Baixar PDF</button>' +
-          '<button class="b contorno fina" data-baixar="png">Baixar PNG</button>' +
-        '</div>' +
-      '</div>' +
-      '<div class="pt-lista" id="pt-semana-itens" data-id="' + esc(atual.id) + '">' + B7.UI.skeleton('lista', { n: 3 }) + '</div>' +
-      (anteriores.length
-        ? '<section class="pt-bloco"><h3>Relatórios anteriores</h3><div class="pt-lista">' +
-          anteriores.map(s => '<button class="pt-linha-item abre" data-status="' + esc(s.id) + '">' +
-            '<div><b>' + esc(periodo(s)) + '</b><span>' + (s.total_itens || 0) +
-            (s.total_itens === 1 ? ' demanda' : ' demandas') + ' · publicado ' + esc(B7.UI.quando(s.publicado_em)) + '</span></div>' +
-            '<span class="ph-item-ir">Abrir →</span></button>').join('') + '</div></section>'
-        : ''));
+    /* Espectro: um cartão por semana (Ler · PDF); a semana aberta mostra as demandas abaixo */
+    const curto = s => {
+      const i = String(s.semana_inicio || ''), f = String(s.semana_fim || '');
+      if (!/^\d{4}-\d{2}-\d{2}/.test(i) || !/^\d{4}-\d{2}-\d{2}/.test(f)) return periodo(s);
+      return (i.slice(5, 7) === f.slice(5, 7) ? i.slice(8, 10) : i.slice(8, 10) + '/' + i.slice(5, 7)) +
+        ' a ' + f.slice(8, 10) + '/' + f.slice(5, 7);
+    };
+    tela('Meus status', 'Relatórios semanais da Branding7.',
+      '<div class="pa-semanas">' + lista.map(s =>
+        '<div class="pa-semana' + (s.id === atual.id ? ' on' : '') + '">' +
+          '<i class="pa-faixa" aria-hidden="true"></i>' +
+          '<small>SEMANA</small>' +
+          '<b title="' + esc(periodo(s)) + '">' + esc(curto(s)) + '</b>' +
+          '<p>' + (s.titulo ? esc(s.titulo) + ' · ' : '') + (s.total_itens || 0) +
+            (s.total_itens === 1 ? ' demanda' : ' demandas') + ' · publicado ' + esc(B7.UI.quando(s.publicado_em)) + '</p>' +
+          '<div class="pa-semana-bts">' +
+            (s.id === atual.id
+              ? '<span class="pa-bt pri fina on">Aberto</span>'
+              : '<button type="button" class="pa-bt pri fina" data-status="' + esc(s.id) + '">Ler</button>') +
+            '<button type="button" class="pa-bt contorno fina" data-baixar="pdf" data-sid="' + esc(s.id) + '">' + PA_IC.baixar + 'PDF</button>' +
+          '</div>' +
+        '</div>').join('') + '</div>' +
+      '<section class="pt-bloco pa-semana-itens">' +
+        '<div class="pa-semana-cab"><h3>' + esc(periodo(atual)) + (atual.titulo ? ' · ' + esc(atual.titulo) : '') + '</h3>' +
+          '<button type="button" class="pa-bt contorno fina" data-baixar="png" data-sid="' + esc(atual.id) + '">' + PA_IC.baixar + 'PNG</button></div>' +
+        '<div class="pt-lista" id="pt-semana-itens" data-id="' + esc(atual.id) + '">' + B7.UI.skeleton('lista', { n: 3 }) + '</div>' +
+      '</section>');
+    conteudo().classList.add('pa-tela');
 
     const c = conteudo();
     c.querySelectorAll('[data-status]').forEach(b => b.onclick = () => abrirStatus(b.dataset.status));
     c.querySelectorAll('[data-baixar]').forEach(b => b.onclick = async () => {
       if (!B7.BaixarSemana) return B7.UI.toast('Exportação indisponível nesta tela', { tipo: 'erro' });
-      const formato = b.dataset.baixar;
+      const formato = b.dataset.baixar, rotulo = b.innerHTML;
       b.disabled = true; b.textContent = 'Gerando…';
       try {
-        const ctx = await B7.BaixarSemana.reunir(atual.id);
+        const ctx = await B7.BaixarSemana.reunir(b.dataset.sid || atual.id);
         if (formato === 'png') await B7.BaixarSemana.gerarPNG(ctx, {});
         else await B7.BaixarSemana.gerarPDF(ctx, {});
         B7.UI.toast(formato.toUpperCase() + ' gerado');
       } catch (e) {
         B7.UI.toast('Não foi possível gerar o ' + formato.toUpperCase(), { tipo: 'erro' });
-      } finally { b.disabled = false; b.textContent = 'Baixar ' + formato.toUpperCase(); }
+      } finally { b.disabled = false; b.innerHTML = rotulo; }
     });
 
     try {
@@ -963,14 +1114,19 @@ B7.Portal = (function () {
     const decididos = itens.filter(a => a.situacao !== 'pendente' && a.situacao !== 'parcial');
 
     if (!decididos.length) {
-      return tela('Histórico', 'Tudo que você já revisou.',
+      tela('Histórico', 'Tudo que você já revisou.',
         vazio('Nada decidido ainda.',
               'Quando você aprovar ou pedir ajustes em um material, ele aparece aqui.'));
+      conteudo().classList.add('pa-tela');
+      return;
     }
 
+    /* Espectro: linha do tempo — o ícone diz a decisão */
+    const icHist = s => s === 'aprovado' ? PA_IC.ok : s === 'ajustes' ? PA_IC.ajuste : s === 'recusado' ? PA_IC.recusa : PA_IC.doc;
     tela('Histórico', 'Tudo que você já revisou.',
-      '<div class="pt-lista">' + decididos.map(a =>
+      '<div class="pt-lista pa-tempo">' + decididos.map(a =>
         '<button class="pt-linha-item abre" data-aprovacao="' + esc(a.id) + '">' +
+          '<span class="pa-marco ' + esc(a.situacao) + '" aria-hidden="true">' + icHist(a.situacao) + '</span>' +
           '<div><b>' + esc(a.titulo || 'Material') + '</b>' +
           '<span>' + esc(rotuloTipo(a.tipo)) + ' · versão ' + (a.versao || 1) +
           (a.decidido_em ? ' · decidido ' + esc(B7.UI.quando(a.decidido_em))
@@ -978,6 +1134,7 @@ B7.Portal = (function () {
           '<span class="pt-sit ' + esc(a.situacao) + '">' +
           esc(rotuloSituacao(a.situacao)) + '</span>' +
         '</button>').join('') + '</div>');
+    conteudo().classList.add('pa-tela');
     ligar();
   }
 
@@ -997,19 +1154,20 @@ B7.Portal = (function () {
       : '<span>' + esc(B7.UI.iniciais(u.nome || u.username || '')) + '</span>';
     const tom = u.avatar_url ? ' com-foto' : ' tom-' + B7.UI.tomDoNome(u.nome || u.username || '');
 
-    tela('Meu perfil', 'Seus dados de acesso ao portal.',
+    tela('Seu perfil', 'Seus dados de acesso ao portal.',
       '<div class="pt-perfil">' +
+        '<section class="pa-cartao pa-voce"><h3>Você</h3>' +
         '<div class="pt-perfil-cab">' +
           '<div class="pt-perfil-av av-pessoa' + tom + '">' + foto + '</div>' +
-          '<div class="pt-perfil-id"><b>' + esc(u.nome || '') + '</b>' +
-            '<span>@' + esc(u.username || '') + '</span>' +
+          '<div class="pt-perfil-id"><em class="pa-rot">Nome</em><b>' + esc(u.nome || '') + '</b>' +
+            '<em class="pa-rot">Usuário</em><span>@' + esc(u.username || '') + '</span>' +
             (u.papel === 'cliente' && emp && B7.PortalEquipe
               ? '<small>' + esc(B7.PortalEquipe.nomePapel(B7.PortalEquipe.papelEm(emp.id))) + ' na ' + esc(emp.nome) + ': ' +
                   esc(((B7.PortalEquipe.PAPEIS[B7.PortalEquipe.papelEm(emp.id)] || {}).txt || '').replace(/^./, c => c.toLowerCase())) + '</small>'
               : '') +
           '</div>' +
-          '<button class="b pri" id="pt-editar-perfil"' + (previa ? ' disabled title="Na prévia, o perfil é o do administrador"' : '') +
-            '>Editar perfil e foto</button>' +
+          '<button class="b contorno" id="pt-editar-perfil"' + (previa ? ' disabled title="Na prévia, o perfil é o do administrador"' : '') +
+            '>' + PA_IC.subir + 'Editar perfil e foto</button>' +
         '</div>' +
         (previa
           ? '<p class="pt-nada">Na prévia, este é o perfil do administrador. O cliente vê aqui o próprio nome, ' +
@@ -1025,10 +1183,15 @@ B7.Portal = (function () {
               (e.servico && e.servico !== 'ativo' ? '<span class="pt-sit mini">' + (e.servico === 'pausado' ? 'Pausado' : 'Encerrado') + '</span>' : '') +
             '</div>').join('') || '<p class="pt-nada">Nenhuma empresa vinculada.</p>') +
         '</div>' +
+        '</section>' +
+        '<section class="pa-cartao pa-avisos"><h3>Avisos</h3><p class="pa-sub">Como a Branding7 fala com você</p>' +
         '<div id="pt-resumo-email"></div>' +
+        (previa ? '<p class="pt-nada">Na prévia, o resumo semanal por e-mail não aparece: o cliente o ativa aqui.</p>' : '') +
         '<p class="pt-nada">Tema e aparência ficam no botão do topo.' +
           (lista.length > 1 ? ' Para mudar de empresa, use o seletor na barra lateral.' : '') + '</p>' +
+        '</section>' +
       '</div>');
+    conteudo().classList.add('pa-tela');
 
     if (B7.PortalComunicacao && !previa) B7.PortalComunicacao.blocoEmail(document.getElementById('pt-resumo-email'));
     const bt = document.getElementById('pt-editar-perfil');
@@ -1160,14 +1323,23 @@ B7.Portal = (function () {
             ? '<a href="' + rota('revisar/' + atual.id) + '">Abrir a versão atual (v' + atual.versao + ') →</a>' : '') +
           '</div>' : '') +
 
+      /* Espectro (onda 2, quadro "Portal — revisar peça"): a peça à esquerda; à direita
+         o cartão com situação, título, decisão, e o cartão de comentários */
+      '<div class="ptb-rev"><div class="ptb-rev-peca">' +
+      (cenas.length
+        ? '<div class="pt-cenas">' + cenas.map((c, i) => cartaoCena(c, i, decisaoDe, mostraDecisao, desab)).join('') + '</div>'
+        : '<div class="pt-corpo-simples">' + corpoSimples(snap, ap.tipo) + '</div>') +
+      '</div><aside class="ptb-rev-lado"><section class="ptb-rev-card">' +
+
       '<header class="pt-rev-cab">' +
-        '<div>' +
-          '<span class="pt-tipo">' + esc(rotuloTipo(ap.tipo)) + ' · versão ' + (ap.versao || 1) + '</span>' +
-          '<h1>' + esc(ap.titulo || snap.titulo || 'Material') + '</h1>' +
-          '<p>Enviado ' + esc(B7.UI.quando(ap.enviado_em)) +
-            (ap.observacao_envio ? ' · ' + esc(ap.observacao_envio) : '') + '</p>' +
+        '<div class="ptb-rev-topo">' +
+          '<span class="pt-sit ' + esc(ap.situacao) + '">' + esc(rotuloSituacao(ap.situacao)) + '</span>' +
+          '<span class="pt-tipo">Versão ' + (ap.versao || 1) + ' de ' +
+            Math.max(ap.versao || 1, ...versoes.map(v => v.versao || 1)) + '</span>' +
         '</div>' +
-        '<span class="pt-sit ' + esc(ap.situacao) + '">' + esc(rotuloSituacao(ap.situacao)) + '</span>' +
+        '<h1>' + esc(ap.titulo || snap.titulo || 'Material') + '</h1>' +
+        '<p>' + esc(rotuloTipo(ap.tipo)) + ' · enviado ' + esc(B7.UI.quando(ap.enviado_em)) +
+          (ap.observacao_envio ? ' · ' + esc(ap.observacao_envio) : '') + '</p>' +
       '</header>' +
 
       /* anulação (v3): texto neutro; o motivo só aparece se o Admin marcou */
@@ -1177,27 +1349,6 @@ B7.Portal = (function () {
           (aberta ? 'Este material voltou para a sua revisão: você pode decidir de novo.' : '') + '</span></div>' : '') +
 
       faixaDecisao(ap, cenas.length, cenasAprovadas, cenasAjustes, cenasPendentes) +
-
-      (cenas.length
-        ? '<div class="pt-cenas">' + cenas.map((c, i) => cartaoCena(c, i, decisaoDe, mostraDecisao, desab)).join('') + '</div>'
-        : '<div class="pt-corpo-simples">' + corpoSimples(snap, ap.tipo) + '</div>') +
-
-      '<section class="pt-bloco">' +
-        '<h3>Observações</h3>' +
-        '<div class="pt-coments" id="pt-coments">' +
-          (comentarios.length ? comentarios.map(comentario).join('')
-            : '<p class="pt-nada">Nenhuma observação ainda.</p>') +
-        '</div>' +
-        /* zzz238: dá para perguntar também depois de decidido (só versão
-           substituída ou cancelada não recebe mais); Ctrl/⌘+Enter envia */
-        (B7.Portal.somenteLeitura || ap.situacao === 'substituido' || ap.situacao === 'cancelado' ? '' :
-          '<div class="pt-novo-com">' +
-            '<textarea class="campo" id="pt-com" rows="2" placeholder="' +
-              (aberta ? 'Escrever uma observação geral…' : 'Tem alguma dúvida sobre este material? Escreva para a equipe…') + '"></textarea>' +
-            '<button class="b pri" id="pt-com-add">Enviar</button>' +
-          '</div>') +
-      '</section>' +
-
       (mostraDecisao
         ? '<div class="pt-decisao' + (previaAtiva ? ' previa' : '') + '">' +
             '<div class="pt-decisao-tx"><b>Sua decisão sobre a versão ' + (ap.versao || 1) +
@@ -1212,11 +1363,11 @@ B7.Portal = (function () {
               (cenas.length && cenasPendentes && !previaAtiva ? '<button type="button" class="pt-prox-cena" id="pt-prox-cena">Ir para a próxima cena sem decisão ↓</button>' : '') +
             '</div>' +
             '<div class="pt-decisao-bts">' +
-              '<button class="b perigo contorno" id="pt-recusar"' + desab + '>Recusar</button>' +
-              '<button class="b contorno" id="pt-ajustes"' + desab + '>Solicitar ajustes</button>' +
               '<button class="b pri grande" id="pt-aprovar"' + (cenasAjustes || previaAtiva ? ' disabled' : '') +
                 (previaAtiva ? ' title="Prévia do cliente: somente leitura"' : '') + '>' +
                 (ap.tipo === 'roteiro' ? 'Aprovar roteiro completo' : 'Aprovar ' + rotuloTipo(ap.tipo).toLowerCase()) + '</button>' +
+              '<button class="b contorno" id="pt-ajustes"' + desab + '>Pedir ajuste</button>' +
+              '<button class="b perigo contorno" id="pt-recusar"' + desab + '>Recusar</button>' +
             '</div>' +
           '</div>'
         : '<div class="pt-decidido">' +
@@ -1225,6 +1376,26 @@ B7.Portal = (function () {
               : (aprovador ? 'Modo de visualização: nenhuma decisão é registrada.'
                            : 'Você está na equipe da empresa: pode ler e comentar. Quem aprova é o dono ou o gestor.')) +
           '</div>') +
+      (ap.tipo === 'roteiro'
+        ? '<div class="pt-baixar"><button class="b contorno" id="pt-pdf">Baixar PDF</button></div>'
+        : '') +
+      '</section>' +
+
+      '<section class="pt-bloco">' +
+        '<h3>Comentários</h3>' +
+        '<div class="pt-coments" id="pt-coments">' +
+          (comentarios.length ? comentarios.map(comentario).join('')
+            : '<p class="pt-nada">Nenhum comentário ainda.</p>') +
+        '</div>' +
+        /* zzz238: dá para perguntar também depois de decidido (só versão
+           substituída ou cancelada não recebe mais); Ctrl/⌘+Enter envia */
+        (B7.Portal.somenteLeitura || ap.situacao === 'substituido' || ap.situacao === 'cancelado' ? '' :
+          '<div class="pt-novo-com">' +
+            '<textarea class="campo" id="pt-com" rows="2" placeholder="' +
+              (aberta ? 'Escrever uma observação geral…' : 'Tem alguma dúvida sobre este material? Escreva para a equipe…') + '"></textarea>' +
+            '<button class="b pri" id="pt-com-add">Enviar</button>' +
+          '</div>') +
+      '</section>' +
 
       (versoes.length > 1
         ? '<section class="pt-bloco"><h3>Versões deste material</h3><div class="pt-versoes">' +
@@ -1233,10 +1404,7 @@ B7.Portal = (function () {
               '<b>v' + v.versao + '</b><span class="pt-sit mini ' + esc(v.situacao) + '">' + esc(rotuloSituacao(v.situacao)) + '</span>' +
               '<small>' + esc(B7.UI.quando(v.enviado_em)) + '</small></a>').join('') +
           '</div></section>' : '') +
-
-      (ap.tipo === 'roteiro'
-        ? '<div class="pt-baixar"><button class="b contorno" id="pt-pdf">Baixar PDF</button></div>'
-        : '');
+      '</aside></div>';
 
     ligarRevisao(ap, cenas, partes, comentarios);
     if (ap.tipo === 'design_versao') carregarArte();
@@ -1471,7 +1639,10 @@ B7.Portal = (function () {
   }
 
   function comentario(c) {
+    /* Espectro (onda 2): as iniciais de quem escreveu, num quadrado arredondado */
+    const ini = String(c.autor_nome || 'Equipe').replace(/\(.*?\)/g, ' ').trim().split(/\s+/).slice(0, 2).map(p => p.charAt(0)).join('').toUpperCase();
     return '<div class="pt-com' + (c.resolvido ? ' resolvido' : '') + (c.autor_papel === 'cliente' ? ' cliente' : ' equipe') + '">' +
+      '<span class="ptb-com-av" aria-hidden="true">' + esc(ini || 'B7') + '</span>' +
       '<div class="pt-com-cab"><b>' + esc(c.autor_nome || 'Equipe') + '</b>' +
       (c.parte_rotulo ? '<i>' + esc(c.parte_rotulo) + '</i>' : '') +
       '<span>' + esc(B7.UI.quando(c.created_at)) + '</span></div>' +

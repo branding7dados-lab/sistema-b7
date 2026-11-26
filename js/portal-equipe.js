@@ -137,31 +137,33 @@ B7.PortalEquipe = (function () {
     const cartao = p => {
       const sozinhoDono = p.papel === 'dono' && donos < 2;
       return '<div class="pq-pessoa" data-id="' + esc(p.id) + '">' +
-        B7.UI.avatarPessoa(p, 'pq-av') +
+        '<div class="pq-quem">' + B7.UI.avatarPessoa(p, 'pq-av') +
         '<div class="pq-id"><b>' + esc(p.nome || p.username) + (p.sou_eu ? ' <small class="pq-voce">você</small>' : '') + '</b>' +
           '<span>@' + esc(p.username) + ' · ' + esc(quando(p.ultimo_acesso)) +
             (p.senha_provisoria && !p.sou_eu ? ' · <em>senha provisória</em>' : '') +
-            (p.estado !== 'ativa' ? ' · <em>desativada</em>' : '') + '</span></div>' +
-        (acoes && !p.sou_eu
+            (p.estado !== 'ativa' ? ' · <em>desativada</em>' : '') + '</span></div></div>' +
+        '<div class="pq-col-papel">' + (acoes && !p.sou_eu
           ? '<select class="campo fina pq-papel" aria-label="Papel de ' + esc(p.nome) + '"' + (sozinhoDono ? ' disabled title="A empresa precisa de pelo menos um dono"' : '') + '>' +
               Object.keys(PAPEIS).map(k => '<option value="' + k + '"' + (k === p.papel ? ' selected' : '') + '>' + PAPEIS[k].nome + '</option>').join('') +
-            '</select>' +
-            '<div class="pq-bts"><button type="button" class="b fina contorno" data-senha>Senha nova</button>' +
-            '<button type="button" class="b fina contorno perigo" data-tirar' + (sozinhoDono ? ' disabled' : '') + '>Tirar</button></div>'
-          : '<span class="pq-tag pq-' + esc(p.papel) + '">' + esc(nomePapel(p.papel)) + '</span>') +
+            '</select>'
+          : '<span class="pq-tag pq-' + esc(p.papel) + '">' + esc(nomePapel(p.papel)) + '</span>') + '</div>' +
+        '<span class="pq-pode">' + esc((PAPEIS[p.papel] || {}).txt || '') + '</span>' +
+        '<div class="pq-bts">' + (acoes && !p.sou_eu
+          ? '<button type="button" class="b fina contorno" data-senha>Senha nova</button>' +
+            '<button type="button" class="b fina contorno perigo" data-tirar' + (sozinhoDono ? ' disabled' : '') + '>Tirar</button>'
+          : '') + '</div>' +
       '</div>';
     };
 
-    painel.innerHTML = '<div class="conteudo entra portal-home">' +
-      '<header class="ph-cab com-acao"><div><h1>Equipe da empresa</h1>' +
-        '<p class="ph-emp">Quem da ' + esc(emp.nome) + ' acessa o portal, e o que cada um pode fazer.</p></div>' +
-        (acoes ? '<button type="button" class="b pri" data-convidar>Convidar pessoa</button>' : '') + '</header>' +
+    painel.innerHTML = '<div class="conteudo entra portal-home pc-tela pq-tela">' +
+      '<header class="ph-cab"><div><h1>Equipe da empresa</h1>' +
+        '<p class="ph-emp">Quem da ' + esc(emp.nome) + ' acessa o portal, e o que cada um pode fazer.</p></div></header>' +
       (previa ? '<p class="pt-nada">Prévia: o dono da empresa vê esta lista e pode convidar, mudar papéis e tirar pessoas.</p>' : '') +
-      '<section class="pq-lista">' + (pessoas.length ? pessoas.map(cartao).join('')
-        : '<p class="pt-nada">Ninguém da empresa tem acesso ainda.</p>') + '</section>' +
-      '<section class="pq-legenda">' + Object.keys(PAPEIS).map(k =>
-        '<div><span class="pq-tag pq-' + k + '">' + PAPEIS[k].nome + '</span><p>' + esc(PAPEIS[k].txt) + '</p></div>').join('') +
-      '</section>' +
+      '<section class="pq-lista pc-cartao"><div class="pc-cartao-cab"><p class="pc-cartao-tit">Pessoas</p>' +
+        (acoes ? '<button type="button" class="b pri fina" data-convidar><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Convidar pessoa</button>' : '') + '</div>' +
+        (pessoas.length
+          ? '<div class="pq-cab" aria-hidden="true"><span>Pessoa</span><span>Papel</span><span>Pode</span><span></span></div>' + pessoas.map(cartao).join('')
+          : '<p class="pt-nada">Ninguém da empresa tem acesso ainda.</p>') + '</section>' +
       '<p class="pt-nada">A Branding7 é avisada quando alguém entra ou sai da equipe.</p>' +
     '</div>';
 

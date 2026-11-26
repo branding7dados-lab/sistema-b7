@@ -51,48 +51,61 @@ B7.PortalPedidos = (function () {
     const abertos = lista.filter(p => p.situacao === 'recebido' || p.situacao === 'em_producao');
     const fechados = lista.filter(p => !abertos.includes(p));
 
-    const cartao = p => {
+    const linha = p => {
       const s = SITUACAO[p.situacao] || [p.situacao, ''];
       return '<article class="pp-pedido">' +
-        '<div class="pp-topo"><span class="pp-tipo">' + esc((TIPOS[p.tipo] || TIPOS.outro).nome) + '</span>' +
-          '<span class="pp-sit pp-' + esc(p.situacao) + '" title="' + esc(s[1]) + '">' + esc(s[0]) + '</span></div>' +
-        '<h3>' + esc(p.titulo) + '</h3>' +
-        (p.descricao ? '<p class="pp-desc">' + esc(p.descricao) + '</p>' : '') +
-        '<div class="pp-pe">' + esc(p.sou_eu ? 'Você pediu' : (p.autor || 'Alguém da empresa') + ' pediu') + ' ' + esc(B7.UI.quando(p.created_at)) +
-          (p.para_quando ? ' · <b>para ' + esc(dataBR(p.para_quando)) + '</b>' : '') + '</div>' +
+        '<div class="pp-tx"><h3>' + esc(p.titulo) + '</h3>' +
+          '<div class="pp-pe"><span class="pp-tipo">' + esc((TIPOS[p.tipo] || TIPOS.outro).nome) + '</span> · ' + esc(p.sou_eu ? 'Você pediu' : (p.autor || 'Alguém da empresa') + ' pediu') +
+            (p.para_quando ? ' · <b>para ' + esc(dataBR(p.para_quando)) + '</b>' : '') + '</div>' +
+          (p.descricao ? '<p class="pp-desc">' + esc(p.descricao) + '</p>' : '') + '</div>' +
+        '<span class="pp-quando">' + esc(B7.UI.quando(p.created_at)) + '</span>' +
+        '<span class="pp-sit pp-' + esc(p.situacao) + '" title="' + esc(s[1]) + '">' + esc(s[0]) + '</span>' +
       '</article>';
     };
 
-    painel.innerHTML = '<div class="conteudo entra portal-home">' +
-      '<header class="ph-cab com-acao"><div><h1>Pedidos</h1>' +
-        '<p class="ph-emp">Precisa de algo novo? Peça aqui e acompanhe até ficar pronto.</p></div>' +
-        '<button type="button" class="b pri" data-novo' + (previa ? ' disabled title="Na prévia nada é registrado"' : '') + '>Fazer um pedido</button></header>' +
-      (lista.length ? '' :
-        '<div class="pt-vazio"><b>Nenhum pedido ainda.</b><p>Uma arte para uma data especial, um vídeo, um texto? ' +
-        'Toque em "Fazer um pedido": ele vai direto para a equipe da Branding7.</p></div>') +
-      (abertos.length ? '<h2 class="pp-sec">Em andamento <small>' + abertos.length + '</small></h2><section class="pp-lista">' + abertos.map(cartao).join('') + '</section>' : '') +
-      (fechados.length ? '<h2 class="pp-sec">Anteriores</h2><section class="pp-lista">' + fechados.map(cartao).join('') + '</section>' : '') +
+    painel.innerHTML = '<div class="conteudo entra portal-home pc-tela pp-tela">' +
+      '<header class="ph-cab"><div><h1>Pedidos</h1>' +
+        '<p class="ph-emp">Precisa de algo novo? Peça aqui e acompanhe até ficar pronto.</p></div></header>' +
+      '<div class="pp-grade">' +
+        '<section class="pp-lista pc-cartao"><p class="pc-cartao-tit">Seus pedidos' + (abertos.length ? ' <small>' + abertos.length + ' em andamento</small>' : '') + '</p>' +
+          (lista.length
+            ? '<div class="pp-cab" aria-hidden="true"><span>Pedido</span><span>Enviado</span><span>Situação</span></div>' + abertos.concat(fechados).map(linha).join('')
+            : '<div class="pt-vazio"><b>Nenhum pedido ainda.</b><p>Uma arte para uma data especial, um vídeo, um texto? ' +
+              'Faça o pedido ao lado: ele vai direto para a equipe da Branding7.</p></div>') +
+        '</section>' +
+        '<section class="pp-novo pc-cartao" data-novo></section>' +
+      '</div>' +
     '</div>';
     const novo = painel.querySelector('[data-novo]');
-    if (novo && !previa) novo.onclick = () => pedir(emp);
+    pedir(emp, novo);
+    if (previa) novo.querySelectorAll('input, textarea, button').forEach(el => { el.disabled = true; el.title = 'Na prévia nada é registrado'; });
   }
 
-  function pedir(emp) {
+  /* zzz-espectro: o pedido é feito no cartão "Novo pedido" ao lado da lista
+     (alvo); sem alvo, abre na janela como antes */
+  function pedir(emp, alvo) {
     const hoje = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    const m = B7.UI.modal(
-      '<h3>Fazer um pedido</h3><p class="sub">Vai direto para a equipe da Branding7. Você acompanha em "Pedidos".</p>' +
-      '<div class="mb"><span class="rot">O QUE VOCÊ PRECISA</span><div class="pp-tipos">' + Object.keys(TIPOS).map(k =>
-        '<label class="pp-tipo-op"><input type="radio" name="pp-tipo" value="' + k + '"' + (k === 'arte' ? ' checked' : '') + '>' +
+    const corpo =
+      '<div class="mb"><label class="rot" for="pp-titulo">O que você precisa?</label>' +
+        '<input class="campo" id="pp-titulo" maxlength="120" placeholder="ex.: arte para a promoção de sexta" autocomplete="off"' + (alvo ? '' : ' data-foco') + '></div>' +
+      '<div class="mb"><span class="rot">Tipo</span><div class="pp-tipos">' + Object.keys(TIPOS).map(k =>
+        '<label class="pp-tipo-op" title="' + esc(TIPOS[k].txt) + '"><input type="radio" name="pp-tipo" value="' + k + '"' + (k === 'arte' ? ' checked' : '') + '>' +
         '<span><b>' + TIPOS[k].nome + '</b><small>' + esc(TIPOS[k].txt) + '</small></span></label>').join('') + '</div></div>' +
-      '<div class="mb"><label class="rot" for="pp-titulo">EM POUCAS PALAVRAS</label>' +
-        '<input class="campo" id="pp-titulo" maxlength="120" placeholder="ex.: arte para a promoção de sexta" autocomplete="off" data-foco></div>' +
-      '<div class="mb"><label class="rot" for="pp-desc">DETALHES <small>(opcional)</small></label>' +
-        '<textarea class="campo" id="pp-desc" rows="4" maxlength="2000" placeholder="Textos, preços, cores, referências, onde vai ser usado…"></textarea></div>' +
-      '<div class="mb"><label class="rot" for="pp-data">PARA QUANDO <small>(opcional)</small></label>' +
+      '<div class="mb"><label class="rot" for="pp-data">Para quando? <small>(opcional)</small></label>' +
         '<input class="campo" id="pp-data" type="date" min="' + hoje + '"></div>' +
-      '<div class="pp-ia" hidden></div>' +
-      '<div class="acoes">' + (B7.IAFerramentas ? '<button class="b contorno pp-ia-bt" data-ia>✨ Conferir com a IA</button>' : '') +
-        '<button class="b" data-fecha>Cancelar</button><button class="b pri" data-ok>Enviar pedido</button></div>');
+      '<div class="mb"><label class="rot" for="pp-desc">Detalhes <small>(opcional)</small></label>' +
+        '<textarea class="campo" id="pp-desc" rows="4" maxlength="2000" placeholder="Textos, preços, cores, referências, onde vai ser usado…"></textarea></div>' +
+      '<div class="pp-ia" hidden></div>';
+    const iaBt = B7.IAFerramentas ? '<button type="button" class="b contorno pp-ia-bt" data-ia>✨ Conferir com a IA</button>' : '';
+    const enviar = '<button type="button" class="b pri" data-ok><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5L21 3l-8.5 18-2-7.5z"/></svg>Enviar pedido</button>';
+    let m;
+    if (alvo) {
+      alvo.innerHTML = '<p class="pc-cartao-tit">Novo pedido</p>' + corpo + '<div class="acoes">' + iaBt + enviar + '</div>';
+      m = alvo; m.fechar = () => {};
+    } else {
+      m = B7.UI.modal('<h3>Fazer um pedido</h3><p class="sub">Vai direto para a equipe da Branding7. Você acompanha em "Pedidos".</p>' + corpo +
+        '<div class="acoes">' + iaBt + '<button class="b" data-fecha>Cancelar</button>' + enviar + '</div>');
+    }
     const ok = m.querySelector('[data-ok]');
     /* zzz267: a IA aponta o que falta no pedido (formato, textos, data…);
        as perguntas entram nos detalhes para a pessoa responder ali mesmo */
@@ -120,6 +133,7 @@ B7.PortalPedidos = (function () {
       const titulo = m.querySelector('#pp-titulo').value.trim();
       if (titulo.length < 3) return B7.UI.toast('Escreva em poucas palavras o que você precisa', { tipo: 'erro' });
       const tipo = (m.querySelector('input[name="pp-tipo"]:checked') || {}).value || 'outro';
+      const rotOk = ok.innerHTML;
       ok.disabled = true; ok.textContent = 'Enviando…';
       try {
         await B7.DB.rpc('cliente_pedido_criar', {
@@ -131,7 +145,7 @@ B7.PortalPedidos = (function () {
         B7.UI.toast('Pedido enviado. A Branding7 já foi avisada.');
         abrir();
       } catch (e) {
-        ok.disabled = false; ok.textContent = 'Enviar pedido';
+        ok.disabled = false; ok.innerHTML = rotOk;
         B7.UI.toast(e.message || 'Não foi possível enviar o pedido.', { tipo: 'erro' });
       }
     };

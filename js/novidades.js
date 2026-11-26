@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.8.0', versao: '5.8.0', em: '2026-11-26T14:00:00-03:00',
+    titulo: 'Portal do cliente todo na identidade nova',
+    itens: ['O Portal do cliente inteiro ganhou o desenho novo da Branding7: início, status, histórico, perfil, linha editorial, produção, gravações, aprovações, calendário, pedidos, pesquisa, comunicados, equipe e suporte.'] },
   { id: 'v-5.7.0', versao: '5.7.0', em: '2026-11-26T14:00:00-03:00',
     titulo: 'Troca de tela no estilo da marca nova',
     itens: ['Ao trocar de tela, a anterior sai inteira e a nova entra na diagonal da marca, com uma faixa de luz no degradê da Branding7. Acabou o efeito das duas telas uma por cima da outra.', 'Com o menu fechado, o atalho da Central dos sistemas vira só o ícone, como os outros itens.'] },
