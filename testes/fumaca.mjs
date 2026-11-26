@@ -110,8 +110,8 @@ await pg.evaluate(() => { location.hash = '#/clientes'; });
 await pg.waitForTimeout(2600);
 const ficou = await pg.evaluate(() => (document.getElementById('painel-dashboard').innerText || '').slice(0, 200));
 lento = 0;
-if (/Produção de Vídeo/.test(ficou) || !/Clientes/.test(ficou)) falhas.push(telaAtual + ' → a tela antiga se desenhou por cima: ' + ficou.replace(/\s+/g, ' ').slice(0, 90));
-console.log((/Produção de Vídeo/.test(ficou) ? '✗ ' : '✓ ') + telaAtual);
+if (/Produção de Vídeo|Edição de vídeo/.test(ficou) || !/Clientes/.test(ficou)) falhas.push(telaAtual + ' → a tela antiga se desenhou por cima: ' + ficou.replace(/\s+/g, ' ').slice(0, 90));
+console.log((/Produção de Vídeo|Edição de vídeo/.test(ficou) ? '✗ ' : '✓ ') + telaAtual);
 
 /* zzz308: atualização do tempo real é invisível — a tela antiga fica até a
    nova estar pronta, sem esqueleto de carregamento no meio. Confere o que

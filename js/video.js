@@ -181,7 +181,7 @@ B7.Video = (function () {
     const equipe = souEquipe();
     B7.Rota.titulo(['Produção de Vídeo']);
     if (!silenciosa) painel().innerHTML = '<div class="conteudo vd-tela">' +
-      '<header class="vd-cab"><h1>Produção de Vídeo</h1>' +
+      '<header class="vd-cab"><h1>Edição de vídeo</h1>' +
       '<p>Carregando as demandas…</p></header>' +
       B7.UI.skeleton('tabela', { n: 5, cols: 5 }) + '</div>';
 
@@ -297,7 +297,8 @@ B7.Video = (function () {
     document.body.classList.remove('vd-arrastando-toque');
     ultAnteriores = anteriores.length;
     painel().innerHTML = '<div class="conteudo' + (B7.recargaSilenciosa ? '' : ' entra') + ' vd-tela">' +
-      '<div class="cab-conteudo"><div><p class="v4-sobre">Fila de edição</p><h1>Produção de Vídeo</h1>' +
+      '<div class="cab-conteudo"><div><p class="v4-sobre">' + (F.minhaFila ? 'Minha fila' : 'Toda a equipe') + ' · ' +
+        esc(F.competencia !== 'todas' ? MESES_NOME[Number(F.competencia.split('-')[1])].toLowerCase() : 'todos os meses') + '</p><h1>Edição de vídeo</h1>' +
       '<p>Toda a fila de edição da B7 em um só lugar.</p><p class="vd-sub-m" id="vd-sub-m"></p></div>' +
       /* ferramentas de gestão: só equipe (o banco recusa de qualquer jeito) */
       (equipe
@@ -518,8 +519,9 @@ B7.Video = (function () {
     cx.innerHTML = '<div class="ds-resumo-rapido vd-resumo-rapido">' + chips.map(([chave, n, rot, on]) =>
       '<button class="ds-rapido-item vd-rapido-' + esc(chave.split(':')[1]) + (on ? ' on' : '') + '" data-resumo="' + chave + '">' +
       '<i class="vd-dot"></i><b data-n="' + n + '">' + n + '</b> ' + esc(rot) + '</button>').join('') +
-      '</div>' + heroiHTML(base, chips);
+      '</div>' + indicadorHTML(base) + heroiHTML(base, chips);
     contarNumeros(cx.querySelector('.vd-resumo-rapido'));
+    contarNumeros(cx.querySelector('.vd-indic'));
     animarHeroi(cx);
     const verAnt = cx.querySelector('[data-ver-anteriores]');
     if (verAnt) verAnt.onclick = () => { F.competencia = 'todas'; F.prazo = 'atrasadas'; guardarFiltros(); desenharProducao(); };
@@ -532,6 +534,30 @@ B7.Video = (function () {
       guardarFiltros();
       desenharProducao();
     });
+  }
+
+  /* Espectro: cartão de indicador do quadro "Edição de vídeo" — entregues / total
+     do mês e as etapas que pedem ação. Fica escondido (hidden) na identidade
+     antiga; styles/espectro/video.css o mostra. Cada número é o mesmo filtro
+     rápido dos chips (data-resumo). */
+  function indicadorHTML(base) {
+    const contar = pred => base.filter(pred).length;
+    const mes = F.competencia !== 'todas' ? competenciaRotulo(F.competencia).split(' de ')[0].toLowerCase() : 'todos os meses';
+    const ent = contar(d => d.editing_status === 'entregue');
+    const nHoje = contar(venceHoje);
+    const itens = [
+      ['status:pendente', contar(d => d.editing_status === 'pendente'), 'pendentes', F.status === 'pendente', 'pendente'],
+      ['status:em_edicao', contar(d => d.editing_status === 'em_edicao'), 'em edição', F.status === 'em_edicao', 'edicao'],
+      ['status:correcao', contar(d => d.editing_status === 'correcao'), 'em correção', F.status === 'correcao', 'correcao'],
+      ['prazo:atrasadas', contar(ehAtrasada), 'atrasadas', F.prazo === 'atrasadas', 'atrasadas']
+    ];
+    if (nHoje || F.prazo === 'hoje') itens.push(['prazo:hoje', nHoje, nHoje === 1 ? 'vence hoje' : 'vencem hoje', F.prazo === 'hoje', 'hoje']);
+    return '<div class="vd-indic" hidden>' +
+      '<button type="button" class="vd-indic-total' + (F.status === 'entregue' ? ' on' : '') + '" data-resumo="status:entregue" aria-label="' + ent + ' entregues de ' + base.length + ' em ' + esc(mes) + '">' +
+        '<small>Vídeos em ' + esc(mes) + '</small><span class="vd-indic-num"><b data-n="' + ent + '">' + ent + '</b><span> / ' + base.length + '</span></span></button>' +
+      itens.map(([chave, n, rot, on, k]) => '<button type="button" class="vd-indic-it vd-indic-' + k + (on ? ' on' : '') + '" data-resumo="' + chave + '">' +
+        '<b data-n="' + n + '">' + n + '</b><small>' + esc(rot) + '</small></button>').join('') +
+    '</div>';
   }
 
   /* números do resumo sobem de 0 até o valor (só transform-free: texto) */
@@ -584,7 +610,7 @@ B7.Video = (function () {
         : '') +
       '<div class="seg-vista" role="tablist">' +
         '<button role="tab" class="' + (F.vista === 'lista' ? 'on' : '') + '" data-vista="lista" aria-label="Lista"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg><span>Lista</span></button>' +
-        '<button role="tab" class="' + (F.vista === 'kanban' ? 'on' : '') + '" data-vista="kanban" aria-label="Kanban"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="4" width="4.7" height="16" rx="1.9"/><rect x="9.65" y="4" width="4.7" height="11" rx="1.9"/><rect x="15.8" y="4" width="4.7" height="7" rx="1.9"/></svg><span>Kanban</span></button>' +
+        '<button role="tab" class="' + (F.vista === 'kanban' ? 'on' : '') + '" data-vista="kanban" aria-label="Quadro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="4" width="4.7" height="16" rx="1.9"/><rect x="9.65" y="4" width="4.7" height="11" rx="1.9"/><rect x="15.8" y="4" width="4.7" height="7" rx="1.9"/></svg><span>Quadro</span></button>' +
         '<button role="tab" class="' + (F.vista === 'prioridade' ? 'on' : '') + '" data-vista="prioridade" aria-label="Prioridade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M4 12h7M4 18h4"/><path d="M18 19V5m0 0-3 3m3-3 3 3"/></svg><span>Prioridade</span></button>' +
       '</div>' +
     '</div>';
@@ -1051,6 +1077,10 @@ B7.Video = (function () {
       (prio !== 'normal' ? prioridadeBadge(prio) : '') + tagAvulso(d) +
       '<div class="vd-card-rodape">' +
       quemHTML(d) +
+      /* Espectro: responsável como avatar de iniciais (hidden na identidade antiga) */
+      (d.videomaker_id && d.videomaker_nome
+        ? '<span class="vd-av" hidden style="--vd-av:' + ['#520083', '#7328A5', '#E02F75', '#001561', '#FF5A57'][parseInt(corVideomaker(d.videomaker_id).slice(1), 16) % 5] + '" title="' + esc(d.videomaker_nome) + '">' + esc(iniciais(d.videomaker_nome)) + '</span>'
+        : '<span class="vd-av vd-av-vazio" hidden title="Sem responsável">—</span>') +
       (d.prazo ? '<span class="vd-prazo-pill' + (atrasada ? ' atrasado' : '') + '">' + esc(B7.UI.dataBR(d.prazo).slice(0, 5)) + '</span>' : '') +
       '</div></div>';
   }
@@ -2596,7 +2626,7 @@ B7.Video = (function () {
       (doCliente
         ? '<div class="trilha"><a href="#/cliente/' + esc(d.client_id) + '">' + esc(d.cliente_nome || 'Cliente') + '</a><span>/</span>' +
           '<a href="#/cliente/' + esc(d.client_id) + '/video">Vídeos</a><span>/</span><b>' + esc(d.titulo) + '</b></div>'
-        : '<div class="trilha"><a href="#/video">Produção de Vídeo</a><span>/</span><b>' + esc(d.titulo) + '</b></div>') +
+        : '<div class="trilha"><a href="#/video">Edição de vídeo</a><span>/</span><b>' + esc(d.titulo) + '</b></div>') +
       '<header class="vd-hero">' +
         '<div class="vd-hero-linha">' +
           '<div class="vd-hero-id">' + logoClienteHTML(d, 'lg') +
