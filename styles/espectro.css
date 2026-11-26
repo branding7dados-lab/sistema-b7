@@ -446,7 +446,7 @@ html[data-identidade="espectro"] .login-caixa .login-aviso{border-radius:18px;}
 /* 5.18.0 quadro "Login · computador" (Fundamentos): sem rótulo em cima dos campos (o ícone fica dentro), a linha
    Google | Núcleo 7 logo depois do Entrar e o "Esqueci minha senha" centralizado no fim */
 html[data-identidade="espectro"] .login-caixa{display:flex;flex-direction:column;}
-html[data-identidade="espectro"] .login-caixa .rot{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+html[data-identidade="espectro"] .login-caixa:not(:has(.lg2-ic)) .rot{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
 html[data-identidade="espectro"] .login-caixa #lg-user{margin-top:22px;}
 html[data-identidade="espectro"] .login-caixa .login-senha{margin-top:12px;}
 html[data-identidade="espectro"] .login-caixa :is(#lg-user, #lg-senha){padding-left:54px;background-repeat:no-repeat;background-position:20px 50%;background-size:20px;}
@@ -471,7 +471,7 @@ html[data-identidade="espectro"] .esp-login-assinatura{position:absolute;right:4
   html[data-identidade="espectro"] .login-caixa .campo{height:50px;min-height:50px;border-radius:25px;}
   html[data-identidade="espectro"] .login-caixa .login-entrar{min-height:54px;border-radius:27px;}
   html[data-identidade="espectro"] :is(.esp-login-logo, .esp-login-assinatura){display:none;}
-  html[data-identidade="espectro"] .login-caixa .rot{position:static;width:auto;height:auto;overflow:visible;clip:auto;margin:16px 0 8px;font-size:13px;letter-spacing:0;text-transform:none;}
+  html[data-identidade="espectro"] .login-caixa:not(:has(.lg2-ic)) .rot{position:static;width:auto;height:auto;overflow:visible;clip:auto;margin:16px 0 8px;font-size:13px;letter-spacing:0;text-transform:none;}
   html[data-identidade="espectro"] .login-caixa #lg-user{margin-top:0;}
   html[data-identidade="espectro"] .login-caixa .login-senha{margin-top:0;}
   html[data-identidade="espectro"] .login-caixa .login-esqueci{order:0;justify-content:flex-end;text-align:right;margin-top:10px;}

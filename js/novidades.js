@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.19.0', versao: '5.19.0', em: '2026-11-26T22:00:00-03:00',
+    titulo: 'Código de verificação e senha nova com o desenho novo',
+    itens: ['O código da verificação em 2 etapas agora aparece em 6 caixinhas que acendem a cada número e ficam verdes quando confere, com "Verificado" antes de entrar. O "Reenviar" mostra quanto falta.',
+      'Ao criar a senha nova, uma barra mostra a força (Fraca, Razoável, Boa, Forte) e a lista das regras fica verde conforme você digita.'] },
   { id: 'v-5.18.0', versao: '5.18.0', em: '2026-11-26T21:00:00-03:00',
     titulo: 'Ícones novos no menu e tela de entrada',
     itens: ['O menu ganhou ícones desenhados para a identidade nova: traço fino e arredondado, cantos macios e o corte de 60° do B7.',

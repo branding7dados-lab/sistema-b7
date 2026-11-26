@@ -1,0 +1,62 @@
+/* Espectro — verificação e senha nova em movimento (5.18.0), quadros "Código de verificação em movimento (7 s)"
+   e "Senha nova em movimento (6 s)" da página Telas em movimento. Completa o quadro estático "Acesso-fluxos"
+   (styles/espectro/assistente.css). As peças são postas por js/seguranca.js (caixasCodigo, contagem, forcaSenha).
+   Toda regra começa com html[data-identidade="espectro"]. */
+
+/* ------------------------------------------------------------------ o código em 6 caixas */
+html[data-identidade="espectro"] .login-caixa .esp-cod{position:relative;margin-top:0;}
+html[data-identidade="espectro"] .login-caixa:has(.lg2-ic) .login-senha{margin-top:0;}
+html[data-identidade="espectro"] .login-caixa .esp-cod-caixas{display:flex;gap:8px;justify-content:flex-start;pointer-events:none;}
+html[data-identidade="espectro"] .login-caixa .esp-cod-caixas i{flex:none;width:46px;height:56px;border-radius:16px;border:1.5px solid var(--borda);background:var(--card);
+  display:flex;align-items:center;justify-content:center;font-style:normal;font-family:'Grimblade', system-ui, sans-serif;font-size:26px;line-height:1;color:var(--ink);
+  transition:border-color .18s var(--b7-ease), box-shadow .18s var(--b7-ease), background .3s var(--b7-ease), transform .3s var(--b7-ease);}
+/* a caixa da vez acende em violeta (o anel do quadro) */
+html[data-identidade="espectro"] .login-caixa .esp-cod-caixas i.agora{border-color:var(--esp-v,#7328A5);box-shadow:0 0 0 4px rgba(var(--esp-v-rgb,115,40,165),.18);}
+/* o número entra com um pulinho (a curva do quadro: .34,1.56,.64,1) */
+html[data-identidade="espectro"] .login-caixa .esp-cod-caixas i.entra{animation:espCodEntra .32s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes espCodEntra{from{opacity:0;transform:translateY(10px) scale(.6)}to{opacity:1;transform:none}}
+/* o campo de verdade fica por cima das caixas, invisível (o celular ainda preenche sozinho com o código do e-mail) */
+html[data-identidade="espectro"] .login-caixa .esp-cod .lg2-cod{position:absolute;inset:0;width:100%;height:100%;min-height:0;margin:0;padding:0;border:0 !important;
+  background:transparent !important;box-shadow:none !important;color:transparent;caret-color:transparent;font-size:16px;letter-spacing:0;text-indent:0;opacity:.01;}
+/* conferiu: as caixas ficam verdes uma depois da outra e sobem um pouco */
+html[data-identidade="espectro"] .login-caixa .esp-cod.ok .esp-cod-caixas i{border-color:var(--ok);background:var(--ok-bg);box-shadow:none;animation:espCodOk .5s var(--b7-ease) both;}
+html[data-identidade="espectro"] .login-caixa .esp-cod.ok .esp-cod-caixas i:nth-child(2){animation-delay:.05s;}
+html[data-identidade="espectro"] .login-caixa .esp-cod.ok .esp-cod-caixas i:nth-child(3){animation-delay:.1s;}
+html[data-identidade="espectro"] .login-caixa .esp-cod.ok .esp-cod-caixas i:nth-child(4){animation-delay:.15s;}
+html[data-identidade="espectro"] .login-caixa .esp-cod.ok .esp-cod-caixas i:nth-child(5){animation-delay:.2s;}
+html[data-identidade="espectro"] .login-caixa .esp-cod.ok .esp-cod-caixas i:nth-child(6){animation-delay:.25s;}
+@keyframes espCodOk{0%{transform:none}40%{transform:translateY(-6px)}100%{transform:none}}
+/* o cadeado vira o "ok" verde com um anel (o quadro: rg + ok) */
+html[data-identidade="espectro"] .login-caixa .lg2-ic.es-ok{animation:espIcOk .5s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes espIcOk{from{transform:scale(.7);opacity:.4}to{transform:none;opacity:1}}
+html[data-identidade="espectro"] .login-caixa:has(.esp-cod.ok) h1{color:var(--ok);}
+@media (max-width:420px){ html[data-identidade="espectro"] .login-caixa .esp-cod-caixas{gap:6px;} html[data-identidade="espectro"] .login-caixa .esp-cod-caixas i{width:calc((100% - 30px) / 6);} }
+
+/* ------------------------------------------------------------------ força da senha: 4 partes que enchem */
+html[data-identidade="espectro"] .login-caixa .esp-forca{display:flex;gap:6px;margin-top:14px;}
+html[data-identidade="espectro"] .login-caixa .esp-forca i{flex:1;height:6px;border-radius:6px;background:var(--esq-1);overflow:hidden;}
+html[data-identidade="espectro"] .login-caixa .esp-forca i b{display:block;height:100%;transform:scaleX(0);transform-origin:0 50%;transition:transform .5s cubic-bezier(.16,1,.3,1);}
+html[data-identidade="espectro"] .login-caixa .esp-forca i.on b{transform:none;}
+html[data-identidade="espectro"] .login-caixa .esp-forca i:nth-child(1) b{background:#FF5A57;}
+html[data-identidade="espectro"] .login-caixa .esp-forca i:nth-child(2) b{background:var(--esp-m,#E02F75);}
+html[data-identidade="espectro"] .login-caixa .esp-forca i:nth-child(3) b{background:var(--esp-v,#7328A5);}
+html[data-identidade="espectro"] .login-caixa .esp-forca i:nth-child(4) b{background:var(--ok);}
+html[data-identidade="espectro"] .login-caixa .esp-forca-rot{display:flex;align-items:baseline;gap:6px;margin:10px 0 0;font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .login-caixa .esp-forca-rot b{font-weight:400;}
+html[data-identidade="espectro"] .login-caixa .esp-forca-rot b.fraca{color:#FF5A57;}
+html[data-identidade="espectro"] .login-caixa .esp-forca-rot b.razoavel{color:var(--esp-m,#E02F75);}
+html[data-identidade="espectro"] .login-caixa .esp-forca-rot b.boa{color:var(--esp-v,#7328A5);}
+html[data-identidade="espectro"] .login-caixa .esp-forca-rot b.forte{color:var(--ok);}
+/* as regras: um círculo que ganha o "ok" e a linha que fica verde */
+html[data-identidade="espectro"] .login-caixa .esp-regras{list-style:none;margin:12px 0 0;padding:0;}
+html[data-identidade="espectro"] .login-caixa .esp-regras li{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:14px;color:var(--ink-3);transition:color .2s;}
+html[data-identidade="espectro"] .login-caixa .esp-regras li span{flex:none;position:relative;width:20px;height:20px;border-radius:50%;border:1.5px solid currentColor;}
+html[data-identidade="espectro"] .login-caixa .esp-regras li span::after{content:"";position:absolute;inset:0;transform:scale(0);transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+  background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 12.5l3.2 3.2L17 9'/%3E%3C/svg%3E") center/16px no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 12.5l3.2 3.2L17 9'/%3E%3C/svg%3E") center/16px no-repeat;}
+html[data-identidade="espectro"] .login-caixa .esp-regras li.ok{color:var(--ok);}
+html[data-identidade="espectro"] .login-caixa .esp-regras li.ok span::after{transform:none;}
+
+@media (prefers-reduced-motion: reduce){
+  html[data-identidade="espectro"] .login-caixa :is(.esp-cod-caixas i, .lg2-ic.es-ok, .esp-forca i b, .esp-regras li span::after){animation:none !important;transition:none !important;}
+}
