@@ -38,7 +38,7 @@ html[data-identidade="espectro"] .b7-load .txt{font-size:13.5px;color:var(--ink-
 /* ------------------------------------------------------------------ 02 · FAIXA 60° (.barra-load) */
 html[data-identidade="espectro"] .barra-load{width:220px;height:8px;border-radius:8px;background:var(--esq-1);position:relative;overflow:hidden;}
 html[data-identidade="espectro"] .barra-load i{position:absolute;inset:0;width:40%;height:100%;border-radius:8px;
-  background:repeating-linear-gradient(120deg, #7328A5 0 10px, #E02F75 10px 20px);animation:espFaixa 1.5s cubic-bezier(.6,0,.4,1) infinite;}
+  background:repeating-linear-gradient(120deg, var(--esp-v,#7328A5) 0 10px, var(--esp-m,#E02F75) 10px 20px);animation:espFaixa 1.5s cubic-bezier(.6,0,.4,1) infinite;}
 @keyframes espFaixa{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
 
 /* ------------------------------------------------------------------ 03 · TRÊS PONTOS (.b7-spin, dentro dos botões) */
@@ -62,7 +62,7 @@ html[data-identidade="espectro"] :is(.b.pri.carregando, .b.pri[aria-busy="true"]
 /* ------------------------------------------------------------------ 04 · ANEL ESPECTRO (anéis redondos) */
 html[data-identidade="espectro"] .carregando:not(.b)::after,
 html[data-identidade="espectro"] .hj-carregando span{border:0;border-radius:50%;
-  background:conic-gradient(#001561, #520083, #7328A5, #E02F75, #FF5A57, transparent 85%);
+  background:conic-gradient(#001561, var(--esp-r,#520083), var(--esp-v,#7328A5), var(--esp-m,#E02F75), #FF5A57, transparent 85%);
   -webkit-mask:radial-gradient(circle, transparent 58%, #000 60%);mask:radial-gradient(circle, transparent 58%, #000 60%);
   animation:espAnel 1s linear infinite;}
 @keyframes espAnel{to{transform:rotate(360deg)}}

@@ -21,18 +21,18 @@
 /* ------------------------------------------------------------ tokens: claro */
 html[data-identidade="espectro"][data-theme]{
   /* marca */
-  --b7-azul-matriz:#001561; --b7-roxo-neural:#520083; --b7-violeta-quantum:#7328A5; --b7-magenta-pulso:#E02F75; --b7-coral-laser:#FF5A57;
-  --b7-espectro:linear-gradient(120deg,#001561 0%,#520083 30%,#7328A5 55%,#E02F75 80%,#FF5A57 100%);
-  --b7-espectro-curto:linear-gradient(120deg,#7328A5 0%,#E02F75 60%,#FF5A57 100%);
+  --b7-azul-matriz:#001561; --b7-roxo-neural:var(--esp-r,#520083); --b7-violeta-quantum:var(--esp-v,#7328A5); --b7-magenta-pulso:var(--esp-m,#E02F75); --b7-coral-laser:#FF5A57;
+  --b7-espectro:linear-gradient(120deg,#001561 0%,var(--esp-r,#520083) 30%,var(--esp-v,#7328A5) 55%,var(--esp-m,#E02F75) 80%,#FF5A57 100%);
+  --b7-espectro-curto:linear-gradient(120deg,var(--esp-v,#7328A5) 0%,var(--esp-m,#E02F75) 60%,#FF5A57 100%);
   --b7-fonte:'Grimblade','Inter',system-ui,sans-serif;
   --b7-ease:cubic-bezier(.16,1,.3,1);
 
   /* os nomes de sempre, com os valores do Espectro */
-  --marinho:#001561; --violeta:#7328A5; --roxo:#520083; --magenta:#E02F75;
-  --acento:#7328A5; --acento-suave:rgba(115,40,165,.09); --violeta-bg:rgba(115,40,165,.1);
+  --marinho:#001561; --violeta:var(--esp-v,#7328A5); --roxo:var(--esp-r,#520083); --magenta:var(--esp-m,#E02F75);
+  --acento:var(--esp-v,#7328A5); --acento-suave:rgba(var(--esp-v-rgb,115,40,165),.09); --violeta-bg:rgba(var(--esp-v-rgb,115,40,165),.1);
   --grad:var(--b7-espectro); --grad-curto:var(--b7-espectro-curto);
-  --base-violeta:#7328A5; --base-roxo:#520083; --base-magenta:#E02F75;
-  --sb-luz1:#7328A5; --sb-luz2:#E02F75;
+  --base-violeta:var(--esp-v,#7328A5); --base-roxo:var(--esp-r,#520083); --base-magenta:var(--esp-m,#E02F75);
+  --sb-luz1:var(--esp-v,#7328A5); --sb-luz2:var(--esp-m,#E02F75);
   --sidebar:#0A1033; --sidebar-2:#141A45;
 
   --fundo:#F4F3FA; --card:#FFFFFF; --suave:#EFEDF7; --elevado:#FFFFFF;
@@ -57,7 +57,7 @@ html[data-identidade="espectro"][data-theme]{
 
 /* ------------------------------------------------------------ tokens: escuro (aurora) */
 html[data-identidade="espectro"][data-theme="dark"]{
-  --acento:#B57BE6; --acento-suave:rgba(181,123,230,.14); --violeta-bg:rgba(115,40,165,.24);
+  --acento:#B57BE6; --acento-suave:rgba(181,123,230,.14); --violeta-bg:rgba(var(--esp-v-rgb,115,40,165),.24);
   --magenta:#FF5C9A; --roxo:#9A5BD0;
   --sidebar:#05061A; --sidebar-2:#0C0E2A;
   --fundo:#03040F; --card:#0F1230; --suave:#171A3C; --elevado:#161937;
@@ -81,9 +81,9 @@ html[data-identidade="espectro"] body{background:var(--fundo);color:var(--ink);f
 html[data-identidade="espectro"][data-theme="dark"] body{
   background:
     radial-gradient(900px 700px at 8% 0%, rgba(0,21,97,.55), transparent 70%),
-    radial-gradient(800px 600px at 62% -8%, rgba(82,0,131,.5), transparent 70%),
-    radial-gradient(800px 700px at 40% 85%, rgba(115,40,165,.28), transparent 70%),
-    radial-gradient(600px 500px at 92% 55%, rgba(224,47,117,.22), transparent 70%),
+    radial-gradient(800px 600px at 62% -8%, rgba(var(--esp-r-rgb,82,0,131),.5), transparent 70%),
+    radial-gradient(800px 700px at 40% 85%, rgba(var(--esp-v-rgb,115,40,165),.28), transparent 70%),
+    radial-gradient(600px 500px at 92% 55%, rgba(var(--esp-m-rgb,224,47,117),.22), transparent 70%),
     radial-gradient(500px 400px at 100% 100%, rgba(255,90,87,.18), transparent 70%),
     #03040F;
   background-attachment:fixed;}
@@ -99,7 +99,7 @@ html[data-identidade="espectro"] :is(.pn-cab, .cab-conteudo, .ph-cab, .sem-cab, 
 html[data-identidade="espectro"] .cfg-titulo{font-size:clamp(30px, 3vw, 42px) !important;font-weight:400;letter-spacing:-.01em;line-height:1.05;}
 /* rótulo em caixa-alta (kicker) */
 html[data-identidade="espectro"] :is(.v4-sobre, .pn-kicker, .rot){letter-spacing:.14em;color:var(--ink-3);font-weight:400;}
-html[data-identidade="espectro"] ::selection{background:rgba(115,40,165,.22);}
+html[data-identidade="espectro"] ::selection{background:rgba(var(--esp-v-rgb,115,40,165),.22);}
 
 /* ------------------------------------------------------------ componentes */
 /* botão: pílula; principal em Violeta Quantum com brilho; hover Roxo Neural */
@@ -108,9 +108,9 @@ html[data-identidade="espectro"] .b{min-height:42px;padding:0 22px;border-radius
 html[data-identidade="espectro"] .b:hover{background:var(--suave);}
 html[data-identidade="espectro"] .b:active{transform:scale(.97);}
 html[data-identidade="espectro"] .b.fina{min-height:34px;padding:0 16px;font-size:13px;}
-html[data-identidade="espectro"] .b.pri{background:#7328A5;color:#fff;border-color:transparent;filter:none;box-shadow:0 8px 22px rgba(115,40,165,.32);}
-html[data-identidade="espectro"] .b.pri:hover{background:#520083;filter:none;box-shadow:0 10px 26px rgba(82,0,131,.36);}
-html[data-identidade="espectro"] .b.pri:focus-visible,html[data-identidade="espectro"] .b:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .b.pri{background:var(--esp-v,#7328A5);color:#fff;border-color:transparent;filter:none;box-shadow:0 8px 22px rgba(var(--esp-v-rgb,115,40,165),.32);}
+html[data-identidade="espectro"] .b.pri:hover{background:var(--esp-r,#520083);filter:none;box-shadow:0 10px 26px rgba(var(--esp-r-rgb,82,0,131),.36);}
+html[data-identidade="espectro"] .b.pri:focus-visible,html[data-identidade="espectro"] .b:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(var(--esp-v-rgb,115,40,165),.3);}
 html[data-identidade="espectro"] .b.tom{background:var(--acento-suave);color:var(--acento);border-color:transparent;}
 html[data-identidade="espectro"] .b.contorno{background:var(--card);border-color:var(--borda-forte);color:var(--ink);}
 html[data-identidade="espectro"] .b.contorno:hover{border-color:var(--acento);color:var(--acento);}
@@ -119,12 +119,12 @@ html[data-identidade="espectro"] .b.clara{background:rgba(255,255,255,.14);color
 html[data-identidade="espectro"] .b[disabled]{opacity:.5;box-shadow:none;}
 /* Criar: o Espectro curto (botão Criar, barras de progresso e momentos de marca) */
 html[data-identidade="espectro"] .tp-criar,html[data-identidade="espectro"] .b.pri.tp-criar{min-height:48px;padding:0 22px;font-size:15px;
-  background:var(--b7-espectro-curto);box-shadow:0 12px 30px rgba(224,47,117,.38);}
+  background:var(--b7-espectro-curto);box-shadow:0 12px 30px rgba(var(--esp-m-rgb,224,47,117),.38);}
 html[data-identidade="espectro"] .tp-criar:hover{background:var(--b7-espectro-curto);filter:brightness(1.06);}
 
 /* campo */
 html[data-identidade="espectro"] .campo{border-radius:14px;border:1px solid var(--borda);background:var(--card);color:var(--ink);font-size:14px;min-height:42px;}
-html[data-identidade="espectro"] .campo:focus{border-color:#7328A5;box-shadow:0 0 0 3px rgba(115,40,165,.18);}
+html[data-identidade="espectro"] .campo:focus{border-color:var(--esp-v,#7328A5);box-shadow:0 0 0 3px rgba(var(--esp-v-rgb,115,40,165),.18);}
 html[data-identidade="espectro"] .campo.erro{border-color:var(--erro);box-shadow:0 0 0 3px rgba(214,58,58,.14);}
 
 /* abas e filtros: trilho suave com a opção ativa em cartão */
@@ -133,7 +133,7 @@ html[data-identidade="espectro"] .filtro button{border-radius:12px;font-size:13p
 html[data-identidade="espectro"] .filtro button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(10,16,51,.12);}
 
 /* abas de seção (página do cliente…): a ativa em Violeta Quantum, não no degradê */
-html[data-identidade="espectro"] .cli-secoes a.on{background:#7328A5;color:#fff;box-shadow:0 8px 22px rgba(115,40,165,.28);}
+html[data-identidade="espectro"] .cli-secoes a.on{background:var(--esp-v,#7328A5);color:#fff;box-shadow:0 8px 22px rgba(var(--esp-v-rgb,115,40,165),.28);}
 
 /* etiqueta de situação */
 html[data-identidade="espectro"] .chip-status{height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:400;}
@@ -145,7 +145,7 @@ html[data-identidade="espectro"] .chip-status.gravado{background:var(--ok-bg);co
 html[data-identidade="espectro"] .cartao{border-radius:26px;border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);background:var(--card);}
 
 /* avatar: quadrado arredondado em Violeta Quantum (o do usuário usa o Espectro curto) */
-html[data-identidade="espectro"] .avatar{border-radius:13px;background:#7328A5;font-weight:400;letter-spacing:0;}
+html[data-identidade="espectro"] .avatar{border-radius:13px;background:var(--esp-v,#7328A5);font-weight:400;letter-spacing:0;}
 html[data-identidade="espectro"] .avatar.g{border-radius:16px;}
 
 /* aviso curto (toast): cartão escuro com o fio do Espectro */
@@ -185,7 +185,7 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
   html[data-identidade="espectro"] body[data-shell="interno"] .marca-lateral img.lockup{display:none !important;}
   html[data-identidade="espectro"] body[data-shell="interno"] .marca-lateral img.simbolo{display:block !important;width:38px;height:auto;margin:0 auto;}
   html[data-identidade="espectro"] body[data-shell="interno"] .marca-clique{justify-content:center;}
-  html[data-identidade="espectro"] body[data-shell="interno"] .marca-clique:focus-visible{outline:2px solid #7328A5;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .marca-clique:focus-visible{outline:2px solid var(--esp-v,#7328A5);}
 
   /* trilho de ícones: todos os grupos abertos, sem título, rolando se não couber */
   html[data-identidade="espectro"] body[data-shell="interno"] .nav{padding:6px 0 10px !important;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;flex:1;min-height:0;}
@@ -221,16 +221,16 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
   /* duotone: miolo (--duo1) suave e traço (--duo2) na cor do ícone; ativo em branco sobre o Violeta */
   html[data-identidade="espectro"] body[data-shell="interno"] .lateral .nav a > svg.phi.phd{--duo1:rgba(95,101,132,.16) !important;--duo2:var(--esp-menu-icone) !important;}
   html[data-identidade="espectro"][data-theme="dark"] body[data-shell="interno"] .lateral .nav a > svg.phi.phd{--duo1:rgba(174,180,214,.16) !important;}
-  html[data-identidade="espectro"] body[data-shell="interno"] .lateral .nav a:hover > svg.phi.phd{--duo1:rgba(115,40,165,.16) !important;--duo2:var(--ink) !important;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .lateral .nav a:hover > svg.phi.phd{--duo1:rgba(var(--esp-v-rgb,115,40,165),.16) !important;--duo2:var(--ink) !important;}
   html[data-identidade="espectro"] body[data-shell="interno"] .lateral .nav a.on > svg.phi.phd{--duo1:rgba(255,255,255,.28) !important;--duo2:#fff !important;}
   html[data-identidade="espectro"] body[data-shell="interno"] .nav a > :not(svg):not(span){background:none !important;box-shadow:none !important;width:auto;height:auto;}
   html[data-identidade="espectro"] body[data-shell="interno"] .nav a:hover{background:var(--suave) !important;color:var(--ink) !important;}
   html[data-identidade="espectro"] body[data-shell="interno"] .nav a:active{transform:scale(.95);}
   html[data-identidade="espectro"] body[data-shell="interno"] .nav a.on,
   html[data-identidade="espectro"] body[data-shell="interno"] .nav.multi[data-shell="interno"] .ng a.on{
-    background:#7328A5 !important;color:#fff !important;box-shadow:0 10px 28px rgba(115,40,165,.5) !important;}
+    background:var(--esp-v,#7328A5) !important;color:#fff !important;box-shadow:0 10px 28px rgba(var(--esp-v-rgb,115,40,165),.5) !important;}
   html[data-identidade="espectro"] body[data-shell="interno"] .nav a.on:before{display:none !important;}
-  html[data-identidade="espectro"] body[data-shell="interno"] .nav a:focus-visible{outline:2px solid #7328A5;outline-offset:2px;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .nav a:focus-visible{outline:2px solid var(--esp-v,#7328A5);outline-offset:2px;}
 
   /* pé do menu: sem "Recolher" (o menu já é estreito); "Visualizar como…" vira só o ícone */
   html[data-identidade="espectro"] body[data-shell="interno"] .pe-lateral{border-top:0 !important;padding:8px 0 16px !important;display:flex;flex-direction:column;align-items:center;}
@@ -280,7 +280,7 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
   html[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu{width:48px;height:40px;border-radius:18px;border:0;background:transparent;color:var(--esp-menu-icone);
     display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;font:inherit;font-size:13.5px;transition:background-color var(--t), color var(--t);}
   html[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu:hover{background:var(--suave);color:var(--ink);}
-  html[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu:focus-visible{outline:2px solid #7328A5;outline-offset:2px;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu:focus-visible{outline:2px solid var(--esp-v,#7328A5);outline-offset:2px;}
   html[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu svg{width:20px;height:20px;flex:none;transition:transform var(--t);}
   html[data-identidade="espectro"] body[data-shell="interno"] .esp-alterna-menu span{display:none;}
 
@@ -329,7 +329,7 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
   html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-bt{display:none !important;}
   html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-campo{display:flex !important;height:42px;border-radius:21px;padding:0 14px;gap:10px;
     background:var(--card) !important;border:1px solid var(--borda) !important;color:var(--ink-3) !important;box-shadow:none;}
-  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-campo:focus-within{border-color:#7328A5 !important;box-shadow:0 0 0 3px rgba(115,40,165,.18);}
+  html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-campo:focus-within{border-color:var(--esp-v,#7328A5) !important;box-shadow:0 0 0 3px rgba(var(--esp-v-rgb,115,40,165),.18);}
   html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-campo input{color:var(--ink) !important;font-size:13px;font-weight:400;}
   html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como-campo input::placeholder{color:var(--ink-3) !important;font-weight:400;}
   html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .ver-como{margin-bottom:6px;}
@@ -344,7 +344,7 @@ html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-
 /* ------------------------------------------------------------ celular: barra de baixo */
 @media (max-width:760px){
   html[data-identidade="espectro"] .marca-lateral img.lockup{content:url('../assets/brand/espectro/horizontal-branco.svg');height:28px;}
-  html[data-identidade="espectro"] .nav-inferior .on{color:#7328A5;}
+  html[data-identidade="espectro"] .nav-inferior .on{color:var(--esp-v,#7328A5);}
   html[data-identidade="espectro"][data-theme="dark"] .nav-inferior .on{color:#C99BF0;}
   html[data-identidade="espectro"] .tp-criar{min-height:42px;}
 }
@@ -408,14 +408,14 @@ html[data-identidade="espectro"] .portal-home :is(.ph-vazio, .ph-lista > *, .ph-
 html[data-identidade="espectro"] .tela-login{
   background:
     radial-gradient(900px 700px at 8% 0%, rgba(0,21,97,.55), transparent 70%),
-    radial-gradient(800px 600px at 62% -8%, rgba(82,0,131,.55), transparent 70%),
-    radial-gradient(800px 700px at 40% 85%, rgba(115,40,165,.32), transparent 70%),
-    radial-gradient(600px 500px at 92% 55%, rgba(224,47,117,.28), transparent 70%),
+    radial-gradient(800px 600px at 62% -8%, rgba(var(--esp-r-rgb,82,0,131),.55), transparent 70%),
+    radial-gradient(800px 700px at 40% 85%, rgba(var(--esp-v-rgb,115,40,165),.32), transparent 70%),
+    radial-gradient(600px 500px at 92% 55%, rgba(var(--esp-m-rgb,224,47,117),.28), transparent 70%),
     radial-gradient(500px 400px at 100% 100%, rgba(255,90,87,.22), transparent 70%),
     #02030C;
   color:#F3F4FA;}
-html[data-identidade="espectro"] .login-fundo .um{background:radial-gradient(circle, rgba(224,47,117,.38), transparent 66%);filter:blur(60px);}
-html[data-identidade="espectro"] .login-fundo .dois{background:radial-gradient(circle, rgba(115,40,165,.5), transparent 68%);filter:blur(60px);}
+html[data-identidade="espectro"] .login-fundo .um{background:radial-gradient(circle, rgba(var(--esp-m-rgb,224,47,117),.38), transparent 66%);filter:blur(60px);}
+html[data-identidade="espectro"] .login-fundo .dois{background:radial-gradient(circle, rgba(var(--esp-v-rgb,115,40,165),.5), transparent 68%);filter:blur(60px);}
 /* os raios de luz do centro (repeating-conic), no lugar da malha */
 html[data-identidade="espectro"] .login-fundo .malha{opacity:1;background:repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,.05) 0deg 2deg, transparent 2deg 12deg);
   -webkit-mask-image:radial-gradient(circle at 50% 50%, #000, transparent 55%);mask-image:radial-gradient(circle at 50% 50%, #000, transparent 55%);}
@@ -432,10 +432,10 @@ html[data-identidade="espectro"] .login-caixa .rot{color:#AEB4D6;margin-top:18px
 html[data-identidade="espectro"] .login-caixa .campo{height:58px;min-height:58px;border-radius:29px;padding:0 22px;font-size:16px;
   background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);color:#fff;}
 html[data-identidade="espectro"] .login-caixa .campo::placeholder{color:rgba(174,180,214,.7);}
-html[data-identidade="espectro"] .login-caixa .campo:focus{border-color:rgba(201,162,240,.8);box-shadow:0 0 0 4px rgba(115,40,165,.25);background:rgba(255,255,255,.09);}
+html[data-identidade="espectro"] .login-caixa .campo:focus{border-color:rgba(201,162,240,.8);box-shadow:0 0 0 4px rgba(var(--esp-v-rgb,115,40,165),.25);background:rgba(255,255,255,.09);}
 html[data-identidade="espectro"] .login-caixa .login-olho{color:#AEB4D6;right:12px;}
 html[data-identidade="espectro"] .login-caixa .login-entrar{width:100%;min-height:58px;border-radius:29px;font-size:17px;margin-top:18px;
-  background:var(--b7-espectro-curto) !important;box-shadow:0 16px 40px rgba(224,47,117,.45) !important;}
+  background:var(--b7-espectro-curto) !important;box-shadow:0 16px 40px rgba(var(--esp-m-rgb,224,47,117),.45) !important;}
 html[data-identidade="espectro"] .login-caixa .login-entrar:hover{filter:brightness(1.08);}
 html[data-identidade="espectro"] .login-caixa :is(.lg-google, .lg-n7, .b.contorno){min-height:50px;border-radius:25px;background:transparent;border:1px solid rgba(255,255,255,.14);color:#fff;}
 html[data-identidade="espectro"] .login-caixa :is(.lg-google, .lg-n7, .b.contorno):hover{background:rgba(255,255,255,.06);}
@@ -485,7 +485,7 @@ html[data-identidade="espectro"]::view-transition-new(b7-pagina){animation:espVt
   html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 span{display:none;}
   html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 svg{flex:0 0 22px;width:22px;height:22px;}
   html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7:hover{background:var(--suave);color:var(--ink);}
-  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7:focus-visible{outline:2px solid #7328A5;outline-offset:2px;}
+  html[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7:focus-visible{outline:2px solid var(--esp-v,#7328A5);outline-offset:2px;}
   html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7{width:calc(100% - 32px);height:auto;min-height:52px;margin:0 16px 6px;padding:8px 12px;
     justify-content:flex-start;gap:12px;}
   html.esp-menu-aberto[data-identidade="espectro"] body[data-shell="interno"] .bt-central-n7 span{display:flex;}

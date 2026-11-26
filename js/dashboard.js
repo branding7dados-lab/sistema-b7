@@ -2054,7 +2054,14 @@ B7.Dashboard = (function () {
     /* zzz163: as cores aparecem aqui mesmo; tocar já troca (só para você,
        neste aparelho). Menu, botões, brilho e "sua cor" ficam em Mais opções. */
     const OK_COR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
-    const coresRapidas = () => '<div class="cfg-cores" role="radiogroup" aria-label="Cor do sistema">' +
+    /* 5.17.0 identidade nova: as 3 paletas da marca em cartões (quadro Config-aparencia), sem "Mais opções" */
+    const coresRapidas = () => (B7.Identidade && B7.Identidade.ligada() ? '<div class="cfg-cores cfg-pals" role="radiogroup" aria-label="Paleta">' +
+      B7.Aparencia.bolinhas().map(b => '<button type="button" role="radio" class="cfg-cor cfg-pal' + (b.on ? ' on' : '') + '" aria-checked="' + b.on + '" data-cor="' + b.id + '">' +
+        '<span class="cfg-pal-faixa">' + (b.faixa || []).map(c => '<b style="background:' + c + '"></b>').join('') + '</span>' +
+        '<span class="cfg-pal-pe"><span>' + esc(b.nome) + '</span>' + OK_COR + '</span></button>').join('') +
+      '</div><div class="cfg-cores-pe">' +
+        (B7.Aparencia.pessoal() ? '<button type="button" class="cfg-cor-link" data-cor-equipe>Usar a da equipe</button>' : '<span class="cfg-cor-nota">Igual à da equipe</span>') + '</div>' : '') ||
+      '<div class="cfg-cores" role="radiogroup" aria-label="Cor do sistema">' +
       B7.Aparencia.bolinhas().map(b => '<button type="button" role="radio" class="cfg-cor' + (b.on ? ' on' : '') + '" aria-checked="' + b.on + '" data-cor="' + b.id + '" title="' + esc(b.nome) + '" aria-label="' + esc(b.nome) + '">' +
         '<i style="background:' + b.fundo + '">' + OK_COR + '</i>' + (B7.Identidade && B7.Identidade.ligada() ? '<span class="cfg-cor-nome">' + esc(b.nome) + '</span>' : '') + '</button>').join('') +
       '</div><div class="cfg-cores-pe">' +
@@ -2267,7 +2274,7 @@ B7.Dashboard = (function () {
     }
     const secSisEquipe = !ehAdm ? '' :
       (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe (é o padrão de quem não escolheu a sua).',
-        L({ ic: 'tema', tom: 'rosa', t: 'Cor, menu, botões e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' }) +
+        L({ ic: 'tema', tom: 'rosa', t: B7.Identidade && B7.Identidade.ligada() ? 'Paleta da equipe' : 'Cor, menu, botões e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' }) +
         /* zzz231: a abertura de todo mundo ou de uma pessoa só */
         (B7.AberturaAdm ? L({ ic: 'play', tom: 'violeta', t: 'Abertura do sistema', d: 'a animação de entrada para todos ou para uma pessoa', botao: true, attrs: ' data-abertura-adm' }) : '')) : '') +
       (ehAdm && podeDesligarModulos() ? grupo('Módulos da agência',

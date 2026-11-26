@@ -20,7 +20,7 @@ html[data-identidade="espectro"] .tp-menu-criar .tp-item:focus-visible,
 html[data-identidade="espectro"] .tp-folha .tp-item[data-criar]:hover,
 html[data-identidade="espectro"] .tp-folha .tp-item[data-criar]:focus-visible{background:#F0E8F8;box-shadow:none;outline:none;}
 html[data-identidade="espectro"] .tp-menu-criar .tp-item-ic,
-html[data-identidade="espectro"] .tp-folha .tp-item[data-criar] .tp-item-ic{width:34px;height:34px;border-radius:14px;background:var(--suave);color:#7328A5;}
+html[data-identidade="espectro"] .tp-folha .tp-item[data-criar] .tp-item-ic{width:34px;height:34px;border-radius:14px;background:var(--suave);color:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"] .tp-menu-criar .tp-item:hover .tp-item-ic,
 html[data-identidade="espectro"] .tp-menu-criar .tp-item:focus-visible .tp-item-ic,
 html[data-identidade="espectro"] .tp-folha .tp-item[data-criar]:hover .tp-item-ic{background:var(--suave);}
@@ -101,12 +101,12 @@ html[data-identidade="espectro"] .paleta .busca-cp,
 html[data-identidade="espectro"] .paleta .busca-cp:focus-within{height:auto;margin:0;padding:18px 20px;gap:12px;border:0;border-radius:0;
   border-bottom:1px solid var(--borda);background:none;box-shadow:none;}
 html[data-identidade="espectro"] .paleta .busca-cp > svg,
-html[data-identidade="espectro"] .paleta .busca-cp:focus-within > svg{width:22px;height:22px;stroke:#7328A5;stroke-width:1.8;}
-html[data-identidade="espectro"] .paleta .busca-cp input{font-family:var(--b7-fonte);font-size:18px;font-weight:400;color:var(--ink);caret-color:#7328A5;}
+html[data-identidade="espectro"] .paleta .busca-cp:focus-within > svg{width:22px;height:22px;stroke:var(--esp-v,#7328A5);stroke-width:1.8;}
+html[data-identidade="espectro"] .paleta .busca-cp input{font-family:var(--b7-fonte);font-size:18px;font-weight:400;color:var(--ink);caret-color:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"] .paleta .busca-cp input::placeholder{color:var(--ink-4);}
 html[data-identidade="espectro"] .paleta .cp-carga{left:0;right:0;bottom:-1px;}
 html[data-identidade="espectro"] .paleta .cp-carga::before{background:var(--b7-espectro-curto);}
-html[data-identidade="espectro"] .paleta .cp-fechar{font-family:var(--b7-fonte);font-weight:400;color:#7328A5;height:auto;padding:0;}
+html[data-identidade="espectro"] .paleta .cp-fechar{font-family:var(--b7-fonte);font-weight:400;color:var(--esp-v,#7328A5);height:auto;padding:0;}
 /* "Esc" à direita do campo, só onde há teclado (o "Cancelar" fica para o toque) */
 @media (hover:hover) and (pointer:fine){
   html[data-identidade="espectro"] .paleta .busca-cp::after{content:'Esc';flex:none;font-size:12px;line-height:1.45;padding:3px 8px;
@@ -129,7 +129,7 @@ html[data-identidade="espectro"] .paleta .cp-item .ic.cp-t-play,
 html[data-identidade="espectro"] .paleta .cp-item .ic.cp-t-pessoa,
 html[data-identidade="espectro"] .paleta .cp-item .ic.cp-t-mais,
 html[data-identidade="espectro"] .paleta .cp-item .ic.cp-t-outro{width:30px;height:30px;padding:0;border:0;border-radius:0;background:none;
-  box-shadow:none;color:#7328A5;}
+  box-shadow:none;color:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"] .paleta .cp-item .ic svg{width:20px;height:20px;stroke-width:1.8;}
 /* cliente: avatar 30×30 azul-matriz com as iniciais, ou o logo */
 html[data-identidade="espectro"] .paleta .cp-item .ic.cp-t-outro{border-radius:14px;background:#001561;color:#FFFFFF;

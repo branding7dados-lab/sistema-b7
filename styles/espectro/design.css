@@ -24,8 +24,8 @@ html[data-identidade="espectro"] .design-tela .ds-abas button{height:34px;paddin
 html[data-identidade="espectro"] .design-tela .ds-abas button:hover{color:var(--ink);background:var(--card);}
 html[data-identidade="espectro"] .design-tela .ds-abas button:active{transform:scale(.97);}
 html[data-identidade="espectro"] .design-tela .ds-abas button.on{background:#001561;border-color:#001561;color:#fff;box-shadow:none;}
-html[data-identidade="espectro"][data-theme="dark"] .design-tela .ds-abas button.on{background:#7328A5;border-color:#7328A5;}
-html[data-identidade="espectro"] .design-tela .ds-abas button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);border-radius:17px;}
+html[data-identidade="espectro"][data-theme="dark"] .design-tela .ds-abas button.on{background:var(--esp-v,#7328A5);border-color:var(--esp-v,#7328A5);}
+html[data-identidade="espectro"] .design-tela .ds-abas button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(var(--esp-v-rgb,115,40,165),.3);border-radius:17px;}
 html[data-identidade="espectro"] .design-tela .ds-aba-n,
 html[data-identidade="espectro"] .design-tela .ds-abas button.on .ds-aba-n{font-style:normal;font-size:13px;font-weight:400;margin:0 0 0 4px;padding:0;border-radius:0;background:none;color:inherit;}
 html[data-identidade="espectro"] .design-tela .ds-aba-n:not(:empty)::before{content:"· ";}
@@ -79,7 +79,7 @@ html[data-identidade="espectro"] .design-tela .ds-lista-grade{grid-template-colu
 html[data-identidade="espectro"] .ds-card{padding:0;border-radius:22px;border:1px solid var(--borda);background:var(--card);overflow:hidden;box-shadow:none;display:flex;flex-direction:column;
   transition:transform .12s, box-shadow .18s, border-color .18s;}
 html[data-identidade="espectro"] .ds-card:hover{transform:translateY(-2px);border-color:var(--borda);box-shadow:var(--sh-2);}
-html[data-identidade="espectro"] .ds-card:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .ds-card:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(var(--esp-v-rgb,115,40,165),.3);}
 html[data-identidade="espectro"] .ds-card.alta,
 html[data-identidade="espectro"] .ds-card.urgente{border-left-width:1px;}
 html[data-identidade="espectro"] .ds-card.urgente{box-shadow:inset 0 3px 0 var(--erro);}
@@ -99,15 +99,15 @@ html[data-identidade="espectro"] .ds-card .ds-feedback{font-size:12px;font-weigh
 
 /* seleção em lote: a caixinha fica no canto direito da prévia, em Violeta Quantum quando marcada */
 html[data-identidade="espectro"] .ds-card{position:relative;}
-html[data-identidade="espectro"] .ds-selbox input:checked + i{background:#7328A5;border-color:#7328A5;}
-html[data-identidade="espectro"] [data-peca].ds-marcada{box-shadow:0 0 0 2px #7328A5 !important;background:var(--card) !important;}
+html[data-identidade="espectro"] .ds-selbox input:checked + i{background:var(--esp-v,#7328A5);border-color:var(--esp-v,#7328A5);}
+html[data-identidade="espectro"] [data-peca].ds-marcada{box-shadow:0 0 0 2px var(--esp-v,#7328A5) !important;background:var(--card) !important;}
 
 /* etiqueta de situação (cartão e ficha da peça): pílula 24 com ponto de 6 */
 html[data-identidade="espectro"] .ds-card-selo{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:400;white-space:nowrap;
   background:var(--neutro-bg);color:var(--neutro);}
 html[data-identidade="espectro"] .ds-card-midia .ds-card-selo{position:absolute;left:10px;top:10px;}
 html[data-identidade="espectro"] .ds-card-selo i{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
-html[data-identidade="espectro"] .ds-card-selo.t-violeta{background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"] .ds-card-selo.t-violeta{background:#F0E8F8;color:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"] .ds-card-selo.t-ambar{background:var(--ambar-bg);color:var(--ambar);}
 html[data-identidade="espectro"] .ds-card-selo.t-ok{background:var(--ok-bg);color:var(--ok);}
 html[data-identidade="espectro"] .ds-card-selo.t-erro{background:var(--erro-bg);color:var(--erro);}
@@ -139,7 +139,7 @@ html[data-identidade="espectro"] .design-tela .ds-chip{font-weight:400;border-ra
 
 /* ------------------------------------------------- equipe e vazio */
 html[data-identidade="espectro"] .design-tela .ds2-vazio{border-radius:26px;background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);}
-html[data-identidade="espectro"] .design-tela .ds2-vazio-ic{background:var(--b7-espectro-curto);box-shadow:0 12px 30px rgba(224,47,117,.3);}
+html[data-identidade="espectro"] .design-tela .ds2-vazio-ic{background:var(--b7-espectro-curto);box-shadow:0 12px 30px rgba(var(--esp-m-rgb,224,47,117),.3);}
 html[data-identidade="espectro"] .design-tela .ds2-vazio b{font-size:22px;font-weight:400;letter-spacing:0;}
 
 /* ================================================================ CENTRAL DE DESIGN */
@@ -180,7 +180,7 @@ html[data-identidade="espectro"] .dsc-tela .dsc-meta i.hoje{font-weight:400;}
 html[data-identidade="espectro"] .dsc-tela .dsc-motivo{height:24px;line-height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;}
 html[data-identidade="espectro"] .dsc-tela .dsc-motivo.cliente,
 html[data-identidade="espectro"] .dsc-tela .dsc-motivo.ajuste{background:var(--ambar-bg);color:var(--ambar);}
-html[data-identidade="espectro"] .dsc-tela .dsc-motivo.comecar{background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"] .dsc-tela .dsc-motivo.comecar{background:#F0E8F8;color:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"][data-theme="dark"] .dsc-tela .dsc-motivo.comecar{background:var(--violeta-bg);color:var(--acento);}
 html[data-identidade="espectro"] .dsc-tela .dsc-item .ds-prazo{font-size:12.5px;color:var(--ink-3);}
 html[data-identidade="espectro"] .dsc-tela .dsc-item .ds-prazo.hoje{color:var(--ambar);}
@@ -261,7 +261,7 @@ html[data-identidade="espectro"][data-theme="dark"] .design-tela .ds-precisa-chi
   html[data-identidade="espectro"] .design-tela .ds-abas{gap:6px !important;margin:0 -16px 14px !important;padding:0 16px !important;border-bottom:0 !important;}
   html[data-identidade="espectro"] .design-tela .ds-abas button{height:34px !important;padding:0 14px !important;border:1px solid var(--borda-forte) !important;border-radius:17px !important;background:var(--card) !important;color:var(--ink-3) !important;font-size:13px !important;font-weight:400 !important;}
   html[data-identidade="espectro"] .design-tela .ds-abas button.on{background:#001561 !important;border-color:#001561 !important;color:#fff !important;}
-  html[data-identidade="espectro"][data-theme="dark"] .design-tela .ds-abas button.on{background:#7328A5 !important;border-color:#7328A5 !important;}
+  html[data-identidade="espectro"][data-theme="dark"] .design-tela .ds-abas button.on{background:var(--esp-v,#7328A5) !important;border-color:var(--esp-v,#7328A5) !important;}
   html[data-identidade="espectro"] .design-tela .ds-abas button::after{display:none !important;}
   html[data-identidade="espectro"] .design-tela .ds-abas .ds-aba-n,
   html[data-identidade="espectro"] .design-tela .ds-abas button.on .ds-aba-n{font-size:13px !important;font-weight:400;margin-left:4px !important;padding:0 !important;background:none !important;color:inherit !important;}

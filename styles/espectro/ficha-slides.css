@@ -15,7 +15,7 @@ html[data-identidade="espectro"] .folha.rte p{margin:0;}
 /* faixa do alto: Azul Matriz, luzes violeta/magenta, padrão da lâmpada e canto cortado */
 html[data-identidade="espectro"] .rte-cab{position:relative;min-height:calc(212px * var(--fs));background:#001561;overflow:hidden;color:#FFFFFF;}
 html[data-identidade="espectro"] .rte-cab-luz{position:absolute;inset:0;
-  background:radial-gradient(420px 300px at 92% 10%, rgba(115,40,165,.75), transparent 70%),radial-gradient(360px 260px at 70% 120%, rgba(224,47,117,.45), transparent 70%);}
+  background:radial-gradient(420px 300px at 92% 10%, rgba(var(--esp-v-rgb,115,40,165),.75), transparent 70%),radial-gradient(360px 260px at 70% 120%, rgba(var(--esp-m-rgb,224,47,117),.45), transparent 70%);}
 /* o padrão some para a esquerda (no quadro, uma máscara); aqui um degradê Azul Matriz por cima, que o html2canvas desenha */
 html[data-identidade="espectro"] .rte-cab-padrao{position:absolute;right:-60px;top:-40px;width:520px;height:292px;opacity:.35;
   background:url('../../assets/brand/espectro/padrao-lampada-violeta.svg') center/cover no-repeat;}
@@ -31,7 +31,7 @@ html[data-identidade="espectro"] .rte-kicker{font-size:9px;letter-spacing:.16em;
 html[data-identidade="espectro"] .folha.rte h2{font-size:calc(42px * var(--fs));line-height:1.05;letter-spacing:0;text-transform:none;color:#FFFFFF;margin:10px 0 0;}
 html[data-identidade="espectro"] .folha.rte h2.fraco{color:rgba(255,255,255,.45);}
 html[data-identidade="espectro"] .rte-obj{margin-top:10px !important;font-size:11px;line-height:1.4;color:rgba(255,255,255,.82);max-width:600px;}
-html[data-identidade="espectro"] .rte-cab-faixa{position:absolute;left:0;right:0;bottom:0;height:6px;background:linear-gradient(120deg,#7328A5 0%,#E02F75 60%,#FF5A57 100%);}
+html[data-identidade="espectro"] .rte-cab-faixa{position:absolute;left:0;right:0;bottom:0;height:6px;background:linear-gradient(120deg,var(--esp-v,#7328A5) 0%,var(--esp-m,#E02F75) 60%,#FF5A57 100%);}
 html[data-identidade="espectro"] .rte-cab-corte{position:absolute;right:0;bottom:0;width:26px;height:46px;display:block;}
 
 /* dados da gravação */
@@ -55,11 +55,11 @@ html[data-identidade="espectro"] .rte-hex svg{position:absolute;inset:0;width:10
 html[data-identidade="espectro"] .rte-hex b{position:relative;font-size:calc(15px * var(--fs));line-height:1;color:#FFFFFF;}
 html[data-identidade="espectro"] .rte-cena-cx{min-width:0;}
 html[data-identidade="espectro"] .rte-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-html[data-identidade="espectro"] .rte-tipo{display:inline-flex;align-items:center;height:calc(18px * var(--fs));padding:0 8px;border-radius:12px;background:#EFEDF7;color:#520083;
+html[data-identidade="espectro"] .rte-tipo{display:inline-flex;align-items:center;height:calc(18px * var(--fs));padding:0 8px;border-radius:12px;background:#EFEDF7;color:var(--esp-r,#520083);
   font-size:calc(9.5px * var(--fs));letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;}
 html[data-identidade="espectro"] .c-gancho .rte-tipo{background:#FF5A57;color:#FFFFFF;}
-html[data-identidade="espectro"] .c-cta .rte-tipo{background:#E02F75;color:#FFFFFF;}
-html[data-identidade="espectro"] .c-narracao .rte-tipo{color:#7328A5;}
+html[data-identidade="espectro"] .c-cta .rte-tipo{background:var(--esp-m,#E02F75);color:#FFFFFF;}
+html[data-identidade="espectro"] .c-narracao .rte-tipo{color:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"] .rte-dir{display:inline-flex;align-items:center;gap:4px;font-size:calc(9px * var(--fs));letter-spacing:.12em;text-transform:uppercase;color:#5F6584;}
 html[data-identidade="espectro"] .rte-dir svg{width:11px;height:11px;flex:none;fill:none;stroke:#5F6584;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 html[data-identidade="espectro"] .rte-img{display:flex;align-items:flex-start;gap:5px;font-size:calc(10.5px * var(--fs));line-height:1.4;color:#8D91AA;margin-top:calc(5px * var(--fs)) !important;}
@@ -69,7 +69,7 @@ html[data-identidade="espectro"] .rte-texto p{font-size:calc(15px * var(--fs));l
 html[data-identidade="espectro"] .rte-texto p + p{margin-top:calc(4px * var(--fs));}
 html[data-identidade="espectro"] .c-narracao .rte-texto p{color:#2A2F52;}
 html[data-identidade="espectro"] .rte-gancho{position:relative;margin-top:calc(8px * var(--fs));padding:calc(14px * var(--fs)) 54px calc(14px * var(--fs)) 18px;border-radius:18px;overflow:hidden;
-  background:linear-gradient(110deg,#001561,#520083 55%,#E02F75);color:#FFFFFF;}
+  background:linear-gradient(110deg,#001561,var(--esp-r,#520083) 55%,var(--esp-m,#E02F75));color:#FFFFFF;}
 html[data-identidade="espectro"] .rte-aspas{position:absolute;right:14px;top:-6px;font-size:64px;line-height:1;color:rgba(255,255,255,.22);}
 html[data-identidade="espectro"] .rte-gancho p{position:relative;font-size:calc(19px * var(--fs));line-height:1.25;color:#FFFFFF;}
 html[data-identidade="espectro"] .rte-gancho p + p{margin-top:calc(6px * var(--fs));}
@@ -79,11 +79,11 @@ html[data-identidade="espectro"] .rte-cta-tx{flex:1;min-width:0;}
 html[data-identidade="espectro"] .rte-cta p{font-size:calc(16px * var(--fs));line-height:1.3;color:#001561;}
 html[data-identidade="espectro"] .rte-cta p + p{margin-top:calc(4px * var(--fs));}
 html[data-identidade="espectro"] .rte-cta-ic{width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(120deg,#7328A5 0%,#E02F75 60%,#FF5A57 100%);}
+  background:linear-gradient(120deg,var(--esp-v,#7328A5) 0%,var(--esp-m,#E02F75) 60%,#FF5A57 100%);}
 html[data-identidade="espectro"] .rte-cta-ic svg{width:16px;height:16px;fill:none;stroke:#FFFFFF;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
 html[data-identidade="espectro"] .rte-marcar{width:16px;height:16px;border-radius:5px;border:1.5px solid #C9C3DF;margin-top:2px;box-sizing:border-box;}
 /* "Cliente: fala" — o nome de quem fala */
-html[data-identidade="espectro"] .folha.rte .rt-quem{font-size:.78em;letter-spacing:.1em;text-transform:uppercase;color:#7328A5;margin-right:2px;}
+html[data-identidade="espectro"] .folha.rte .rt-quem{font-size:.78em;letter-spacing:.1em;text-transform:uppercase;color:var(--esp-v,#7328A5);margin-right:2px;}
 html[data-identidade="espectro"] .folha.rte :is(.rte-gancho, .rte-cta) .rt-quem{color:inherit;opacity:.75;}
 
 /* observações do set: linhas para escrever à mão */
@@ -96,7 +96,7 @@ html[data-identidade="espectro"] .rte-obs i{display:block;height:calc(20px * var
 html[data-identidade="espectro"] .rte-pe{position:absolute;left:48px;right:48px;bottom:20px;display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#5F6584;}
 html[data-identidade="espectro"] .rte-pe span{display:flex;align-items:center;gap:8px;}
 html[data-identidade="espectro"] .rte-pe img{display:block;width:17px;height:16px;flex:none;}
-html[data-identidade="espectro"] .rte-pe-faixa{position:absolute;left:0;right:0;bottom:0;height:4px;background:linear-gradient(120deg,#7328A5 0%,#E02F75 60%,#FF5A57 100%);}
+html[data-identidade="espectro"] .rte-pe-faixa{position:absolute;left:0;right:0;bottom:0;height:4px;background:linear-gradient(120deg,var(--esp-v,#7328A5) 0%,var(--esp-m,#E02F75) 60%,#FF5A57 100%);}
 html[data-identidade="espectro"] .folha.rte .aviso-overflow{bottom:40px;}
 html[data-identidade="espectro"] .folha.rte:not(.estourou){box-shadow:0 20px 50px rgba(10,16,51,.15);}
 
@@ -111,8 +111,8 @@ html[data-identidade="espectro"] .folha.rte:not(.estourou){box-shadow:0 20px 50p
 html[data-identidade="espectro"] :is(.folha, #area-impressao, .slide){
   --ink:#0A1033; --ink-2:#2A2F52; --grey:#5F6584; --line:#ECEBF3;
   --lilac:#F4F2FA; --tint:#FBEAF2; --erro:#D7263D;
-  --magenta:#E02F75; --roxo:#520083; --violeta:#7328A5; --violet:#7328A5; --marinho:#001561; --acento:#7328A5;
-  --grad:linear-gradient(120deg,#001561 0%,#520083 30%,#7328A5 55%,#E02F75 80%,#FF5A57 100%);
+  --magenta:var(--esp-m,#E02F75); --roxo:var(--esp-r,#520083); --violeta:var(--esp-v,#7328A5); --violet:var(--esp-v,#7328A5); --marinho:#001561; --acento:var(--esp-v,#7328A5);
+  --grad:linear-gradient(120deg,#001561 0%,var(--esp-r,#520083) 30%,var(--esp-v,#7328A5) 55%,var(--esp-m,#E02F75) 80%,#FF5A57 100%);
   color:#0A1033;}
 html[data-identidade="espectro"] :is(.folha, .slide, .preview-fundo, .pv-det),
 html[data-identidade="espectro"] :is(.folha, .slide, .preview-fundo, .pv-det) *:not(svg, svg *){
@@ -121,8 +121,8 @@ html[data-identidade="espectro"] :is(.folha, .slide, .pv-det) :is(h1, h2, h3){le
 
 /* painéis escuros (capas, cabeçalho do mês, capa 16:9): Azul Matriz + padrão + luzes */
 html[data-identidade="espectro"] :is(.cp-painel, .s2-capa-painel, .l2-heroi, .slide.escuro, .folha.abertura:not(.cp), .folha.rt-capa, .pv-det-lado){
-  background:radial-gradient(60% 70% at 92% 8%, rgba(115,40,165,.75), transparent 70%),
-    radial-gradient(55% 60% at 70% 115%, rgba(224,47,117,.45), transparent 70%),
+  background:radial-gradient(60% 70% at 92% 8%, rgba(var(--esp-v-rgb,115,40,165),.75), transparent 70%),
+    radial-gradient(55% 60% at 70% 115%, rgba(var(--esp-m-rgb,224,47,117),.45), transparent 70%),
     linear-gradient(rgba(0,21,97,.55), rgba(0,21,97,.55)),
     url('../../assets/brand/espectro/padrao-lampada-matriz.svg') center/cover no-repeat, #001561;
   color:#FFFFFF;}
@@ -131,28 +131,28 @@ html[data-identidade="espectro"] :is(.cp-kicker, .sl-capa .olho, .folha.rt-capa 
 html[data-identidade="espectro"] .cp-kicker{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.22);color:#FFFFFF;}
 html[data-identidade="espectro"] :is(.sl-capa .olho i, .folha.abertura .olho i){background:#FF5A57;}
 html[data-identidade="espectro"] :is(.cp-sub, .l2-heroi-tx small, .folha.rt-capa h1 em){color:#C3C7E0;}
-html[data-identidade="espectro"] .l2-arte{background:linear-gradient(110deg,#001561,#520083 55%,#E02F75);}
-html[data-identidade="espectro"] :is(.cp-it b){background:linear-gradient(120deg,#7328A5 0%,#E02F75 60%,#FF5A57 100%);}
+html[data-identidade="espectro"] .l2-arte{background:linear-gradient(110deg,#001561,var(--esp-r,#520083) 55%,var(--esp-m,#E02F75));}
+html[data-identidade="espectro"] :is(.cp-it b){background:linear-gradient(120deg,var(--esp-v,#7328A5) 0%,var(--esp-m,#E02F75) 60%,#FF5A57 100%);}
 html[data-identidade="espectro"] :is(.cp-dados > div){background:#F4F2FA;border-radius:16px;}
 html[data-identidade="espectro"] :is(.cp-lista-tit, .cp-dados small, .s2-capa-cli small){letter-spacing:.16em;}
 html[data-identidade="espectro"] .cp-lista-tit{color:#5F6584;}
 
 /* cores dos formatos e das faixas de pilares/barras nas folhas e slides */
-html[data-identidade="espectro"] .t-reel{--tc:#E02F75;--tf:#FBEAF2;}
-html[data-identidade="espectro"] .t-card{--tc:#7328A5;--tf:#EFEDF7;}
+html[data-identidade="espectro"] .t-reel{--tc:var(--esp-m,#E02F75);--tf:#FBEAF2;}
+html[data-identidade="espectro"] .t-card{--tc:var(--esp-v,#7328A5);--tf:#EFEDF7;}
 html[data-identidade="espectro"] .t-carrossel{--tc:#001561;--tf:#E6E9F5;}
-html[data-identidade="espectro"] .t-story{--tc:#520083;--tf:#F1E8F7;}
+html[data-identidade="espectro"] .t-story{--tc:var(--esp-r,#520083);--tf:#F1E8F7;}
 html[data-identidade="espectro"] :is(.le-barra-total, .le-pilar-legenda, .sl-barra-total, .l2-pilares) .f0,
 html[data-identidade="espectro"] .sl-pilar .n.f0{background:#001561;}
 html[data-identidade="espectro"] :is(.le-barra-total, .le-pilar-legenda, .sl-barra-total, .l2-pilares) .f1,
-html[data-identidade="espectro"] .sl-pilar .n.f1{background:#520083;}
+html[data-identidade="espectro"] .sl-pilar .n.f1{background:var(--esp-r,#520083);}
 html[data-identidade="espectro"] :is(.le-barra-total, .le-pilar-legenda, .sl-barra-total, .l2-pilares) .f2,
-html[data-identidade="espectro"] .sl-pilar .n.f2{background:#7328A5;}
+html[data-identidade="espectro"] .sl-pilar .n.f2{background:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"] :is(.le-barra-total, .le-pilar-legenda, .sl-barra-total, .l2-pilares) .f3,
-html[data-identidade="espectro"] .sl-pilar .n.f3{background:#E02F75;}
-html[data-identidade="espectro"] :is(.le-pilar-legenda .soma, .le-cri-p){color:#E02F75;border-color:#E02F75;}
-html[data-identidade="espectro"] .le-cena{border-left-color:#E02F75;}
-html[data-identidade="espectro"] :is(.sl-capa .olho i, .rm-barra u){background:linear-gradient(90deg,#7328A5,#E02F75 60%,#FF5A57);}
+html[data-identidade="espectro"] .sl-pilar .n.f3{background:var(--esp-m,#E02F75);}
+html[data-identidade="espectro"] :is(.le-pilar-legenda .soma, .le-cri-p){color:var(--esp-m,#E02F75);border-color:var(--esp-m,#E02F75);}
+html[data-identidade="espectro"] .le-cena{border-left-color:var(--esp-m,#E02F75);}
+html[data-identidade="espectro"] :is(.sl-capa .olho i, .rm-barra u){background:linear-gradient(90deg,var(--esp-v,#7328A5),var(--esp-m,#E02F75) 60%,#FF5A57);}
 
 /* ---- modo apresentação (B7.PreviewLinha) ---- */
 html[data-identidade="espectro"] .preview-fundo{color:#F3F4FA;
@@ -187,15 +187,15 @@ html[data-identidade="espectro"] .preview-prog i{background:#FFFFFF;
 /* detalhe de um conteúdo, aberto por cima do slide */
 html[data-identidade="espectro"] .pv-det-fundo{background:rgba(0,21,97,.72);}
 html[data-identidade="espectro"] .pv-det-cartao{border-radius:24px;color:#0A1033;}
-html[data-identidade="espectro"] .pv-det-fmt{background:linear-gradient(120deg,#7328A5 0%,#E02F75 60%,#FF5A57 100%);letter-spacing:.2em;}
+html[data-identidade="espectro"] .pv-det-fmt{background:linear-gradient(120deg,var(--esp-v,#7328A5) 0%,var(--esp-m,#E02F75) 60%,#FF5A57 100%);letter-spacing:.2em;}
 html[data-identidade="espectro"] :is(.pv-det-dados b, .pv-det-pos){color:#C3C7E0;}
 html[data-identidade="espectro"] .pv-det-cta b{color:#FF5A57;}
 html[data-identidade="espectro"] .pv-det-bloco > b{color:#5F6584;}
-html[data-identidade="espectro"] .pv-det-bloco > b::before{background:linear-gradient(90deg,#7328A5,#E02F75 60%,#FF5A57);}
+html[data-identidade="espectro"] .pv-det-bloco > b::before{background:linear-gradient(90deg,var(--esp-v,#7328A5),var(--esp-m,#E02F75) 60%,#FF5A57);}
 html[data-identidade="espectro"] .pv-det-txt p{color:#2A2F52;}
 html[data-identidade="espectro"] .pv-det-bloco:first-child .pv-det-txt p{color:#0A1033;}
-html[data-identidade="espectro"] .pv-det-bloco.legenda .pv-det-txt{background:#F4F2FA;border-left-color:#E02F75;}
-html[data-identidade="espectro"] .pv-det-txt .tag{color:#E02F75;}
+html[data-identidade="espectro"] .pv-det-bloco.legenda .pv-det-txt{background:#F4F2FA;border-left-color:var(--esp-m,#E02F75);}
+html[data-identidade="espectro"] .pv-det-txt .tag{color:var(--esp-m,#E02F75);}
 html[data-identidade="espectro"] .pv-det-x{background:rgba(10,16,51,.07);color:#0A1033;}
 
 @media (max-width:760px){

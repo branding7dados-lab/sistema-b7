@@ -485,6 +485,20 @@ B7.Aparencia = (function () {
     { id: 'oliva', nome: 'Oliva', l: ['#34401A', '#4D5F1C', '#5E7417'], d: ['#6A7C30', '#8EA43A', '#B4CB4E'] },
     { id: 'framboesa', nome: 'Framboesa', l: ['#5A1747', '#8A1C5E', '#B0206F'], d: ['#9A3A7E', '#C9479A', '#F06BB8'] }
   ];
+  /* 5.17.0 identidade nova (quadro Config-aparencia): as 11 paletas viram 3, dentro da marca. No Espectro a
+     paleta vira html[data-paleta] e styles/espectro/paletas.css troca o destaque; nada do CSS gerado abaixo
+     (menu, botões, cantos, fundos tingidos, brilho) vale lá, e as datas especiais não tingem a abertura. */
+  const PALETAS_ESP = [
+    { id: 'b7', nome: 'Padrão B7', faixa: ['#001561', '#520083', '#7328A5', '#E02F75', '#FF5A57'] },
+    { id: 'matriz', nome: 'Matriz', faixa: ['#001561', '#0A2A8A', '#2A4BC0', '#6E86E0', '#C9D3F5'] },
+    { id: 'laser', nome: 'Laser', faixa: ['#520083', '#E02F75', '#FF5A57', '#FF8E6B', '#FFD2C2'] }
+  ];
+  const esp = () => document.documentElement.getAttribute('data-identidade') === 'espectro';
+  const paletaEsp = c => (c && PALETAS_ESP.some(p => p.id === c.paleta)) ? c.paleta : 'b7';
+  function pintarPaletaEsp(c) {
+    const r = document.documentElement, id = esp() ? paletaEsp(c) : 'b7';
+    if (id === 'b7') r.removeAttribute('data-paleta'); else r.setAttribute('data-paleta', id);
+  }
   /* zzz169: intensidade do tom nos fundos e formato dos cantos */
   const TINTAS = [['neutro', 'Neutro', 'cinzas quase puros'], ['suave', 'Suave', 'um leve tom da cor'], ['vivo', 'Colorido', 'fundos bem tingidos']];
   const FATOR_TINTA = { neutro: .12, suave: 1, vivo: 2 };
@@ -601,7 +615,7 @@ B7.Aparencia = (function () {
   const ativo = c => c.paleta !== 'b7' || c.menu !== 'padrao' || c.botoes === 'solido' || !!c.brilho ||
     (c.tinta && c.tinta !== 'suave') || (c.cantos && c.cantos !== 'padrao');
   function gerarCSS(c) {
-    if (!ativo(c)) return '';
+    if (esp() || !ativo(c)) return '';
     const val = valores(c);
     const bloco = (sel, t, escuro) => {
       const v = t[0], r = t[1], m = t[2];
@@ -640,7 +654,7 @@ B7.Aparencia = (function () {
   }
   function pintarEstacao(est) {
     const r = document.documentElement;
-    if (est) {
+    if (est && !esp()) {
       r.setAttribute('data-estacao', est.cor);
       if (est.frase) { r.style.setProperty('--estacao-frase', JSON.stringify(est.frase)); r.setAttribute('data-estacao-frase', '1'); }
       else r.removeAttribute('data-estacao-frase');
@@ -648,7 +662,7 @@ B7.Aparencia = (function () {
   }
   function normalizar(c) {
     c = c && typeof c === 'object' ? c : {};
-    return { paleta: PALETAS.some(p => p.id === c.paleta) || (c.paleta === 'custom' && RE_HEX.test(c.cor || '')) ? c.paleta : 'b7',
+    return { paleta: PALETAS.some(p => p.id === c.paleta) || PALETAS_ESP.some(p => p.id === c.paleta) || (c.paleta === 'custom' && RE_HEX.test(c.cor || '')) ? c.paleta : 'b7',
       cor: c.paleta === 'custom' && RE_HEX.test(c.cor || '') ? c.cor : '',
       menu: ['padrao', 'tingido', 'grafite'].includes(c.menu) ? c.menu : 'padrao',
       botoes: c.botoes === 'solido' ? 'solido' : 'degrade', brilho: c.brilho === true,
@@ -676,6 +690,7 @@ B7.Aparencia = (function () {
       if (localStorage.getItem(CHAVE)) localStorage.setItem(CHAVE, JSON.stringify(Object.assign({}, cfg, { css: gerarCSS(cfg) })));
     } catch (e) {}
     if (ativo(efetiva())) aplicarCSS(efetiva());
+    pintarPaletaEsp(efetiva());
   })();
   function guardarPessoal(c) {
     meu = c ? normalizar(c) : null;
@@ -686,15 +701,15 @@ B7.Aparencia = (function () {
     aplicar();
   }
 
-  function aplicar(c) { const x = c || efetiva(); aplicarCSS(x); pintarEstacao(estacaoDe(cfg)); }
+  function aplicar(c) { const x = c || efetiva(); aplicarCSS(x); pintarPaletaEsp(x); pintarEstacao(estacaoDe(cfg)); }
   /* recebe o que veio do banco; null = conta que não recebe (Portal) */
   function sincronizar(c) {
     if (c === null || c === undefined || typeof c !== 'object') return;
     cfg = normalizar(c);
     const css = gerarCSS(cfg);
-    aplicarCSS(efetiva()); pintarEstacao(estacaoDe(cfg));
+    aplicarCSS(efetiva()); pintarPaletaEsp(efetiva()); pintarEstacao(estacaoDe(cfg));
     try {
-      if (!css && !cfg.estacoes.length) localStorage.removeItem(CHAVE);
+      if (!css && !cfg.estacoes.length && paletaEsp(cfg) === 'b7') localStorage.removeItem(CHAVE);
       else localStorage.setItem(CHAVE, JSON.stringify(Object.assign({}, cfg, { css })));
     } catch (e) {}
   }
@@ -715,14 +730,14 @@ B7.Aparencia = (function () {
     const nova = Object.assign({}, cfg, { paleta: p, cor: p === 'custom' ? cfg.cor : '' });
     await gravar(nova); sincronizar(nova);
   }
-  const nomePaleta = c => c.paleta === 'custom' ? 'Personalizada' : (PALETAS.find(x => x.id === c.paleta) || PALETAS[0]).nome;
-  const rotuloPaleta = id => id === 'custom' ? 'Personalizada' : (PALETAS.find(x => x.id === id) || PALETAS[0]).nome;
+  const nomePaleta = c => esp() ? PALETAS_ESP.find(x => x.id === paletaEsp(c)).nome : c.paleta === 'custom' ? 'Personalizada' : (PALETAS.find(x => x.id === c.paleta) || PALETAS[0]).nome;
+  const rotuloPaleta = id => esp() ? PALETAS_ESP.find(x => x.id === paletaEsp({ paleta: id })).nome : id === 'custom' ? 'Personalizada' : (PALETAS.find(x => x.id === id) || PALETAS[0]).nome;
   const extrasDe = c => [c.menu !== 'padrao' ? 'menu ' + (c.menu === 'tingido' ? 'tingido' : 'grafite') : '', c.botoes === 'solido' ? 'botões sólidos' : '', c.brilho ? 'brilho' : '',
     c.tinta === 'neutro' ? 'fundos neutros' : c.tinta === 'vivo' ? 'fundos coloridos' : '', c.cantos === 'retos' ? 'cantos retos' : c.cantos === 'redondos' ? 'cantos redondos' : ''].filter(Boolean);
-  const resumoDe = c => { const extra = extrasDe(c); return nomePaleta(c) + (extra.length ? ' · ' + extra.join(', ') : ''); };
+  const resumoDe = c => { const extra = esp() ? [] : extrasDe(c); return nomePaleta(c) + (extra.length ? ' · ' + extra.join(', ') : ''); };
   const resumoPessoal = () => meu ? resumoDe(meu) + ' · sua escolha' : resumoDe(cfg) + ' · o padrão do sistema';
   const resumo = () => {
-    const n = cfg.estacoes.length;
+    const n = esp() ? 0 : cfg.estacoes.length;
     return resumoDe(cfg) + (n ? ' · ' + n + (n === 1 ? ' data especial' : ' datas especiais') : '');
   };
 
@@ -760,12 +775,37 @@ B7.Aparencia = (function () {
   function aplicarSuave(c) {
     const anima = document.startViewTransition && !(B7.Desempenho && B7.Desempenho.animacoesLigadas && !B7.Desempenho.animacoesLigadas()) &&
       !matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!anima) return aplicarCSS(c);
-    try { const vt = document.startViewTransition(() => aplicarCSS(c)); vt.ready.catch(() => {}); vt.finished.catch(() => {}); } catch (e) { aplicarCSS(c); }
+    const pinta = () => { aplicarCSS(c); pintarPaletaEsp(c); };
+    if (!anima) return pinta();
+    try { const vt = document.startViewTransition(pinta); vt.ready.catch(() => {}); vt.finished.catch(() => {}); } catch (e) { pinta(); }
   }
 
   /* opcoes.pessoal = a folha da própria pessoa (só neste aparelho) */
+  /* 5.17.0: no Espectro, a "Aparência do sistema" é só a paleta padrão da equipe, nas 3 da marca (quadro
+     Config-aparencia). Menu, botões, cantos, fundos tingidos, brilho e datas especiais são do visual antigo. */
+  async function abrirEspectro() {
+    await trazer();
+    const OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+    const m = B7.UI.modal('<h3>Paleta da equipe</h3><p class="sub">O padrão de quem não escolheu a sua em Configurações → Aparência. As 3 dentro da nova marca.</p>' +
+      '<div class="cfg-cores cfg-pals" role="radiogroup" aria-label="Paleta da equipe">' + PALETAS_ESP.map(p =>
+        '<button type="button" role="radio" class="cfg-cor cfg-pal' + (paletaEsp(cfg) === p.id ? ' on' : '') + '" aria-checked="' + (paletaEsp(cfg) === p.id) + '" data-pal="' + p.id + '">' +
+        '<span class="cfg-pal-faixa">' + p.faixa.map(c => '<b style="background:' + c + '"></b>').join('') + '</span>' +
+        '<span class="cfg-pal-pe"><span>' + esc(p.nome) + '</span>' + OK + '</span></button>').join('') + '</div>' +
+      '<div class="acoes"><button type="button" class="b contorno" data-fecha>Fechar</button></div>');
+    m.querySelectorAll('[data-pal]').forEach(b => b.onclick = async () => {
+      if (b.classList.contains('on')) return;
+      m.querySelectorAll('[data-pal]').forEach(x => { x.disabled = true; });
+      try {
+        await definirPaleta(b.dataset.pal);
+        m.querySelectorAll('[data-pal]').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', on); });
+        B7.UI.toast('Paleta da equipe: ' + PALETAS_ESP.find(p => p.id === b.dataset.pal).nome + '. A equipe recebe em até 1 minuto.');
+        if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig();
+      } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' }); }
+      m.querySelectorAll('[data-pal]').forEach(x => { x.disabled = false; });
+    });
+  }
   async function abrir(opcoes) {
+    if (esp() && !(opcoes && opcoes.pessoal)) return abrirEspectro();
     const euMesmo = !!(opcoes && opcoes.pessoal);
     if (!euMesmo) await trazer();
     const base = euMesmo ? efetiva() : cfg;
@@ -981,11 +1021,12 @@ B7.Aparencia = (function () {
   /* as bolinhas para a tela de Configurações */
   function bolinhas() {
     const atual = efetiva();
+    if (esp()) return PALETAS_ESP.map(p => ({ id: p.id, nome: p.nome, faixa: p.faixa, fundo: 'linear-gradient(135deg,' + p.faixa.join(',') + ')', on: paletaEsp(atual) === p.id }));
     return PALETAS.map(p => ({ id: p.id, nome: p.nome, fundo: 'linear-gradient(135deg,' + p.l[0] + ',' + p.l[1] + ' 52%,' + p.l[2] + ')', on: atual.paleta === p.id }));
   }
 
   return { abrir, sincronizar, aplicar, escolherRapido, bolinhas, resumo, resumoPessoal, definirPaleta, rotuloPaleta,
-           paletaAtual: () => efetiva().paleta, pessoal: () => meu, usarDoSistema: () => guardarPessoal(null),
+           paletaAtual: () => esp() ? paletaEsp(efetiva()) : efetiva().paleta, pessoal: () => meu, usarDoSistema: () => guardarPessoal(null),
            _estacaoDe: estacaoDe, _gerarCSS: gerarCSS, _derivar: derivar, PALETAS };
 })();
 

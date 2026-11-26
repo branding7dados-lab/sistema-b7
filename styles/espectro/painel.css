@@ -29,8 +29,8 @@ html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab-acao svg{width:18px;hei
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpis{display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:16px;margin-bottom:16px;}
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;gap:0;
   min-width:0;min-height:132px;box-sizing:border-box;padding:20px 22px;border-radius:26px;border:0;box-shadow:none;
-  background:#520083;color:#FFFFFF;text-decoration:none;transform:none;}
-html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:nth-child(2){background:#E02F75;}
+  background:var(--esp-r,#520083);color:#FFFFFF;text-decoration:none;transform:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:nth-child(2){background:var(--esp-m,#E02F75);}
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:nth-child(3){background:#001561;}
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:nth-child(4){background:#FF5A57;}
 /* a lâmpada do padrão no canto, como no quadro */
@@ -104,9 +104,9 @@ html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-tx{display:contents;}
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-ic{grid-column:1;grid-row:1;width:28px;height:28px;border-radius:12px;background:#001561;color:#FFFFFF;margin-right:-4px;}
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-ic svg{width:15px;height:15px;}
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-erro .pn-att-ic{background:#FF5A57;color:#FFFFFF;}
-html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-ambar .pn-att-ic{background:#E02F75;color:#FFFFFF;}
-html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-acento .pn-att-ic{background:#7328A5;color:#FFFFFF;}
-html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-neutro .pn-att-ic{background:#520083;color:#FFFFFF;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-ambar .pn-att-ic{background:var(--esp-m,#E02F75);color:#FFFFFF;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-acento .pn-att-ic{background:var(--esp-v,#7328A5);color:#FFFFFF;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-neutro .pn-att-ic{background:var(--esp-r,#520083);color:#FFFFFF;}
 /* coluna 2: o item */
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-tx > b{grid-column:2;grid-row:1;font-size:13.5px;font-weight:400;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 /* coluna 3: a situação, como a etiqueta "Etapa" do quadro */
@@ -122,7 +122,7 @@ html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-meta{grid-column:4;grid
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-meta > span:not(.pn-logo):first-of-type,
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-meta > .pn-logo + span{color:var(--ink);}
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-logo{width:24px;height:24px;border-radius:10px;flex:none;object-fit:cover;}
-html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-logo-vazia{display:inline-flex;align-items:center;justify-content:center;background:#7328A5;color:#FFFFFF;font-size:9px;font-weight:400;letter-spacing:0;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-logo-vazia{display:inline-flex;align-items:center;justify-content:center;background:var(--esp-v,#7328A5);color:#FFFFFF;font-size:9px;font-weight:400;letter-spacing:0;}
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-meta > .pn-logo{margin-right:4px;}
 /* coluna 5: a seta */
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-seta{grid-column:5;grid-row:1;width:18px;height:18px;color:var(--ink-3);opacity:1;justify-self:end;}
@@ -168,8 +168,8 @@ html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-graf-resumo b{font-family:v
 html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-graf-resumo span{font-size:12px;color:var(--ink-3);}
 html[data-identidade="espectro"] .pnc-etapa{border-radius:14px;}
 html[data-identidade="espectro"] .pnc-etapa-trilho{height:10px;border-radius:999px;background:var(--suave);overflow:hidden;}
-html[data-identidade="espectro"] .pnc-etapa-trilho i{border-radius:999px;background:#7328A5;}
-html[data-identidade="espectro"] .pnc-etapa:is(:hover, :focus-visible) .pnc-etapa-trilho i{background:#E02F75;}
+html[data-identidade="espectro"] .pnc-etapa-trilho i{border-radius:999px;background:var(--esp-v,#7328A5);}
+html[data-identidade="espectro"] .pnc-etapa:is(:hover, :focus-visible) .pnc-etapa-trilho i{background:var(--esp-m,#E02F75);}
 html[data-identidade="espectro"] .pnc-etapa-n b{font-family:var(--b7-fonte);font-weight:400;font-size:16px;}
 
 /* ------------------------------------------------------- escuro: vidro, como no quadro */
