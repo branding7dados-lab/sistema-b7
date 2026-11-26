@@ -13,10 +13,11 @@ B7.GestaoExtra = (function () {
   const mesDe = d => { const m = /^(\d{4})-(\d{2})/.exec(String(d || '')); return m ? MESES[+m[2] - 1] + '/' + m[1] : ''; };
   const MESES_L = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   const rotMes = ym => { const [a, m] = String(ym).split('-'); return MESES[+m - 1] + '/' + String(a).slice(2); };
-  const logo = (url, nome) => '<span class="ge-logo">' + (url ? '<img src="' + esc(url) + '" alt="" loading="lazy" onerror="this.remove()">' : '') + '<b>' + esc(String(nome || '?').slice(0, 2).toUpperCase()) + '</b></span>';
   /* avatar de cor cheia (Espectro): 30px (28 no Contratado); a cor gira pela posição na lista */
   const CORES_AV = ['#7328A5', '#001561', '#E02F75', '#520083', '#FF5A57'];
-  const av = (url, nome, i) => '<span class="ge-logo gx-av" style="--av:' + CORES_AV[i % CORES_AV.length] + '">' + (url ? '<img src="' + esc(url) + '" alt="" loading="lazy" onerror="this.remove()">' : '') + '<b>' + esc(String(nome || '?').split(/\s+/).filter(p => /^[A-Za-zÀ-ÿ]/.test(p) && !/^(d[aeo]s?|dr\.?|dra\.?)$/i.test(p)).slice(0, 2).map(p => p[0]).join('').toUpperCase() || '?') + '</b></span>';
+  const iniciais = nome => { const ps = String(nome || '?').split(/\s+/).filter(p => /^[A-Za-zÀ-ÿ0-9]/.test(p) && !/^(d[aeo]s?|dr\.?|dra\.?)$/i.test(p));
+    return (ps.length > 1 ? ps[0][0] + ps[1][0] : (ps[0] || String(nome || '?')).slice(0, 2)).toUpperCase(); };
+  const av = (url, nome, i) => '<span class="ge-logo gx-av" style="--av:' + CORES_AV[i % CORES_AV.length] + '">' + (url ? '<img src="' + esc(url) + '" alt="" loading="lazy" onerror="this.remove()">' : '') + '<b>' + esc(iniciais(nome)) + '</b></span>';
   const pilula = (cls, t) => '<em class="gx-pill ' + cls + '"><i></i>' + t + '</em>';
   const vazio = t => '<p class="gt-vazio">' + esc(t) + '</p>';
   const carregando = () => (B7.UI.skeleton ? B7.UI.skeleton('lista', { n: 4 }) : '<p class="gt-vazio">Carregando…</p>');
@@ -134,7 +135,9 @@ B7.GestaoExtra = (function () {
     cx.querySelectorAll('[data-visao]').forEach(b => b.onclick = () => { visaoP = b.dataset.visao; prazos(cx); });
   }
 
-  function ligarIr(cx) { cx.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { location.hash = b.dataset.ir; }); }
+  function ligarIr(cx) { cx.querySelectorAll('[data-ir]').forEach(b => { b.onclick = () => { location.hash = b.dataset.ir; };
+    /* linha da tabela (div) sem botão dentro: alcançável pelo teclado */
+    if (b.tagName !== 'BUTTON' && !b.querySelector('button')) { b.tabIndex = 0; b.setAttribute('role', 'link'); b.onkeydown = e => { if (e.key === 'Enter') b.onclick(); }; } }); }
 
   return { contratado, riscos, prazos };
 })();

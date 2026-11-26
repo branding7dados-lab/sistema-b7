@@ -461,17 +461,24 @@ B7.Conteudo = (function () {
        contexto de uma linha, nunca cria uma nova. */
     const leitura = souDesignerSomenteLeitura();
 
-    painel().innerHTML = '<div class="conteudo entra lg-tela">' +
+    /* Espectro (quadro "Linhas editoriais"): rótulo "<mês atual> · N linhas" + título 42 com a busca
+       na mesma linha; trilho de situações à esquerda e "Nova linha" à direita; a lista vira tabela. */
+    const hojeLg = new Date();
+    const nMesAtual = linhas.filter(l => +l.ano === hojeLg.getFullYear() && +l.mes === hojeLg.getMonth() + 1).length;
+    const icLg = d => '<svg class="lgx-ic" viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>';
+    const novaLg = leitura ? '' : '<button class="b pri fina lgx-nova" id="nova-linha-global">' + icLg('<path d="M12 5v14M5 12h14"/>') + '<span>Nova linha</span></button>';
+    painel().innerHTML = '<div class="conteudo entra lg-tela lgx">' +
       '<div class="trilha"><a href="#/">Início</a><span>/</span><b>Linhas editoriais</b></div>' +
-      '<div class="cab-conteudo"><div><h1>Linhas editoriais</h1>' +
-      '<p>O planejamento de conteúdo de cada cliente, mês a mês.</p></div>' +
-      (leitura ? '' : '<button class="b pri" id="nova-linha-global">+ Nova linha editorial</button>') + '</div>' +
+      '<div class="cab-conteudo lgx-cab"><div class="lgx-tit"><p class="v4-sobre">' + esc(MESES[hojeLg.getMonth()]) + ' · ' +
+        nMesAtual + (nMesAtual === 1 ? ' linha' : ' linhas') + '</p><h1>Linhas editoriais</h1></div>' +
+        (linhas.length
+          ? '<label class="lg-busca lgx-busca">' + icLg('<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>') +
+            '<input id="busca-linha" placeholder="Buscar por cliente ou mês" value="' + esc(filtroLinhas) + '" autocomplete="off" aria-label="Buscar linha editorial"></label>'
+          : novaLg) + '</div>' +
 
       (linhas.length
-        ? '<div class="lg-barra">' +
-            '<label class="lg-busca"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
-            '<input id="busca-linha" placeholder="Buscar por cliente ou mês…" value="' + esc(filtroLinhas) + '" autocomplete="off"></label>' +
-            '<div class="lg-chips" id="lg-chips" role="group" aria-label="Filtrar por situação"></div>' +
+        ? '<div class="lg-barra lgx-barra">' +
+            '<div class="lg-chips" id="lg-chips" role="group" aria-label="Filtrar por situação"></div>' + novaLg +
           '</div>' +
           '<div id="lg-lista"></div>'
         : '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
@@ -602,7 +609,9 @@ B7.Conteudo = (function () {
             ' · ' + conteudos + (conteudos === 1 ? ' conteúdo' : ' conteúdos') +
             (emCriacao ? ' · <b>' + emCriacao + ' em criação</b>' : '') + '</span>' +
         '</summary>' +
-        '<div class="lg-grade">' + itens.map(l => cardLinhaGlobal(l, n++)).join('') + '</div></details>';
+        '<div class="lg-grade lgx-tabela">' +
+          '<div class="lgx-cab-tab" aria-hidden="true"><span>Cliente</span><span>Mês</span><span>Conteúdos</span><span>Estruturação</span><span>Situação</span></div>' +
+          itens.map(l => cardLinhaGlobal(l, n++)).join('') + '</div></details>';
     }).join('');
   }
 
@@ -617,27 +626,25 @@ B7.Conteudo = (function () {
     const canais = String(l.canais || '').split(',').map(x => x.trim()).filter(Boolean).join(' · ');
     const sub = (l.nome && l.nome !== mesRot) ? l.nome : (canais || mesRot);
     const alerta = REGRAS_LINHA.planejamento.teste(l);
+    /* Espectro: uma linha da tabela do quadro — cliente (quadrado 28 + nome), mês, conteúdos, barra e
+       situação. A barra do quadro é "aprovação do cliente", que a lista não tem: é a estruturação. */
+    let tom = 0; for (const ch of String(l.cliente_nome || '')) tom = (tom * 31 + ch.codePointAt(0)) % 997;
+    const sub2 = (l.nome && l.nome !== mesRot) ? l.nome : '';
     /* ?de=linhas: a linha sabe que veio da lista global e volta para ela */
-    return '<a class="lg-card" href="#/linha/' + esc(l.id) + '?de=linhas" style="--i:' + Math.min(i || 0, 14) + '">' +
-      '<div class="lg-topo">' +
-        B7.UI.avatarCliente(l.cliente_nome || '', l.cliente_logo_url) +
+    return '<a class="lg-card lgx-linha" href="#/linha/' + esc(l.id) + '?de=linhas" style="--i:' + Math.min(i || 0, 14) + '"' +
+      ' title="' + esc((l.cliente_nome || 'Sem cliente') + (sub ? ' · ' + sub : '') + (quando ? ' · editada ' + quando : '')) + '">' +
+      '<div class="lg-topo lgx-cli"><span class="lgx-av" data-tom="' + (tom % 6) + '">' +
+        B7.UI.avatarCliente(l.cliente_nome || '', l.cliente_logo_url) + '</span>' +
         '<div class="lg-id"><b>' + esc(l.cliente_nome || 'Sem cliente') + '</b>' +
-          (sub ? '<span>' + esc(sub) + '</span>' : '') + '</div>' +
-        '<span class="lg-abrir" aria-hidden="true">→</span>' +
-      '</div>' +
-      (total
-        ? '<div class="lg-prog">' +
-            '<div class="lg-prog-tx"><span><b>' + total + '</b> conteúdo' + (total === 1 ? '' : 's') +
-              (meta ? ' <em>de ' + meta + ' na meta</em>' : '') + '</span>' +
-              '<span>' + estr + ' estruturado' + (estr === 1 ? '' : 's') + '</span></div>' +
-            '<div class="lg-prog-barra" title="' + pct + '% dos conteúdos estruturados"><i style="--p:' + (pct / 100) + '"></i></div>' +
-          '</div>'
-        : '<div class="lg-vazio">Nenhum conteúdo planejado ainda</div>') +
-      '<div class="lg-pe">' +
-        '<span class="chip-revisao ' + classeSituacaoLinha(l.status) + '">' + esc(l.status || 'Em criação') + '</span>' +
+          (sub2 ? '<span>' + esc(sub2) + '</span>' : '') + '</div>' +
         (alerta ? '<span class="lg-alerta" title="' + esc(REGRAS_LINHA.planejamento.rotulo) + '">Começa em breve</span>' : '') +
-        (quando ? '<span class="lg-quando">editada ' + esc(quando) + '</span>' : '') +
-      '</div></a>';
+      '</div>' +
+      '<div class="lgx-mes">' + esc(MESES[l.mes - 1] || '—') + '</div>' +
+      '<div class="lgx-n" title="' + total + ' conteúdo' + (total === 1 ? '' : 's') + (meta ? ' de ' + meta + ' na meta' : '') + '">' + total + '</div>' +
+      '<div class="lgx-prog" title="' + (total ? estr + ' de ' + total + ' estruturados (' + pct + '%)' : 'Nenhum conteúdo planejado ainda') + '">' +
+        '<i style="width:' + pct + '%"></i></div>' +
+      '<div class="lg-pe lgx-sit"><span class="lgx-chip ' + classeSituacaoLinha(l.status) + '">' + esc(l.status || 'Em criação') + '</span></div>' +
+      '</a>';
   }
 
   /* Seções do hub do cliente que moram aqui (Editorial, Ideias,

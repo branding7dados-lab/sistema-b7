@@ -236,7 +236,7 @@ B7.Linha = (function () {
   function render() {
     const l = L.linha;
     const podeCliente = !B7.Perm || B7.Perm.podeRota('cliente');
-    painel().innerHTML = '<div class="conteudo entra">' +
+    painel().innerHTML = '<div class="conteudo entra lnx">' +
       (L.daLista
         ? '<div class="trilha-nav"><button data-ir="#/linhas">Linhas editoriais</button>' +
           (podeCliente ? '<span>/</span><button data-ir="#/cliente/' + esc(l.client_id) + '/linhas">' + esc(l.cliente_nome) + '</button>' : '')
@@ -291,24 +291,23 @@ B7.Linha = (function () {
     if (cx) cx.scrollTop = st;
   }
 
+  /* Espectro (quadro "Linha editorial"): o cabeçalho é o da tela — rótulo com o cliente e título
+     "Linha editorial · <mês>" — com as ações em pílulas de 34 à direita. A contagem de conteúdos
+     foi para o cabeçalho da lista (Visão geral); canais, para o cartão lateral. */
   function capa(l) {
-    const selo = l.cliente_logo_url
-      ? '<div class="selo"><img src="' + esc(l.cliente_logo_url) + '" alt=""></div>'
-      : '<div class="selo">' + esc(B7.UI.iniciais(l.cliente_nome)) + '</div>';
-    const estruturados = L.conteudos.filter(c => c.status !== 'Ideia').length;
-    return '<div class="capa-cliente"><div class="malha"></div><div class="brilho"></div>' +
-      '<div class="b7-marca"></div>' + selo +
-      '<div class="info"><div class="olho">LINHA EDITORIAL · ' + esc(l.cliente_nome.toUpperCase()) + '</div>' +
-      '<h1>' + esc(l.nome || (MESES[l.mes - 1] + ' ' + l.ano)) + '</h1>' +
-      '<div class="meta"><span>' + L.conteudos.length + ' conteúdo' + (L.conteudos.length === 1 ? '' : 's') + '</span>' +
-      '<span class="p"></span><span>' + estruturados + ' estruturado' + (estruturados === 1 ? '' : 's') + '</span>' +
-      (l.canais ? '<span class="p"></span><span>' + esc(l.canais) + '</span>' : '') +
-      (l.concluida_em ? '<span class="p"></span><span title="Última conclusão formal — libera demandas de Design">Concluída · v' + (l.versao_design || 1) + '</span>' : '') +
-      '</div></div>' +
-      '<div class="acoes">' +
-        (C.souDesignerSomenteLeitura() ? '' : '<button class="b pri" data-novo-conteudo>+ Novo conteúdo</button>') +
-        '<button class="b clara" data-apresentar-linha>Apresentar</button>' +
-        '<button class="b clara" data-baixar-linha>Baixar PDF</button>' +
+    const mesRot = MESES[l.mes - 1] ? MESES[l.mes - 1] + ' ' + l.ano : '';
+    const mesTit = MESES[l.mes - 1]
+      ? MESES[l.mes - 1].toLowerCase() + (+l.ano !== new Date().getFullYear() ? ' ' + l.ano : '') : '';
+    const ic = d => '<svg class="lnx-ic" viewBox="0 0 24 24" aria-hidden="true">' + d + '</svg>';
+    return '<div class="cab-conteudo lnx-cab"><div class="lnx-tit">' +
+      '<p class="v4-sobre">' + esc(l.cliente_nome || '') +
+        (l.nome && l.nome !== mesRot ? ' · ' + esc(l.nome) : '') +
+        (l.concluida_em ? ' · <span title="Última conclusão formal — libera demandas de Design">Concluída · v' + (l.versao_design || 1) + '</span>' : '') + '</p>' +
+      '<h1>Linha editorial' + (mesTit ? ' · ' + esc(mesTit) : '') + '</h1></div>' +
+      '<div class="acoes lnx-acoes">' +
+        (C.souDesignerSomenteLeitura() ? '' : '<button class="b pri fina" data-novo-conteudo>' + ic('<path d="M12 5v14M5 12h14"/>') + 'Novo conteúdo</button>') +
+        '<button class="b contorno fina" data-apresentar-linha>' + ic('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/>') + 'Apresentar</button>' +
+        '<button class="b contorno fina" data-baixar-linha>' + ic('<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>') + 'Baixar PDF</button>' +
         /* O menu "⋯" é só de gestão da Linha Editorial (duplicar, status,
            enviar para aprovação do cliente, portal, arquivar, excluir) —
            nada disso é ação do Designer. Desde a Rodada 5b, o caminho
@@ -318,7 +317,7 @@ B7.Linha = (function () {
            (busca, "próximo conteúdo" no dashboard), então estas checagens
            continuam servindo de rede de segurança, não são código morto. */
         (C.souDesignerSomenteLeitura() ? '' :
-        '<div class="menu"><button class="ico" style="color:rgba(255,255,255,.7)">⋯</button><div class="lista">' +
+        '<div class="menu"><button class="ico lnx-mais" title="Mais ações" aria-label="Mais ações">⋯</button><div class="lista">' +
           '<button data-duplicar-linha>Duplicar para outro mês</button>' +
           '<button data-status-semanal>Criar status semanal</button>' +
           (podeEnviarDesign() ? '<button data-concluir-linha><b>Concluir Linha Editorial</b></button>' : '') +
@@ -548,7 +547,6 @@ B7.Linha = (function () {
       if (n) porFormato[f] = n;
     });
     const formatosUsados = Object.keys(porFormato);
-    const maxF = Math.max(1, ...Object.values(porFormato));
     const total = L.conteudos.length;
     const estruturados = L.conteudos.filter(c => c.status !== 'Ideia').length;
     const canais = (L.linha.canais || '').split(',').map(x => x.trim()).filter(Boolean);
@@ -568,55 +566,64 @@ B7.Linha = (function () {
         '</div></div>';
     }
 
-    const metricas = [
-      [total, total === 1 ? 'CONTEÚDO' : 'CONTEÚDOS'],
-      estruturados ? [estruturados, 'ESTRUTURADOS'] : null,
-      canais.length ? [canais.length, canais.length === 1 ? 'CANAL' : 'CANAIS'] : null,
-      L.linha.meta_conteudos ? [L.linha.meta_conteudos, 'META'] : null
-    ].filter(Boolean);
+    /* Espectro (quadro "Linha editorial"): à esquerda, o cartão-lista dos conteúdos do mês (data,
+       formato, título, situação, seta), por data; à direita, o cartão do próximo criativo (o
+       destacado na lista) e o do mês — objetivo, canais, meta, formatos e pilares. */
+    const hoje = B7.UI.hojeISO();
+    const dataDe = c => String(c.data_postagem || '').slice(0, 10);
+    const ordenados = L.conteudos.filter(dataDe).sort((a, b) => dataDe(a).localeCompare(dataDe(b)))
+      .concat(L.conteudos.filter(c => !dataDe(c)));
+    const destaque = ordenados.find(c => dataDe(c) >= hoje && c.status !== 'Publicado') || proximos[0] || ordenados[0];
+    const seta = '<svg class="lnx-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+    const linhaLista = c => {
+      const d = dataDe(c);
+      return '<div class="lnx-linha' + (c === destaque ? ' on' : '') + '" data-conteudo="' + esc(c.id) + '" title="Abrir ' + esc(c.titulo || 'conteúdo') + '">' +
+        '<span class="lnx-data">' + (d ? esc(d.slice(8, 10) + '/' + d.slice(5, 7)) : '—') + '</span>' +
+        '<span class="lnx-formato">' + esc(c.tipo || '') + '</span>' +
+        '<span class="lnx-titulo">' + esc(c.titulo || 'Sem título') + '</span>' +
+        chipConteudo(c.status) + seta + '</div>';
+    };
+    const kv = (r, v) => v ? '<div class="lnx-kv"><span>' + r + '</span><b>' + v + '</b></div>' : '';
+    const peca = destaque && L.designPorConteudo[destaque.id];
+    const cartaoDestaque = destaque
+      ? '<div class="lnx-lado-cartao lnx-destaque" data-conteudo="' + esc(destaque.id) + '">' +
+          '<p class="lnx-kicker">' + (dataDe(destaque) >= hoje ? 'PRÓXIMO CRIATIVO' : 'CRIATIVO') + '</p>' +
+          '<p class="lnx-lado-tit">' + esc(destaque.titulo || 'Sem título') + '</p>' +
+          (destaque.ideia_geral ? '<p class="lnx-lado-tx">' + esc(destaque.ideia_geral) + '</p>' : '') +
+          '<div class="lnx-kvs">' +
+            kv('Formato', esc(destaque.tipo || '')) +
+            kv('Data', dataDe(destaque) ? esc(B7.UI.dataBR(dataDe(destaque))) : 'sem data') +
+            kv('Pilar', esc(nomeDoPilar(destaque.pilar_id) || '')) +
+            kv('Canal', esc(destaque.canal || '')) +
+            kv('Design', peca ? esc(peca.designer_nome || rotuloDesign(peca.status)) : '') +
+          '</div></div>'
+      : '';
+    const cartaoMes = '<div class="lnx-lado-cartao">' +
+        '<p class="lnx-kicker">O MÊS</p>' +
+        (L.linha.objetivo ? '<p class="lnx-lado-tx">' + esc(L.linha.objetivo) + '</p>' : '') +
+        '<div class="lnx-kvs">' +
+          kv('Canais', esc(canais.join(' · '))) +
+          kv('Meta', L.linha.meta_conteudos ? L.linha.meta_conteudos + ' conteúdos' : '') +
+          kv('Formatos', formatosUsados.map(f => porFormato[f] + ' ' + esc(f)).join(' · ')) +
+        '</div>' +
+        (L.pilares.length ? '<div class="lnx-pilares"><p class="lnx-kicker">PILARES</p>' + distribuicaoPilares() +
+          '<button class="b contorno fina" data-ir-aba="estrategia">' +
+          (C.souDesignerSomenteLeitura() ? 'Ver pilares' : 'Editar pilares') + '</button></div>' : '') +
+      '</div>';
 
     /* 4.78.6 (QA): o designer (só leitura) não enxerga a aprovação e via "Ainda não enviado ao cliente" numa linha já enviada,
        com um botão que ele não tem — o bloco de status é de quem envia */
     return (B7.Aprovacoes && !C.souDesignerSomenteLeitura() ? '<div class="mb" id="ap-status-linha">' + B7.Aprovacoes.blocoStatus(L.aprovacao, { botaoEnviar: true }) + '</div>' : '') +
-      '<div class="mini-metricas">' + metricas.map(([n, r]) =>
-        '<div class="mini-metrica"><b>' + n + '</b><span>' + r + '</span></div>').join('') +
-      '</div>' +
       iaBloco('geral') +
-
-      '<div class="colunas"><div>' +
-        /* um único formato não merece gráfico: a métrica acima já disse tudo */
-        (formatosUsados.length > 1
-          ? '<div class="bloco mb"><h3>Distribuição por formato</h3>' +
-            formatosUsados.map(f =>
-              '<div class="barra-linha"><span class="rot-barra">' + f + '</span>' +
-              '<div class="barra"><i style="width:' + (porFormato[f] / maxF * 100) + '%"></i></div>' +
-              '<b>' + porFormato[f] + '</b></div>').join('') + '</div>'
-          : '') +
-
-        '<div class="bloco mb"><h3>Criativos do mês</h3>' +
-          L.conteudos.slice(0, 6).map(c =>
-            '<div class="proximo" data-conteudo="' + esc(c.id) + '">' +
-            '<div class="tx" style="padding-left:0"><small>' + esc(c.tipo.toUpperCase()) + '</small>' +
-            '<b>' + esc(c.titulo || 'Sem título') + '</b></div></div>').join('') +
-          (total > 6 ? '<button class="b p" data-ir-aba="criativos">Ver os ' + total + '</button>'
-                     : '<button class="b p" data-ir-aba="criativos">Abrir criativos</button>') +
+      '<div class="lnx-grade">' +
+        '<div class="lnx-lista">' +
+          '<div class="lnx-lista-cab"><p>' + total + (total === 1 ? ' conteúdo' : ' conteúdos') +
+            ' · ' + estruturados + (estruturados === 1 ? ' estruturado' : ' estruturados') + '</p>' +
+            '<button class="b contorno fina" data-ir-aba="criativos"><svg class="lnx-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Abrir criativos</button></div>' +
+          ordenados.map(linhaLista).join('') +
         '</div>' +
-      '</div><div class="apoio">' +
-        (L.pilares.length ? '<div class="bloco"><h3>Pilares de conteúdo</h3>' +
-          distribuicaoPilares() +
-          '<button class="b p" data-ir-aba="estrategia" style="margin-top:10px">' +
-          (C.souDesignerSomenteLeitura() ? 'Ver pilares' : 'Editar pilares') + '</button></div>' : '') +
-        (proximos.length ? '<div class="bloco"><h3>Próximos conteúdos</h3>' +
-          proximos.map(c =>
-            '<div class="proximo" data-conteudo="' + esc(c.id) + '">' +
-            '<div class="dia"><b>' + esc(c.data_postagem.slice(8, 10)) + '</b>' +
-            '<small>' + esc(MESES[+c.data_postagem.slice(5, 7) - 1].slice(0, 3).toUpperCase()) + '</small></div>' +
-            '<div class="tx"><small>' + esc(c.tipo.toUpperCase()) + '</small>' +
-            '<b>' + esc(c.titulo || 'Sem título') + '</b></div></div>').join('') +
-          '</div>' : '') +
-        (L.linha.objetivo ? '<div class="bloco"><h3>Objetivo do mês</h3>' +
-          '<p class="texto-bloco">' + esc(L.linha.objetivo) + '</p></div>' : '') +
-      '</div></div>';
+        '<div class="lnx-lado">' + cartaoDestaque + cartaoMes + '</div>' +
+      '</div>';
   }
 
   /* -------------------------------------------------------- ESTRATÉGIA */
@@ -975,21 +982,20 @@ B7.Linha = (function () {
       const d = c.data_postagem ? String(c.data_postagem).slice(0, 10) : '';
       return '<div class="post-linha" data-postagem-ver="' + esc(c.id) + '" role="button" tabindex="0" ' +
         'aria-label="Ver detalhe da postagem — ' + esc(c.titulo || 'Sem título') + '">' +
+        /* Espectro: a mesma linha da lista do quadro — data 18, formato, título, situação e seta */
         '<div class="post-data">' + (d
-          ? '<b>' + esc(d.slice(8, 10)) + '</b><small>' +
-            esc(MESES[+d.slice(5, 7) - 1].slice(0, 3).toUpperCase()) + '</small>'
+          ? '<b>' + esc(d.slice(8, 10) + '/' + d.slice(5, 7)) + '</b>'
           : '<span class="sem-data">—</span>') + '</div>' +
-        '<span class="post-formato">' + ICONE_FORMATO[c.tipo] + '</span>' +
+        '<span class="post-formato">' + esc(c.tipo || '') + '</span>' +
         '<div class="post-tx"><b>' + esc(c.titulo || 'Sem título') + '</b>' +
-        '<small>' + esc(c.tipo) +
-        (c.canal ? ' · ' + esc(c.canal) : '') +
-        (nomeDoPilar(c.pilar_id) ? ' · ' + esc(nomeDoPilar(c.pilar_id)) : '') + '</small></div>' +
-        chipConteudo(c.status) + '</div>';
+        ((c.canal || nomeDoPilar(c.pilar_id)) ? '<small>' + esc([c.canal, nomeDoPilar(c.pilar_id)].filter(Boolean).join(' · ')) + '</small>' : '') + '</div>' +
+        chipConteudo(c.status) +
+        '<svg class="lnx-seta" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></div>';
     };
 
-    return seletor + '<div class="bloco">' +
-      (comData.length ? '<h3>Com data definida</h3>' + comData.map(linhaPost).join('') : '') +
-      (semData.length ? '<h3 style="margin-top:18px">Sem data definida</h3>' +
+    return seletor + '<div class="bloco lnx-posts">' +
+      (comData.length ? '<h3>Com data definida · ' + comData.length + '</h3>' + comData.map(linhaPost).join('') : '') +
+      (semData.length ? '<h3>Sem data definida · ' + semData.length + '</h3>' +
         semData.map(linhaPost).join('') : '') + '</div>';
   }
 

@@ -75,10 +75,6 @@ B7.Publicacoes = (function () {
     return DIAS_LONGOS[diaSemana(s)] + ', ' + d + ' de ' + MESES[m - 1] +
            (a !== anoAtual ? ' de ' + a : '');
   }
-  function rotuloDiaCurto(s) {
-    const { m, d } = comps(s);
-    return DIAS_ABREV[diaSemana(s)] + ' ' + d + '/' + pad(m);
-  }
   /* "Amanhã", "Ontem" ou o nome do dia — sempre relativo ao dia REAL */
   function rotuloRelativo(s) {
     const dif = difDias(hoje(), s);
@@ -344,27 +340,24 @@ B7.Publicacoes = (function () {
   function desenharTela() {
     painel().innerHTML =
       '<div class="conteudo pb-tela entra">' +
+        /* topo do Espectro: rótulo (dia · contagem) e o título grande */
         '<header class="pb-cab">' +
           '<div class="pb-cab-tx">' +
-            '<h1>Publicações do Dia</h1>' +
-            '<p>O que está marcado para sair hoje, em todos os clientes. Vem direto das Linhas Editoriais.</p>' +
-            '<small class="pb-sub" id="pb-sub" aria-live="polite"></small>' +
-          '</div>' +
-          '<div class="pb-cab-acoes">' +
-            (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="b contorno pb-bt-cal" id="pb-cal" href="#/calendario?v=semana&amp;tipo=publicacoes" title="Ver no calendário" aria-label="Ver no calendário">' +
-              svg(ICONES.calendario) + '<span>Ver no calendário</span></a>' : '') +
+            '<p class="pb-sub" id="pb-sub" aria-live="polite"></p>' +
+            '<h1>Publicações do dia</h1>' +
           '</div>' +
         '</header>' +
-        /* cartão da semana: mês, Hoje e "ir para" em cima; os dias embaixo */
-        '<section class="pb-semana">' +
-          '<div class="pb-semana-topo">' +
-            '<b class="pb-mes" id="pb-mes"></b>' +
-            '<div class="pb-semana-acoes">' +
-              '<button type="button" class="b contorno pb-bt-hoje" data-hoje>Hoje</button>' +
-              '<label class="pb-seletor-data" title="Ir para um dia">' + svg(ICONES.escolher) + '<span class="pb-rot">Ir para</span>' +
-                '<input type="date" id="pb-data" aria-label="Escolher um dia"></label>' +
-            '</div>' +
+        /* barra: Hoje · Amanhã · Semana (o Calendário B7 na semana) e "ir para" */
+        '<div class="pb-barra">' +
+          '<div class="pb-seg" role="group" aria-label="Período">' +
+            '<button type="button" class="pb-bt-hoje" data-hoje>Hoje</button>' +
+            '<button type="button" data-amanha>Amanhã</button>' +
+            (B7.Perm && B7.Perm.podeRota('calendario') ? '<a class="pb-bt-cal" id="pb-cal" href="#/calendario?v=semana&amp;tipo=publicacoes" title="Ver a semana no calendário">Semana</a>' : '') +
           '</div>' +
+          '<label class="pb-seletor-data" title="Ir para um dia">' + svg(ICONES.escolher) + '<span class="pb-rot">Ir para</span>' +
+            '<input type="date" id="pb-data" aria-label="Escolher um dia"></label>' +
+        '</div>' +
+        '<section class="pb-semana">' +
           '<nav class="pb-faixa-caixa" id="pb-faixa" aria-label="Navegação de dias"></nav>' +
         '</section>' +
         '<div id="pb-filtros"></div>' +
@@ -372,6 +365,7 @@ B7.Publicacoes = (function () {
       '</div>';
 
     painel().querySelector('[data-hoje]').onclick = () => irParaDia(hoje());
+    painel().querySelector('[data-amanha]').onclick = () => irParaDia(somarDias(hoje(), 1));
     const inp = painel().querySelector('#pb-data');
     inp.onchange = () => { if (ehISO(inp.value)) irParaDia(inp.value); else inp.value = E.dia; };
     /* celular: o ícone abre o seletor do próprio aparelho */
@@ -403,6 +397,12 @@ B7.Publicacoes = (function () {
     if (!el) return;
     const inicio = somarDias(E.dia, -Math.floor(DIAS_FAIXA / 2));
     const h = hoje();
+    /* Hoje / Amanhã acesos quando o dia escolhido é um deles */
+    [['[data-hoje]', h], ['[data-amanha]', somarDias(h, 1)]].forEach(([q, d]) => {
+      const b = painel().querySelector(q);
+      if (b) { b.classList.toggle('on', E.dia === d); b.setAttribute('aria-pressed', E.dia === d ? 'true' : 'false'); }
+    });
+    pintarSub();
     const contagens = new Map();
     const temDados = !E.carregando && !E.erro && E.ini;
     if (temDados) {
@@ -430,8 +430,6 @@ B7.Publicacoes = (function () {
                   : '<span class="pb-dia-contagem' + (sabe && n ? ' tem' : '') + '">' + (sabe ? (n || '—') : '') + '</span>') +
         '</button>';
     }
-    const mes = document.getElementById('pb-mes');
-    if (mes) { const { a, m } = comps(E.dia); mes.textContent = MESES[m - 1].replace(/^./, x => x.toUpperCase()) + ' de ' + a; }
 
     /* mesma semana na tela? atualiza só o miolo dos dias (as contagens),
        sem trocar os elementos — não corta a animação que estiver rodando */
@@ -635,13 +633,14 @@ B7.Publicacoes = (function () {
     }
   }
 
-  /* topo: o dia em uma frase ("1 publicação hoje · 50 pendentes") */
+  /* topo: o dia em uma frase ("Quinta, 26/11 · 6 publicações · 2 pendentes") */
   function pintarSub() {
-    const s = document.getElementById('pb-sub'); if (!s) return;
-    if (E.carregando || E.erro) { s.textContent = ''; return; }
+    const s = document.getElementById('pb-sub'); if (!s || !E.dia) return;
+    const { d, m } = comps(E.dia);
+    const dia = DIAS_LONGOS[diaSemana(E.dia)].replace('-feira', '') + ', ' + d + '/' + pad(m);
+    if (E.carregando || E.erro) { s.textContent = dia; return; }
     const n = doDia().length;
-    s.textContent = (E.dia === hoje() ? (n ? plural(n, 'publicação hoje', 'publicações hoje') : 'Nada para hoje')
-        : plural(n, 'publicação', 'publicações') + ' em ' + rotuloDiaCurto(E.dia).toLowerCase()) +
+    s.textContent = dia + ' · ' + (n ? plural(n, 'publicação', 'publicações') : 'nada previsto') +
       (E.pendentes.length ? ' · ' + plural(E.pendentes.length, 'pendente', 'pendentes') : '');
   }
   const numerarPendentes = raiz => raiz.querySelectorAll('.pb-pendente').forEach((p, i) => p.style.setProperty('--k', Math.min(i, 6)));
@@ -741,14 +740,17 @@ B7.Publicacoes = (function () {
 
   function htmlCard(c, g) {
     const temLegenda = !!String(c.legenda || '').trim();
-    const meta = [c.canal, c.tipo, B7.UI.dataBR(c.data_postagem), nomePilar(c)].filter(Boolean);
+    const meta = [c.tipo, c.canal, nomePilar(c)].filter(Boolean);
+    /* capa: o conteúdo não tem imagem no banco; a capa é o logo do cliente
+       sobre um tom do Espectro (fixo por cliente), com o status por cima */
+    const tom = [...String(idCliente(c) || g.nome || '')].reduce((s, ch) => s + ch.charCodeAt(0), 0) % 5;
     return '<article class="pb-card">' +
-      '<div class="pb-card-topo">' +
-        '<span class="pb-card-cliente">' + avatar(g.nome, g.logo, 'sm') + '<span>' + esc(g.nome) + '</span></span>' +
-        chip(c.status) +
-      '</div>' +
+      '<div class="pb-card-capa pb-tom-' + tom + '">' + avatar(g.nome, g.logo, 'lg') +
+        '<span class="pb-card-selo">' + chip(c.status) + '</span></div>' +
+      '<div class="pb-card-corpo">' +
+      '<p class="pb-card-cliente">' + esc(g.nome) + '</p>' +
       '<h3 class="pb-card-titulo">' + esc(c.titulo || 'Sem título') + '</h3>' +
-      '<div class="pb-card-meta">' + meta.map(t => '<span>' + esc(t) + '</span>').join('<i class="p"></i>') + '</div>' +
+      '<p class="pb-card-meta">' + meta.map(t => '<span>' + esc(t) + '</span>').join(' · ') + '</p>' +
       '<div class="pb-card-acoes">' +
         (temLegenda ? '<button type="button" class="pb-acao pb-acao-copiar" data-copiar="' + esc(c.id) + '" aria-label="Copiar legenda">' +
           '<svg class="pb-ico-m" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONES.copiar + '</svg>' +
@@ -756,7 +758,7 @@ B7.Publicacoes = (function () {
         acao('ver', c.id, 'Ver detalhes', ICONES.ver, 'Detalhes') +
         (c.linha_id ? acao('criativos', c.id, 'Abrir nos Criativos', ICONES.criativos, 'Criativos') +
                       acao('linha', c.id, 'Abrir Linha Editorial', ICONES.linha, 'Linha') : '') +
-      '</div>' +
+      '</div></div>' +
     '</article>';
   }
 
