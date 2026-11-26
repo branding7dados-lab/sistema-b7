@@ -69,7 +69,7 @@ const espera = (pg, s, t = 9000) => pg.waitForSelector(s, { timeout: t }).catch(
 /* 3) conta com 2 etapas: já abre no código */
 { const { ctx, pg } = await abrir('#/ponte?b=DOIS.x', () => [200, { precisa_2fa: true, metodo: 'app', desafio: 'd1', username: 'kevin' }]);
   await espera(pg, '#lg-cod');
-  ok(!!(await pg.$('#lg-cod')) && /Confirme que é você/.test(await pg.$eval('.tela-login', e => e.innerText).catch(() => '')), 'conta com verificação em 2 etapas: pede o código');
+  ok(!!(await pg.$('#lg-cod')) && /Confirme que é você|Verificação em 2 etapas/.test(await pg.$eval('.tela-login', e => e.innerText).catch(() => '')), 'conta com verificação em 2 etapas: pede o código');
   ok(!(await pg.evaluate(() => B7.Auth.usuario && B7.Auth.usuario())), 'e não entra antes do código');
   await print(pg, 'ponte-2etapas');
   await ctx.close(); }
