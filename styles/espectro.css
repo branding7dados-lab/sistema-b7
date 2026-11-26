@@ -5,10 +5,10 @@
    Telas e animações (direção Espectro)").
 
    Carregado por ÚLTIMO e TUDO preso a html[data-identidade="espectro"]:
-   com a chave desligada (Configurações → Aparência → Identidade nova)
-   este arquivo não muda nada. Primeira entrega: tokens, fonte Grimblade,
-   componentes e a casca (menu flutuante de 84 px e topo). Telas com
-   desenho próprio (login, Portal, ficha A4, TV) e animações vêm depois.
+   desde a 5.0.0 o atributo é o padrão de todos; quem voltou ao visual
+   antigo (Configurações → Aparência) fica sem ele e este arquivo não muda
+   nada. Feito: tokens, fonte Grimblade, componentes, casca, login e Portal.
+   Ficha A4, TV, animações e peças dos apps vêm depois.
 
    Os nomes de token do sistema (--violeta, --card, --ink…) são mantidos:
    o Espectro muda os VALORES, e as 37 folhas de estilo seguem iguais.
@@ -317,8 +317,7 @@ html[data-identidade="espectro"] body:not([data-shell="interno"]) .esp-alterna-m
 /* ------------------------------------------------------------ PORTAL DO CLIENTE (4.94.0)
    A barra lateral vira o TOPO do Portal (88 px): o cliente à esquerda, as abas em pílula
    no meio (a ativa em Azul Matriz) e ajuda, sino e conta à direita. A saudação do início
-   vira a faixa em Azul Matriz com o padrão da lâmpada. O cliente só vê isto na liberação
-   geral; até lá, a equipe confere pela Prévia do Portal com a chave ligada. */
+   vira a faixa em Azul Matriz com o padrão da lâmpada. */
 @media (min-width:1081px){
   html[data-identidade="espectro"] body[data-shell="portal"] #app{flex-direction:column;position:relative;}
   html[data-identidade="espectro"] body[data-shell="portal"] .lateral{

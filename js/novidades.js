@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.0.0', versao: '5.0.0', em: '2026-11-27T09:00:00-03:00',
+    titulo: 'A identidade nova da Branding7 agora é de todos',
+    itens: ['O B7 abre com a nova marca para toda a equipe e para os clientes: cores, fonte e logos novos, menu flutuante, login e Portal redesenhados.',
+      'Se algo atrapalhar o seu trabalho, dá para voltar ao visual antigo só no seu aparelho, por enquanto, em Configurações → Aparência → Identidade nova.'] },
   { id: 'v-4.94.0', versao: '4.94.0', em: '2026-11-26T22:00:00-03:00',
     titulo: 'Identidade nova: login, Portal e menu que abre',
     itens: ['Com a identidade nova ligada, o login ganha o cartão de vidro sobre a aurora da marca, e o Portal do cliente ganha o topo com abas e a faixa de boas-vindas (confira pela Prévia do Portal).',
