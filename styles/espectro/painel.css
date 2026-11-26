@@ -1,1 +1,220 @@
 /* Espectro · painel — redesenho fiel ao artefato. Tudo sob html[data-identidade="espectro"]. */
+/* Quadro: project/Painel-coordenacao.dc.html — #/painel da coordenação (.pnc) e o Painel composto (.pnm),
+   que usa as mesmas peças. O Painel do videomaker (.pnv) fica em styles/espectro/video.css. */
+
+/* ------------------------------------------------------------- base */
+html[data-identidade="espectro"] :is(.pnc, .pnm){font-size:14px;line-height:1.45;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) :is(b, strong, h1, h2, h3, h4, small, em){font-weight:400;font-style:normal;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) p{margin:0;}
+
+/* ------------------------------------------------------- cabeçalho: kicker + "Painel" 42 px */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab{background:transparent;border:0;box-shadow:none;padding:0;margin:0 0 18px;border-radius:0;
+  align-items:flex-end;overflow:visible;color:var(--ink);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab > .pn-ceu,
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab::before,
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab::after{display:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kicker{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kicker span{color:var(--ink-4);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab h1{font-family:var(--b7-fonte);font-size:42px !important;line-height:1;letter-spacing:0;color:var(--ink);font-weight:400;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab h1 .pn-l{animation:none;opacity:1;transform:none;color:inherit;background:none;-webkit-text-fill-color:currentColor;}
+html[data-identidade="espectro"] .pnc .pn-papel{display:none;}
+html[data-identidade="espectro"] .pnm .pn-papel{font-size:13px;color:var(--ink-3);margin-top:8px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-hoje{border-radius:18px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab-acao{height:48px;min-height:48px;padding:0 20px;border-radius:24px;font-size:14px;font-weight:400;
+  background:var(--card);border:1px solid var(--esp-cartao-borda);color:var(--ink);box-shadow:0 8px 24px rgba(10,16,51,.04);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab-acao:hover{background:var(--card);color:var(--acento);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab-acao svg{width:18px;height:18px;}
+
+/* ------------------------------------------------------- indicadores: 4 cartões de cor cheia */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpis{display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:16px;margin-bottom:16px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;gap:0;
+  min-width:0;min-height:132px;box-sizing:border-box;padding:20px 22px;border-radius:26px;border:0;box-shadow:none;
+  background:#520083;color:#FFFFFF;text-decoration:none;transform:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:nth-child(2){background:#E02F75;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:nth-child(3){background:#001561;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:nth-child(4){background:#FF5A57;}
+/* a lâmpada do padrão no canto, como no quadro */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi::after{content:'';position:absolute;top:auto;left:auto;right:-40px;bottom:-60px;width:240px;height:240px;pointer-events:none;opacity:.5;
+  z-index:0;transform:none;animation:none;
+  background:url('../../assets/brand/espectro/padrao-lampada-violeta.svg') 70% 70%/auto 240px no-repeat;
+  -webkit-mask:radial-gradient(circle at 70% 70%, #000 30%, transparent 72%);mask:radial-gradient(circle at 70% 70%, #000 30%, transparent 72%);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:nth-child(3)::after{background-image:url('../../assets/brand/espectro/padrao-lampada-matriz.svg');}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:nth-child(4)::after{mix-blend-mode:luminosity;opacity:.38;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi > *{position:relative;z-index:1;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi > :is(.pn-kpi-rot, .pn-kpi-num, .pn-kpi-sub){align-self:stretch;grid-area:auto;text-align:left;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi > .pn-kpi-seta{position:absolute;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi::before{display:none;}
+/* sem o "respirar" vermelho do visual anterior: a cor do cartão já é o destaque */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi.pn-tom-erro{animation:pnCartao calc(.85s * var(--pn-t, 1)) var(--pn-mola, ease) calc(.55s * var(--pn-t, 1)) backwards;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:hover{transform:translateY(-2px);filter:brightness(1.06);border:0;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi.estatico:hover{transform:none;filter:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:focus-visible{outline:2px solid var(--acento);outline-offset:3px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .pn-kpi-rot{font-size:11px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.85);padding-right:22px;line-height:1.35;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .pn-kpi-num{font-family:var(--b7-fonte);font-weight:400;font-size:40px;line-height:1;margin-top:12px;color:#FFFFFF;
+  letter-spacing:0;font-variant-numeric:tabular-nums;background:none;-webkit-text-fill-color:currentColor;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .pn-kpi-sub{font-size:12.5px;color:rgba(255,255,255,.88);margin-top:8px;line-height:1.35;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .pn-erro-tx{color:#FFFFFF;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .pn-kpi-seta{position:absolute;top:18px;right:18px;color:rgba(255,255,255,.8);background:transparent;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:is(.pn-tom-erro, .pn-tom-ambar){border:0;box-shadow:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi:is(.pn-tom-erro, .pn-tom-ambar) .pn-kpi-num{color:#FFFFFF;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .esq{background:rgba(255,255,255,.22);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .pn-sk-num{width:70px;height:40px;margin-top:12px;border-radius:10px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .pn-sk-sub{width:60%;height:12px;margin-top:10px;border-radius:6px;}
+
+/* ------------------------------------------------------- grade: fila larga + coluna de 360 px */
+html[data-identidade="espectro"] .pnc-grade{display:grid;grid-template-columns:minmax(0, 1fr) 360px;gap:18px;align-items:start;
+  grid-template-areas:"at pub" "flx sem";}
+html[data-identidade="espectro"] .pnm-grade{gap:18px;}
+
+/* cartões */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-bloco{background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);border-radius:26px;
+  padding:22px;box-sizing:border-box;min-width:0;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-sec-cab{display:flex;align-items:center;gap:10px;margin:0 0 6px;padding:0;border:0;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-sec-cab::after{display:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-sec-cab h2{font-family:var(--b7-fonte);font-size:15px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink);margin:0;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-sec-sub{font-size:12px;color:var(--ink-3);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-link{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:400;color:var(--acento);text-decoration:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-link svg{width:16px;height:16px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-link:hover{color:var(--roxo);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-nota{font-size:12px;color:var(--ink-3);margin:10px 0 0;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-mais{font-size:12.5px;font-weight:400;color:var(--acento);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-vazio{border-radius:18px;background:var(--suave);padding:14px 16px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-vazio-ic{border-radius:12px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-vazio b{font-size:14px;font-weight:400;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-erro{border-radius:18px;}
+
+/* ------------------------------------------------------- "Sua fila de coordenação": tabela do quadro */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-atencao{padding:4px;overflow:hidden;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-atencao .pn-sec-cab{padding:14px 18px 4px;margin:0;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-atencao :is(.pn-vazio, .pn-erro, .pn-sk-lista){margin:10px 18px 18px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-atencao .pn-nota{margin:0;padding:10px 18px 14px;border-top:1px solid var(--borda);}
+html[data-identidade="espectro"] .pnc-fila-cab,
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att{display:grid;grid-template-columns:28px minmax(0, 1.4fr) minmax(0, 1.35fr) minmax(0, 1.75fr) 30px;column-gap:14px;align-items:center;}
+html[data-identidade="espectro"] .pnc-fila-cab{padding:10px 18px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);}
+html[data-identidade="espectro"] .pnc-fila-cab span:first-child{grid-column:1 / 3;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-lista{display:flex;flex-direction:column;gap:0;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att{position:relative;padding:12px 18px;border:0;border-top:1px solid var(--borda);border-radius:0;
+  background:transparent;box-shadow:none;font-size:13.5px;color:var(--ink);text-decoration:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att::before,
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att::after{display:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att:hover{background:var(--suave);border-color:var(--borda);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att:focus-visible{outline:2px solid var(--acento);outline-offset:-2px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-tx{display:contents;}
+/* coluna 1: o "avatar" de 28 px com o ícone do motivo, em cor cheia */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-ic{grid-column:1;grid-row:1;width:28px;height:28px;border-radius:12px;background:#001561;color:#FFFFFF;margin-right:-4px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-ic svg{width:15px;height:15px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-erro .pn-att-ic{background:#FF5A57;color:#FFFFFF;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-ambar .pn-att-ic{background:#E02F75;color:#FFFFFF;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-acento .pn-att-ic{background:#7328A5;color:#FFFFFF;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-neutro .pn-att-ic{background:#520083;color:#FFFFFF;}
+/* coluna 2: o item */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-tx > b{grid-column:2;grid-row:1;font-size:13.5px;font-weight:400;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+/* coluna 3: a situação, como a etiqueta "Etapa" do quadro */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-tag{grid-column:3;grid-row:1;justify-self:start;display:inline-flex;align-items:center;gap:6px;max-width:100%;box-sizing:border-box;
+  height:24px;padding:0 10px;border-radius:999px;background:var(--neutro-bg);color:var(--neutro);font-size:12px;font-weight:400;letter-spacing:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-tag::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-erro .pn-att-tag{background:var(--erro-bg);color:var(--erro);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-ambar .pn-att-tag{background:var(--ambar-bg);color:var(--ambar);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-acento .pn-att-tag{background:var(--violeta-bg);color:var(--acento);}
+/* coluna 4: contexto (cliente, prazo, responsável) */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-meta{grid-column:4;grid-row:1;font-size:13px;color:var(--ink-3);min-width:0;overflow:hidden;white-space:nowrap;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-meta > span:not(.pn-logo):first-of-type,
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-meta > .pn-logo + span{color:var(--ink);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-logo{width:24px;height:24px;border-radius:10px;flex:none;object-fit:cover;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-logo-vazia{display:inline-flex;align-items:center;justify-content:center;background:#7328A5;color:#FFFFFF;font-size:9px;font-weight:400;letter-spacing:0;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-meta > .pn-logo{margin-right:4px;}
+/* coluna 5: a seta */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-seta{grid-column:5;grid-row:1;width:18px;height:18px;color:var(--ink-3);opacity:1;justify-self:end;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att:hover .pn-att-seta{color:var(--acento);}
+
+/* ------------------------------------------------------- "Próximas publicações": a lista da "Agenda de hoje" */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .cp-agenda-lista{display:flex;flex-direction:column;gap:0;margin-top:6px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp.cp-ag-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border:0;border-top:1px solid var(--borda);border-radius:0;
+  background:transparent;box-shadow:none;color:var(--ink);text-decoration:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp.cp-ag-item:hover{background:transparent;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp.cp-ag-item:hover .cp-ag-tx b{color:var(--acento);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp .cp-ag-data{width:54px;flex:none;text-align:left;display:flex;flex-direction:column;gap:2px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp .cp-ag-data .dt{order:-1;font-family:var(--b7-fonte);font-weight:400;font-size:18px;line-height:1.2;color:var(--acento);letter-spacing:0;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp .cp-ag-data .dow{font-size:10.5px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp .cp-ag-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp .cp-ag-tx b{font-size:14px;font-weight:400;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp .cp-ag-meta{font-size:12.5px;color:var(--ink-3);display:flex;align-items:center;gap:6px;min-width:0;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp .cp-ag-meta .pn-logo{display:none;}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp .cp-ag-meta > span:first-of-type{color:var(--ink-3);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-comp .status-conteudo{flex:none;align-self:center;}
+
+/* ------------------------------------------------------- "Minha semana": na coluna estreita, um dia por linha */
+html[data-identidade="espectro"] .pnc .pn-semana-lista{display:flex;flex-direction:column;gap:0;margin-top:6px;}
+html[data-identidade="espectro"] .pnc .pn-dia{flex-direction:row;align-items:center;gap:12px;min-height:0;padding:10px 0;border:0;border-top:1px solid var(--borda);
+  border-radius:0;background:transparent;box-shadow:none;opacity:1;}
+html[data-identidade="espectro"] .pnc .pn-dia.passado .pn-dia-cab{opacity:.55;}
+html[data-identidade="espectro"] .pnc .pn-dia.hoje{background:transparent;box-shadow:none;border:0;border-top:1px solid var(--borda);animation:none;outline:0;}
+html[data-identidade="espectro"] .pnc .pn-dia.hoje::before{display:none;}
+html[data-identidade="espectro"] .pnc .pn-dia-lk:hover{background:transparent;}
+html[data-identidade="espectro"] .pnc .pn-dia-lk:hover .pn-dia-num{color:var(--acento);}
+html[data-identidade="espectro"] .pnc .pn-dia-cab{flex-direction:row;align-items:baseline;gap:8px;width:118px;flex:none;}
+html[data-identidade="espectro"] .pnc .pn-dia-num{order:-1;font-family:var(--b7-fonte);font-weight:400;font-size:18px;color:var(--ink);width:26px;}
+html[data-identidade="espectro"] .pnc .pn-dia.hoje .pn-dia-num{color:var(--acento);}
+html[data-identidade="espectro"] .pnc .pn-dia-dow{font-size:10.5px;font-weight:400;letter-spacing:.12em;color:var(--ink-3);}
+html[data-identidade="espectro"] .pnc .pn-dia-hoje{font-size:10px;font-weight:400;letter-spacing:.1em;color:var(--acento);}
+html[data-identidade="espectro"] .pnc .pn-dia-itens{flex-direction:row;flex-wrap:wrap;gap:4px 12px;margin:0;font-size:12.5px;}
+html[data-identidade="espectro"] .pnc .pn-dia-i b{font-family:var(--b7-fonte);font-weight:400;}
+html[data-identidade="espectro"] .pnc .pn-dia-livre{font-size:12.5px;color:var(--ink-4);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .op-painel{font-size:12px;color:var(--ink-3);}
+
+/* ------------------------------------------------------- "Fluxo de conteúdos" */
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-graf-resumo b{font-family:var(--b7-fonte);font-weight:400;font-size:22px;color:var(--ink);}
+html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-graf-resumo span{font-size:12px;color:var(--ink-3);}
+html[data-identidade="espectro"] .pnc-etapa{border-radius:14px;}
+html[data-identidade="espectro"] .pnc-etapa-trilho{height:10px;border-radius:999px;background:var(--suave);overflow:hidden;}
+html[data-identidade="espectro"] .pnc-etapa-trilho i{border-radius:999px;background:#7328A5;}
+html[data-identidade="espectro"] .pnc-etapa:is(:hover, :focus-visible) .pnc-etapa-trilho i{background:#E02F75;}
+html[data-identidade="espectro"] .pnc-etapa-n b{font-family:var(--b7-fonte);font-weight:400;font-size:16px;}
+
+/* ------------------------------------------------------- escuro: vidro, como no quadro */
+html[data-identidade="espectro"][data-theme="dark"] :is(.pnc, .pnm) .pn-bloco{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);
+  -webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);}
+html[data-identidade="espectro"][data-theme="dark"] :is(.pnc, .pnm) .pn-kpi{box-shadow:inset 0 1px 0 rgba(255,255,255,.12);}
+html[data-identidade="espectro"][data-theme="dark"] :is(.pnc, .pnm) .pn-cab-acao{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);box-shadow:none;}
+html[data-identidade="espectro"][data-theme="dark"] :is(.pnc, .pnm) :is(.pn-att, .pn-comp.cp-ag-item, .pn-dia, .pn-atencao .pn-nota){border-top-color:rgba(255,255,255,.08);}
+html[data-identidade="espectro"][data-theme="dark"] .pnc .pn-dia.hoje{border-top-color:rgba(255,255,255,.08);}
+html[data-identidade="espectro"][data-theme="dark"] :is(.pnc, .pnm) .pn-att:hover{background:rgba(255,255,255,.04);}
+html[data-identidade="espectro"][data-theme="dark"] :is(.pnc, .pnm) .pn-vazio{background:rgba(255,255,255,.05);}
+html[data-identidade="espectro"][data-theme="dark"] .pnc-etapa-trilho{background:rgba(255,255,255,.08);}
+html[data-identidade="espectro"][data-theme="dark"] .pnc-etapa-trilho i{background:#B57BE6;}
+
+/* ------------------------------------------------------- tela média e celular */
+@media (max-width:1180px){
+  html[data-identidade="espectro"] .pnc-grade{grid-template-columns:minmax(0, 1fr) 320px;}
+}
+@media (max-width:980px){
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpis{grid-template-columns:repeat(2, minmax(0, 1fr));}
+  html[data-identidade="espectro"] .pnc-grade{grid-template-columns:minmax(0, 1fr);grid-template-areas:"at" "pub" "sem" "flx";}
+}
+@media (max-width:760px){
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab{margin-bottom:14px;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab h1{font-size:32px !important;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-cab-acao{height:44px;min-height:44px;width:100%;justify-content:center;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpis{gap:10px;margin-bottom:14px;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi{display:flex;flex-direction:column;border-radius:22px;padding:16px;min-height:0;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .pn-kpi-rot{font-size:10px;letter-spacing:.1em;padding-right:16px;color:rgba(255,255,255,.85);}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .pn-kpi-num{font-size:32px;margin-top:8px;text-align:left;min-width:0;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .pn-kpi-sub{font-size:11.5px;margin-top:6px;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi .pn-kpi-seta{top:14px;right:12px;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-kpi::after{right:-90px;bottom:-90px;}
+  html[data-identidade="espectro"] .pnc-grade{gap:14px;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-bloco{border-radius:22px;padding:18px 16px;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-atencao{padding:4px;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-atencao .pn-sec-cab{padding:12px 12px 4px;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-atencao .pn-nota{padding:10px 12px 12px;}
+  /* a tabela vira cartão de duas linhas: ícone · item · seta / situação · contexto */
+  html[data-identidade="espectro"] .pnc-fila-cab{display:none;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att{grid-template-columns:28px minmax(0, 1fr) 18px;row-gap:6px;column-gap:10px;padding:12px;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-ic{grid-row:1 / 3;align-self:start;margin-right:0;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-tx > b{grid-column:2;grid-row:1;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-seta{grid-column:3;grid-row:1;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-tag{grid-column:2 / 4;grid-row:2;}
+  html[data-identidade="espectro"] :is(.pnc, .pnm) .pn-att-meta{grid-column:2 / 4;grid-row:3;font-size:12.5px;}
+  html[data-identidade="espectro"] .pnc .pn-dia-cab{width:104px;}
+}

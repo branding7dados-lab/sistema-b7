@@ -259,6 +259,8 @@ html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-hospede .lu6-g.
   html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-card{grid-template-columns:36px minmax(0,1fr) 34px;
     grid-template-areas:"av id menu" "av tags menu" "av mods menu" "av al menu";row-gap:6px;padding:14px;}
   html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu4-pe{display:none;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-acoes{flex-wrap:wrap;}
+  html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-acoes .lu3-novo{flex:1 1 100%;min-height:42px;}
   html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g{padding:12px 6px;border-radius:18px;}
   html[data-identidade="espectro"] .cfg-v2 .cfg-hospede .lu6-g.on{padding:11px 5px;}
 }

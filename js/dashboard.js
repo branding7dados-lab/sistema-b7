@@ -2933,21 +2933,22 @@ B7.Dashboard = (function () {
         tipo: TIPO_DEM[d.tipo] || 'Demanda', cliente: d.cliente || '', quando: d.quando, soRestaurar: true })))
       .sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
 
-    painel().innerHTML = '<div class="conteudo entra">' +
-      '<div class="trilha-nav"><button data-ir="#/">Início</button><span>/</span><b>Lixeira</b></div>' +
-      '<div class="secao-topo"><h2 style="font-size:22px">Lixeira</h2>' +
-      '<span class="conta">' + itens.length + '</span></div>' +
-      '<p style="font-size:12.5px;color:var(--ink-3);margin-bottom:16px">' +
-      'Nada aqui foi apagado do banco. Restaure quando quiser — ou exclua em definitivo, ' +
-      'que aí não tem volta.</p>' +
-      (itens.length ? '<div class="lista-gravacoes lx-lista">' + itens.map(i =>
-        '<div class="linha-gravacao lx-item" style="cursor:default">' +
-          '<span class="chip-status rascunho">' + i.tipo + '</span>' +
-          '<div class="nm"><b>' + esc(i.nome) + '</b><small>' +
-          (i.cliente ? esc(i.cliente) + ' · ' : '') + 'excluído ' + B7.UI.quando(i.quando) + '</small></div>' +
-          '<button class="b fina contorno" data-restaurar="' + esc(i.tabela) + ':' + esc(i.id) + '">Restaurar</button>' +
+    /* Espectro (quadro Lixeira): rótulo "Só administração" + título 42; o aviso num cartão com ícone;
+       a tabela Item · Tipo · Cliente · Excluído · ações. Mesmos data-restaurar / data-apagar. */
+    const avArq = n => B7.UI.avatarCliente(n, null, 'pjx-av pjx-tom-' + (B7.UI.tomDoNome ? B7.UI.tomDoNome(n) : 0));
+    painel().innerHTML = '<div class="conteudo entra pjx pjx-arq">' +
+      '<div class="cab-conteudo pjx-cab"><div class="pjx-tit"><p class="v4-sobre">Só administração · ' + itens.length + (itens.length === 1 ? ' item' : ' itens') + '</p><h1>Lixeira</h1></div></div>' +
+      '<div class="pjx-aviso"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' +
+        '<p>Nada aqui foi apagado do banco. Restaure quando quiser — ou exclua em definitivo, que aí não tem volta.</p></div>' +
+      (itens.length ? '<div class="pjx-tabela lx-lista"><div class="pjx-tcab" aria-hidden="true"><span>Item</span><span>Tipo</span><span>Cliente</span><span>Excluído</span><span></span></div>' + itens.map(i =>
+        '<div class="pjx-linha lx-item">' +
+          '<span class="pjx-cel pjx-nome"><b>' + esc(i.nome) + '</b></span>' +
+          '<span class="pjx-cel"><span class="pjx-chip pjx-c-neutro"><i aria-hidden="true"></i>' + esc(i.tipo) + '</span></span>' +
+          '<span class="pjx-cel pjx-cli">' + (i.cliente ? avArq(i.cliente) + '<span>' + esc(i.cliente) + '</span>' : '<span class="pjx-data">—</span>') + '</span>' +
+          '<span class="pjx-cel pjx-data">' + B7.UI.quando(i.quando) + '</span>' +
+          '<span class="pjx-cel pjx-acoes"><button class="b fina contorno" data-restaurar="' + esc(i.tabela) + ':' + esc(i.id) + '">Restaurar</button>' +
           (i.soRestaurar ? '' : '<button class="b fina perigo" data-apagar="' + esc(i.tabela) + ':' + esc(i.id) + '" ' +
-            'data-nome="' + esc(i.nome) + '">Excluir</button>') +
+            'data-nome="' + esc(i.nome) + '">Excluir</button>') + '</span>' +
         '</div>').join('') + '</div>'
         : estadoB7(IC.gravacoes, 'A lixeira está vazia.',
                    'O que você excluir aparece aqui antes de sumir de vez.')) +
@@ -2991,11 +2992,20 @@ B7.Dashboard = (function () {
     try { gravacoes = await B7.DB.listarGravacoes(null, { somenteArquivadas: true }); }
     catch (e) { return erro(e, 'abrirArquivados'); }
 
-    painel().innerHTML = '<div class="conteudo entra">' +
-      '<div class="trilha-nav"><button data-ir="#/">Início</button><span>/</span><b>Arquivados</b></div>' +
-      '<div class="secao-topo"><h2 style="font-size:22px">Arquivados</h2>' +
-      '<span class="conta">' + gravacoes.length + '</span></div>' +
-      (gravacoes.length ? '<div class="grade">' + gravacoes.map(cardGravacao).join('') + '</div>'
+    /* Espectro (quadro Arquivados): rótulo "Guardados sem prazo" + título 42; tabela Item · Tipo · Cliente ·
+       Arquivado em · Restaurar. A linha abre a gravação (data-gravacao); "Restaurar" desarquiva (data-arquivar). */
+    const avArq = n => B7.UI.avatarCliente(n, null, 'pjx-av pjx-tom-' + (B7.UI.tomDoNome ? B7.UI.tomDoNome(n) : 0));
+    const dCurta = d => { const s = String(d || '').slice(0, 10); return s ? s.slice(8, 10) + '/' + s.slice(5, 7) + (s.slice(0, 4) === String(new Date().getFullYear()) ? '' : '/' + s.slice(2, 4)) : '—'; };
+    painel().innerHTML = '<div class="conteudo entra pjx pjx-arq">' +
+      '<div class="cab-conteudo pjx-cab"><div class="pjx-tit"><p class="v4-sobre">Guardados sem prazo · ' + gravacoes.length + (gravacoes.length === 1 ? ' item' : ' itens') + '</p><h1>Arquivados</h1></div></div>' +
+      (gravacoes.length ? '<div class="pjx-tabela"><div class="pjx-tcab" aria-hidden="true"><span>Item</span><span>Tipo</span><span>Cliente</span><span>Arquivado em</span><span></span></div>' +
+        gravacoes.map(g => '<div class="pjx-linha" data-gravacao="' + esc(g.id) + '" tabindex="0" role="link">' +
+          '<span class="pjx-cel pjx-nome"><b>' + esc(g.nome) + '</b></span>' +
+          '<span class="pjx-cel"><span class="pjx-chip pjx-c-neutro"><i aria-hidden="true"></i>Gravação</span></span>' +
+          '<span class="pjx-cel pjx-cli">' + (g.cliente_nome ? avArq(g.cliente_nome) + '<span>' + esc(g.cliente_nome) + '</span>' : '<span class="pjx-data">—</span>') + '</span>' +
+          '<span class="pjx-cel pjx-data">' + esc(dCurta(g.archived_at)) + '</span>' +
+          '<span class="pjx-cel pjx-acoes"><button class="b fina contorno" data-arquivar="' + esc(g.id) + '" data-arq="1">Restaurar</button></span>' +
+        '</div>').join('') + '</div>'
         : estadoB7(IC.gravacoes, 'Nenhuma gravação arquivada.',
                    'Arquive o que já saiu do ar para limpar as listas sem perder nada.')) +
       '</div>';

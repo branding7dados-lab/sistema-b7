@@ -108,6 +108,26 @@ B7.Projetos = (function () {
         '<small class="pj-card-espera">' + esc(espera(p)) + '</small>' +
       '</span>' + progresso(p) + '</a>';
   }
+  /* Espectro (quadros Projetos avulsos / Projeto avulso · detalhe): tabela de linhas, etiqueta com ponto,
+     avatar de iniciais na cor do nome e a barra de andamento no Espectro curto */
+  const TOM_ETAPA = { roteiro: 'neutro', gravacao: 'neutro', material: 'neutro', edicao: 'violeta', aprovacao: 'ambar', entregue: 'ok', cancelado: 'erro' };
+  const pjxChip = (rot, tom) => '<span class="pjx-chip pjx-c-' + tom + '"><i aria-hidden="true"></i>' + esc(rot) + '</span>';
+  const pjxAv = (nome, logo) => B7.UI.avatarCliente(nome, logo, 'pjx-av pjx-tom-' + (B7.UI.tomDoNome ? B7.UI.tomDoNome(nome) : 0));
+  const pjxCurta = d => { if (!d) return ''; const s = String(d).slice(0, 10); return s.slice(8, 10) + '/' + s.slice(5, 7) + (s.slice(0, 4) === hojeISO().slice(0, 4) ? '' : '/' + s.slice(2, 4)); };
+  function pjxPct(p) {
+    if (p.etapa === 'entregue') return 100;
+    const passos = PASSOS[p.tipo] || [], i = passos.indexOf(p.etapa);
+    return i < 0 || !passos.length ? 0 : Math.round((i + .5) / passos.length * 100);
+  }
+  function linhaPjx(p) {
+    const atrasado = p.prazo && !['entregue', 'cancelado'].includes(p.etapa) && String(p.prazo) < hojeISO();
+    return '<a class="pjx-linha' + (['entregue', 'cancelado'].includes(p.etapa) ? ' fechado' : '') + '" href="#/projetos/' + esc(p.id) + '" title="' + esc(espera(p)) + '">' +
+      '<span class="pjx-cel pjx-nome"><b>' + esc(p.nome) + '</b></span>' +
+      '<span class="pjx-cel pjx-cli">' + pjxAv(p.cliente, p.cliente_logo) + '<span>' + esc(p.cliente) + '</span></span>' +
+      '<span class="pjx-cel">' + pjxChip(ETAPAS[p.etapa] || p.etapa, TOM_ETAPA[p.etapa] || 'neutro') + '</span>' +
+      '<span class="pjx-cel pjx-data' + (atrasado ? ' pjx-atraso' : '') + '">' + (p.prazo ? esc(pjxCurta(p.prazo)) : '—') + '</span>' +
+      '<span class="pjx-cel"><span class="pjx-barra" role="img" aria-label="' + pjxPct(p) + '% do caminho"><i style="width:' + pjxPct(p) + '%"></i></span></span></a>';
+  }
   function hojeISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 
   /* ------------------------------------------------------------ lista */
@@ -117,12 +137,13 @@ B7.Projetos = (function () {
     if (id) return abrirProjeto(id);
     if (params && params.get && params.get('f')) filtro = params.get('f');
     B7.Rota.titulo(['Projetos avulsos']);
-    painel().innerHTML = '<div class="conteudo entra pj">' +
-      '<div class="cb-topo"><div class="cb-titulo"><h1>Projetos avulsos</h1>' +
-        '<p class="gt-intro">Clientes que compraram um trabalho pontual — um vídeo, uma edição. Cada projeto mostra em que pé está e o que falta.</p></div>' +
-        (podeGerir() ? '<button class="b pri" id="pj-novo">+ Novo projeto</button>' : '') + '</div>' +
-      '<div class="filtro rolavel" role="tablist">' + [['abertos', 'Em andamento'], ['entregues', 'Entregues'], ['todos', 'Todos']].map(([k, r]) =>
+    /* Espectro (quadro Projetos avulsos): rótulo + título 42; abas em trilho à esquerda e "Novo projeto" à direita;
+       a lista é uma tabela Projeto · Cliente · Etapa · Entrega · Andamento */
+    painel().innerHTML = '<div class="conteudo entra pj pjx">' +
+      '<div class="cab-conteudo pjx-cab"><div class="pjx-tit"><p class="v4-sobre">Fora da linha do mês</p><h1>Projetos avulsos</h1></div></div>' +
+      '<div class="pjx-barra-topo"><div class="pjx-abas" role="tablist">' + [['abertos', 'Em andamento'], ['entregues', 'Entregues'], ['todos', 'Todos']].map(([k, r]) =>
         '<button role="tab" data-f="' + k + '" class="' + (filtro === k ? 'on' : '') + '" aria-selected="' + (filtro === k) + '">' + r + '<span class="gt-n" data-n-' + k + '></span></button>').join('') + '</div>' +
+        (podeGerir() ? '<button class="b pri fina pjx-novo" id="pj-novo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Novo projeto</button>' : '') + '</div>' +
       '<div id="pj-corpo">' + B7.UI.skeleton('lista', { n: 3 }) + '</div></div>';
     const novo = document.getElementById('pj-novo');
     if (novo) novo.onclick = () => abrirNovo(null);
@@ -145,7 +166,8 @@ B7.Projetos = (function () {
     const pintar = () => {
       const l = grupos[filtro] || lista;
       document.getElementById('pj-corpo').innerHTML = l.length
-        ? '<div class="pj-lista">' + l.map(p => cartao(p, true)).join('') + '</div>'
+        ? '<div class="pjx-tabela"><div class="pjx-tcab" aria-hidden="true"><span>Projeto</span><span>Cliente</span><span>Etapa</span><span>Entrega</span><span>Andamento</span></div>' +
+          l.map(linhaPjx).join('') + '</div>'
         : '<div class="estado-b7"><b>' + (filtro === 'abertos' ? 'Nenhum projeto em andamento.' : 'Nada por aqui ainda.') + '</b>' +
           '<p>Quando um cliente comprar um vídeo ou uma edição avulsa, crie o projeto: o sistema já monta o roteiro, a gravação e a edição.</p></div>';
     };
@@ -301,6 +323,8 @@ B7.Projetos = (function () {
     pintarProjeto(p);
   }
 
+  /* Espectro (quadro Projeto avulso · detalhe): a linha do tempo vira a fileira de etapas no alto —
+     cada etapa num cartão com "Concluída", "Agora" ou "A seguir"; a data de cada uma fica no title */
   function linhaDoTempo(p) {
     const passos = PASSOS[p.tipo] || [];
     const i = passos.indexOf(p.etapa);
@@ -310,14 +334,15 @@ B7.Projetos = (function () {
       material: p.material_recebido_em ? 'recebido ' + dataBR(p.material_recebido_em) : '',
       entregue: p.entregue_em ? dataBR(p.entregue_em) : ''
     };
-    return '<ol class="pj-tempo">' +
-      '<li class="feito"><i>✓</i><span><b>Projeto aberto</b><small>' + esc(dataBR(p.created_at)) + '</small></span></li>' +
+    const cancelado = p.etapa === 'cancelado';
+    return '<ol class="pjx-passos">' +
       passos.map((s, k) => {
-        const cls = p.etapa === 'cancelado' ? '' : (p.etapa === 'entregue' || k < i) ? 'feito' : k === i ? 'agora' : '';
-        return '<li class="' + cls + '"><i>' + (cls === 'feito' ? '✓' : k + 1) + '</i><span><b>' + esc(s === 'material' && p.tipo === 'cliente_grava' ? 'Cliente grava e manda' : ETAPAS[s]) + '</b>' +
-          '<small>' + esc(datas[s] || (cls === 'agora' ? 'agora' : '')) + '</small></span></li>';
+        const cls = cancelado ? '' : (p.etapa === 'entregue' || k < i) ? 'feito' : k === i ? 'agora' : '';
+        const est = cancelado ? 'Não chegou' : cls === 'feito' ? 'Concluída' : cls === 'agora' ? 'Agora' : 'A seguir';
+        return '<li class="' + cls + '"' + (datas[s] ? ' title="' + esc(datas[s]) + '"' : '') + '><small>' + est + '</small>' +
+          '<b>' + esc(s === 'material' && p.tipo === 'cliente_grava' ? 'Cliente grava e manda' : ETAPAS[s]) + '</b></li>';
       }).join('') +
-      (p.etapa === 'cancelado' ? '<li class="cancelado"><i>×</i><span><b>Cancelado</b><small>' + esc(dataBR(p.cancelado_em)) + '</small></span></li>' : '') +
+      (cancelado ? '<li class="cancelado" title="' + esc(dataBR(p.cancelado_em)) + '"><small>Cancelado</small><b>' + esc(dataBR(p.cancelado_em) || 'Cancelado') + '</b></li>' : '') +
     '</ol>';
   }
 
@@ -363,24 +388,30 @@ B7.Projetos = (function () {
   function pintarProjeto(p) {
     const g = podeGerir();
     const dem = p.demandas || [], rots = p.roteiros || [];
-    painel().innerHTML = '<div class="conteudo entra pj pj-det">' +
-      '<div class="trilha"><a href="#/projetos">Projetos avulsos</a><span>/</span><a href="#/cliente/' + esc(p.client_id) + '/projetos">' + esc(p.cliente) + '</a><span>/</span><b>' + esc(p.nome) + '</b></div>' +
-      '<header class="pj-cab">' + B7.UI.avatarCliente(p.cliente, p.cliente_logo, 'cli-av') +
-        '<div><p class="pj-cab-cli">' + esc(p.cliente) + '</p><h1>' + esc(p.nome) + '</h1>' +
-          '<p class="pj-card-meta">' + chipTipo(p) + chipEtapa(p) + '<span>' + p.qtd_videos + (p.qtd_videos === 1 ? ' vídeo' : ' vídeos') + '</span>' +
-            (p.prazo ? '<span>prazo ' + esc(dataBR(p.prazo)) + '</span>' : '') + (p.videomaker ? '<span>' + esc(p.videomaker) + '</span>' : '') + '</p></div>' +
+    const TOM_DEM = { pendente: 'neutro', em_edicao: 'violeta', aguardando_aprovacao: 'ambar', correcao: 'erro', standby: 'neutro', entregue: 'ok', descartado: 'neutro' };
+    const item = (href, chip, rot, tit, meta) => '<a class="pjx-item" href="' + href + '"><span class="pjx-item-chip">' + chip + '</span>' +
+      '<small>' + esc(rot) + '</small><b>' + esc(tit) + '</b>' + (meta ? '<span class="pjx-item-meta">' + esc(meta) + '</span>' : '') + '</a>';
+    const linhaEsc = (rot, sub, dir) => '<div class="pjx-esc-linha"><div><b>' + esc(rot) + '</b>' + (sub ? '<p>' + sub + '</p>' : '') + '</div>' + (dir ? '<div class="pjx-esc-dir">' + dir + '</div>' : '') + '</div>';
+    /* Espectro (quadro Projeto avulso · detalhe): rótulo "cliente · entrega", título 42; a fileira de etapas;
+       à esquerda o próximo passo e os cartões dos roteiros e das edições, à direita o cartão "Escopo" */
+    painel().innerHTML = '<div class="conteudo entra pj pj-det pjx pjx-det">' +
+      '<header class="cab-conteudo pjx-cab"><div class="pjx-tit"><p class="v4-sobre"><a href="#/cliente/' + esc(p.client_id) + '/projetos">' + esc(p.cliente) + '</a>' +
+          (p.prazo ? ' · entrega ' + esc(pjxCurta(p.prazo)) : '') + '</p><h1>' + esc(p.nome) + '</h1></div>' +
         (g && !['entregue', 'cancelado'].includes(p.etapa) ? '<div class="menu pj-menu"><button class="ico" aria-label="Mais ações">⋯</button><div class="lista">' +
           '<button data-pj="drive-editar">' + (p.drive_link ? 'Trocar o link do Drive' : 'Pôr o link do Drive') + '</button><hr>' +
           '<button class="perigo" data-pj="cancelar">Cancelar projeto</button></div></div>' : '') +
-      '</header>' +
-      '<div class="pj-det-grade"><div>' + proximoPasso(p) +
-        (rots.length ? '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Roteiros</h2></div><div class="pj-itens">' + rots.map(r =>
-          '<a class="pj-item" href="#/gravacao/' + esc(p.gravacao_id) + '/roteiros?roteiro=' + esc(r.id) + '"><b>' + esc(r.titulo || 'Sem título') + '</b><span class="pj-st">' + esc(r.status) + '</span></a>').join('') + '</div></section>' : '') +
-        '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Edição</h2></div><div class="pj-itens">' + (dem.length ? dem.map(d =>
-          '<a class="pj-item" href="#/video/' + esc(d.id) + '"><b>' + esc(d.titulo) + '</b><span class="pj-st pj-ds-' + esc(d.status) + '">' + esc(ST_DEMANDA[d.status] || d.status) + '</span>' +
-            (d.videomaker ? '<small>' + esc(d.videomaker) + '</small>' : '') + '</a>').join('') : '<p class="gt-vazio">Sem demandas.</p>') + '</div></section>' +
-        (p.observacoes ? '<section class="gt-bloco"><div class="gt-bloco-cab"><h2>Observações</h2></div><p class="pj-obs">' + esc(p.observacoes) + '</p></section>' : '') +
-      '</div><aside class="gt-bloco pj-lado"><div class="gt-bloco-cab"><h2>Linha do tempo</h2></div>' + linhaDoTempo(p) + '</aside></div></div>';
+      '</header>' + linhaDoTempo(p) +
+      '<div class="pjx-det-grade"><div class="pjx-det-esq">' + proximoPasso(p) +
+        (rots.length || dem.length ? '<div class="pjx-itens">' +
+          rots.map(r => item('#/gravacao/' + esc(p.gravacao_id) + '/roteiros?roteiro=' + esc(r.id), pjxChip(String(r.status || 'roteiro').replace(/^./, c => c.toUpperCase()).replace(/_/g, ' '), r.status === 'aprovado' ? 'ok' : 'neutro'), 'Roteiro', r.titulo || 'Sem título', '')).join('') +
+          dem.map(d => item('#/video/' + esc(d.id), pjxChip(ST_DEMANDA[d.status] || d.status, TOM_DEM[d.status] || 'neutro'), 'Edição', d.titulo, d.videomaker || '')).join('') +
+        '</div>' : '<p class="gt-vazio">Sem demandas.</p>') +
+      '</div><aside class="pjx-escopo"><h2>Escopo</h2><div class="pjx-esc-lista">' +
+        linhaEsc((TIPOS[p.tipo] || {}).r || p.tipo, esc((TIPOS[p.tipo] || {}).d || '')) +
+        linhaEsc(p.qtd_videos + (p.qtd_videos === 1 ? ' vídeo' : ' vídeos'), 'aberto em ' + esc(dataBR(p.created_at)) + (p.prazo ? ' · entrega ' + esc(dataBR(p.prazo)) : '')) +
+        (p.observacoes ? linhaEsc('Observações', '<span class="pj-obs">' + esc(p.observacoes) + '</span>') : '') +
+        (p.videomaker ? linhaEsc('Responsável', '', '<span class="pjx-resp">' + B7.UI.avatarPessoa({ nome: p.videomaker }, 'pjx-resp-av') + '<span>' + esc(p.videomaker) + '</span></span>') : '') +
+      '</div></aside></div></div>';
     ligarProjeto(p);
   }
 
