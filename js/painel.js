@@ -586,7 +586,7 @@ B7.Painel = (function () {
   function pintar() {
     if (!document.getElementById('pn-raiz')) return;
     pintarResumo(); pintarKpis(); pintarAtencao(); pintarSemana(); pintarProducao(); pintarCompromissos();
-    pintarFila(); pintarEntregas(); pintarAgencia(); pintarRelogio();
+    pintarFila(); pintarEntregas(); pintarAgencia(); pintarRelogio(); pintarQuadroVideo();
     /* logo quebrada → iniciais (mesma regra do sino) */
     painel().querySelectorAll('img.pn-logo').forEach(img => {
       img.onerror = () => { const s = document.createElement('span'); s.className = 'pn-logo pn-logo-vazia'; s.textContent = img.dataset.ini || ''; img.replaceWith(s); };
@@ -682,6 +682,53 @@ B7.Painel = (function () {
         '<span class="pnv-rd-m">' + (nG ? '<i class="g"></i>' : '') + (nP ? '<i class="p"></i>' : '') + '</span></li>';
     }).join('') + '</ol>' +
     '<p class="pnv-legenda"><span><i class="g"></i>gravação</span><span><i class="p"></i>prazo de edição</span></p>';
+  }
+
+  /* ESPECTRO — quadro "Painel · vídeo": o mês (entregues / total, anéis), os
+     atalhos para a Produção de Vídeo e a fila da pessoa em colunas por etapa.
+     Mesmas fontes (ativas, entregas) e regras dos KPIs; nada novo no banco. */
+  const COLUNAS_PNV = [['pendente', 'Para iniciar', 15], ['em_edicao', 'Em edição', 45], ['correcao', 'Correção', 70],
+                       ['aguardando_aprovacao', 'Com o cliente', 90], ['standby', 'Standby', 30]];
+  const anelPnv = (pct, cor, rot) => '<div class="pnv-anel" style="--p:' + pct + ';--c:' + cor + '" role="img" aria-label="' + esc(rot + ': ' + pct + '%') + '"><span>' + pct + '%</span></div>';
+  function pintarQuadroVideo() {
+    const mesCx = document.getElementById('pnv-mes'), chips = document.getElementById('pnv-chips'), q = document.getElementById('pnv-quadro');
+    if (!mesCx || !chips || !q) return;
+    const eA = estadoDe('ativas'), eE = estadoDe('entregas');
+    if (eA === 'carregando') { mesCx.innerHTML = blocoCarregando(2); chips.innerHTML = ''; q.innerHTML = ''; return; }
+    if (eA === 'erro') { mesCx.innerHTML = blocoErro('Não foi possível carregar sua fila.', ['ativas']); chips.innerHTML = ''; q.innerHTML = ''; return; }
+    const ds = minhas(), mesAtual = hoje().slice(0, 7);
+    const nMes = eE === 'ok' ? ultimasEntregas().filter(x => diaDoTs(x.created_at).slice(0, 7) === mesAtual).length : 0;
+    const total = nMes + ds.length, nAtr = ds.filter(atrasada).length, nHoje = ds.filter(venceHoje).length;
+    const pEnt = total ? Math.round(nMes * 100 / total) : 0;
+    const pPrazo = ds.length ? Math.round((ds.length - nAtr) * 100 / ds.length) : 100;
+    mesCx.innerHTML = '<div class="pnv-mes-tx"><p class="pnv-mes-rot">Seu mês em vídeo</p>' +
+        '<p class="pnv-mes-num"><b>' + (eE === 'ok' ? nMes : '—') + '</b><span> / ' + (eE === 'ok' ? total : '—') + ' vídeos</span></p>' +
+        '<p class="pnv-mes-sub">' + (ds.length ? 'Faltam ' + ds.length + (ds.length === 1 ? ' vídeo' : ' vídeos') + ' na sua fila' +
+          (nAtr ? ' · ' + nAtr + (nAtr === 1 ? ' atrasado' : ' atrasados') : ' · nenhum atrasado') + '.' : 'Sua fila está vazia.') + '</p></div>' +
+      (eE === 'ok' ? anelPnv(pEnt, '#C9A2F0', 'Entregues') : '') + anelPnv(pPrazo, '#4FD69C', 'No prazo') +
+      '<div class="pnv-mes-leg">' + (eE === 'ok' ? '<span class="a">Entregues</span>' : '') + '<span class="c">No prazo</span></div>';
+    const chip = (href, rot, on) => '<a class="pnv-chip' + (on ? ' on' : '') + '" href="' + href + '">' + esc(rot) + '</a>';
+    chips.innerHTML = chip('#/video?minha=1&amp;comp=todas', 'Meus vídeos', true) + chip('#/video', 'Equipe') +
+      chip('#/video?prazo=hoje&amp;minha=1&amp;comp=todas', 'Vencem hoje' + (nHoje ? ' · ' + nHoje : '')) +
+      chip('#/video?prazo=atrasadas&amp;minha=1&amp;comp=todas', 'Atrasados' + (nAtr ? ' · ' + nAtr : ''));
+    const u = B7.Auth.usuario() || {}, alvo = emPrevia();
+    const ini = String((alvo && alvo.nome) || u.nome || '').trim().split(/\s+/).filter(Boolean);
+    const sigla = ((ini[0] || '').charAt(0) + (ini.length > 1 ? ini[ini.length - 1].charAt(0) : '')).toUpperCase();
+    const IC_REL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+    q.innerHTML = COLUNAS_PNV.filter(([k], i) => i < 4 || ds.some(d => d.editing_status === k)).map(([k, rot, pct]) => {
+      const itens = ds.filter(d => d.editing_status === k);
+      return '<div class="pnv-col pnv-col-' + k + '"><div class="pnv-col-cab"><p>' + esc(rot) + '</p><span>' + itens.length + '</span></div>' +
+        (itens.length ? itens.slice(0, 6).map(d => {
+          const atr = atrasada(d), quando = d.prazo ? quandoDia(d.prazo).replace(/^\S+, /, '') : 'sem prazo';
+          return '<a class="pnv-card' + (atr ? ' atr' : '') + '" href="#/video/' + esc(d.id) + '"><div class="pnv-card-topo"><p>' + esc(d.cliente_nome || 'Cliente') + '</p>' +
+              '<span class="' + (atr ? 'atr' : '') + '">' + IC_REL + esc(quando) + '</span></div>' +
+            '<p class="pnv-card-tit">' + esc(d.titulo || 'Demanda sem título') + '</p>' +
+            '<span class="pnv-barra"><i style="width:' + pct + '%"></i></span>' +
+            '<div class="pnv-card-pe"><span class="pnv-pill">' + esc(atr ? 'Atrasada' : rot) + '</span>' +
+              (sigla ? '<span class="pnv-av">' + esc(sigla) + '</span>' : '') + '</div></a>';
+        }).join('') + (itens.length > 6 ? '<a class="pnv-mais" href="#/video?minha=1&amp;comp=todas&amp;status=' + k + '">+' + (itens.length - 6) + ' em ' + esc(rot.toLowerCase()) + '</a>' : '')
+        : '<p class="pnv-vazia">Nada aqui</p>') + '</div>';
+    }).join('');
   }
 
   function ultimasEntregas() {
@@ -787,6 +834,11 @@ B7.Painel = (function () {
       cabecalho({ visoes, visao: 'video', resumo: true, relogio: true,
         acao: '<a class="b contorno pn-cab-acao" href="#/video?minha=1&comp=todas">' + IC.camera + '<span>Minha fila de edição</span></a>' }) +
       '<section class="pn-kpis" id="pn-kpis" aria-label="Indicadores"></section>' +
+      /* Espectro (quadro "Painel · vídeo"): o mês, os atalhos e a fila em colunas —
+         hidden na identidade antiga; styles/espectro/video.css os mostra */
+      '<section class="pnv-mes" id="pnv-mes" aria-label="Seu mês em vídeo" hidden></section>' +
+      '<nav class="pnv-chips" id="pnv-chips" aria-label="Atalhos da fila" hidden></nav>' +
+      '<section class="pnv-quadro" id="pnv-quadro" aria-label="Sua fila por etapa" hidden></section>' +
       '<div class="pn-grade pnv-grade' + (comAg ? '' : ' sem-ag') + '">' +
         '<section class="pn-bloco pn-atencao" id="pn-atencao" aria-labelledby="pn-t-atencao"></section>' +
         '<section class="pn-bloco" id="pn-semana" aria-labelledby="pn-t-semana"></section>' +

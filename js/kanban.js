@@ -109,7 +109,8 @@ B7.Kanban = (function () {
     /* zzx: no celular, título + contador e "+ Nova" em pílula; a frase de
        apoio fica só no computador */
     painel().innerHTML = '<div class="conteudo entra kanban-tela">' +
-      '<div class="cab-conteudo kb-cab"><div><h1>Produção <span class="conta" id="kb-conta"></span></h1>' +
+      '<div class="cab-conteudo kb-cab"><div><p class="kb-kicker">Demandas da equipe · arraste para mudar a etapa</p>' +
+      '<h1>Produção <span class="conta" id="kb-conta"></span></h1>' +
       '<p class="kb-intro">As demandas da equipe. O cliente não vê esta área.</p></div>' +
       (pode('kanban.criar') ? '<button class="b pri kb-nova" id="kb-nova" aria-label="Nova demanda">' +
         '<span class="kb-nova-mais" aria-hidden="true">+</span>' +
@@ -292,7 +293,7 @@ B7.Kanban = (function () {
       const itens = vis.filter(d => d.coluna === id)
         .sort((a, b) => (a.posicao || 0) - (b.posicao || 0));
       return '<section class="kb-col" data-coluna="' + id + '" aria-label="' + esc(rotulo) + '">' +
-        '<header><div><b>' + esc(rotulo) + '</b><small>' + esc(ajuda) + '</small></div>' +
+        '<header title="' + esc(ajuda) + '"><div><b class="kb-etapa"><i aria-hidden="true"></i>' + esc(rotulo) + '</b><small>' + esc(ajuda) + '</small></div>' +
         '<span class="kb-cont">' + itens.length + '</span></header>' +
         '<div class="kb-lista" data-drop="' + id + '">' +
           itens.map((d, i) => cartao(d).replace('<article class="kb-card', '<article style="--i:' + Math.min(i, 8) + '" class="kb-card')).join('') +
@@ -372,11 +373,9 @@ B7.Kanban = (function () {
       /* aviso operacional gravado pela anulação de aprovação (v3) */
       (d.aviso ? '<div class="kb-aviso" title="' + esc(d.aviso) + '">⚠ Revisar: aprovação anulada</div>' : '') +
       '<div class="kb-pe">' +
-        (d.responsavel_nome
-          ? B7.UI.avatarPessoa({ nome: d.responsavel_nome, avatar_url: d.responsavel_avatar }, 'xs')
-          : '<span class="kb-sem-resp" title="Sem responsável"></span>') +
         (d.prazo ? '<span class="kb-prazo' + (atrasada ? ' atrasada' : '') + '">' +
-          esc(prazoCurto(d.prazo)) + '</span>' : '') +
+          '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' +
+          esc(d.prazo.slice(0, 10) === hojeISO() ? 'Hoje' : prazoCurto(d.prazo)) + '</span>' : '') +
         '<span class="kb-espaco"></span>' +
         (d.comentarios_abertos ? '<span class="kb-notas" title="Notas internas em aberto">' +
           '<svg viewBox="0 0 24 24"><path d="M5 4h14v12H9l-4 4z"/></svg>' + d.comentarios_abertos + '</span>' : '') +
@@ -385,8 +384,17 @@ B7.Kanban = (function () {
         (d.tipo_vinculo && d.tipo_vinculo !== 'avulsa'
           ? '<span class="kb-vinc" title="Vinculada a ' + esc(rotuloTipo(d).toLowerCase()) + '">' +
             '<svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1.5 1.5"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5"/></svg></span>' : '') +
+        (d.responsavel_nome
+          ? B7.UI.avatarPessoa({ nome: d.responsavel_nome, avatar_url: d.responsavel_avatar }, 'xs')
+          : '<span class="kb-sem-resp" title="Sem responsável"></span>') +
       '</div>' +
     '</article>';
+  }
+
+  /* data de hoje (fuso local) no formato do prazo, para o "Hoje" do cartão */
+  function hojeISO() {
+    const h = new Date();
+    return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
   }
 
   function prazoCurto(iso) {

@@ -1,1 +1,286 @@
 /* Espectro · design — redesenho fiel ao artefato. Tudo sob html[data-identidade="espectro"]. */
+/* Quadros "Design (equipe)", "Central de Design" e "Peça de design": rótulo 11.5 + título 42 ·
+   pílulas de 34 (ativa em Azul Matriz) · grade de 3 colunas com cartões raio 22, prévia de 160
+   e etiqueta de situação por cima · faixa no degradê Espectro · peça em 3 blocos (raio 26). */
+
+/* ---------------------------------------------------------------- cabeçalho */
+html[data-identidade="espectro"] .design-tela .cab-conteudo.ds2-cab,
+html[data-identidade="espectro"] .design-tela .cab-conteudo.dsc-pcab{display:flex;flex-direction:row;align-items:flex-end;justify-content:space-between;gap:10px;margin:4px 0 18px;animation:none;}
+html[data-identidade="espectro"] .design-tela .ds2-tit{display:block;flex:1;min-width:0;}
+html[data-identidade="espectro"] .design-tela .ds2-selo{display:none;}
+html[data-identidade="espectro"] .design-tela :is(.ds2-cab, .dsc-pcab) .v4-sobre{margin:0 0 8px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);line-height:1.45;}
+html[data-identidade="espectro"] .design-tela :is(.ds2-cab, .dsc-pcab) h1{margin:0;font-size:42px !important;line-height:1;letter-spacing:0;color:var(--ink);}
+html[data-identidade="espectro"] .design-tela .ds2-cab .ds2-tit p:not(.v4-sobre),
+html[data-identidade="espectro"] .design-tela .ds2-cab > div > p:not(.v4-sobre){display:none;}
+html[data-identidade="espectro"] .design-tela :is(.ds2-cab, .dsc-pcab) .b{min-height:48px;height:48px;padding:0 22px;border-radius:24px;font-size:15px;flex:none;text-decoration:none;}
+html[data-identidade="espectro"] .design-tela .dsc-pcab .b{background:var(--card);border:1px solid rgba(10,16,51,.06);box-shadow:0 8px 24px rgba(10,16,51,.04);color:var(--ink);}
+html[data-identidade="espectro"][data-theme="dark"] .design-tela .dsc-pcab .b{border-color:var(--borda);box-shadow:none;}
+html[data-identidade="espectro"] .design-tela .ds-nova-mais{font-size:18px;line-height:1;}
+
+/* ------------------------------------------------- abas da equipe: pílulas de 34 */
+html[data-identidade="espectro"] .design-tela .ds-abas{display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:0 0 16px;background:none;border:0;border-radius:0;box-shadow:none;overflow:visible;}
+html[data-identidade="espectro"] .design-tela .ds-abas button{height:34px;padding:0 16px;border-radius:17px;display:inline-flex;align-items:center;flex:none;font:inherit;font-size:13px;font-weight:400;white-space:nowrap;cursor:pointer;
+  color:var(--ink-3);background:var(--card);border:1px solid var(--borda-forte);box-shadow:none;margin:0;transition:background-color .18s, color .18s, border-color .18s, transform .12s;}
+html[data-identidade="espectro"] .design-tela .ds-abas button:hover{color:var(--ink);background:var(--card);}
+html[data-identidade="espectro"] .design-tela .ds-abas button:active{transform:scale(.97);}
+html[data-identidade="espectro"] .design-tela .ds-abas button.on{background:#001561;border-color:#001561;color:#fff;box-shadow:none;}
+html[data-identidade="espectro"][data-theme="dark"] .design-tela .ds-abas button.on{background:#7328A5;border-color:#7328A5;}
+html[data-identidade="espectro"] .design-tela .ds-abas button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);border-radius:17px;}
+html[data-identidade="espectro"] .design-tela .ds-aba-n,
+html[data-identidade="espectro"] .design-tela .ds-abas button.on .ds-aba-n{font-style:normal;font-size:13px;font-weight:400;margin:0 0 0 4px;padding:0;border-radius:0;background:none;color:inherit;}
+html[data-identidade="espectro"] .design-tela .ds-aba-n:not(:empty)::before{content:"· ";}
+
+/* os números do momento repetem as contagens das pílulas: o quadro não tem essa faixa */
+html[data-identidade="espectro"] .design-tela .ds2-kpis{display:none;}
+
+/* ------------------------------------------------- "precisa de você": pílulas */
+html[data-identidade="espectro"] .design-tela .ds-precisa{gap:6px;margin:0 0 14px;}
+html[data-identidade="espectro"] .design-tela .ds-precisa small{font-size:11.5px;font-weight:400;letter-spacing:.14em;color:var(--ink-3);margin-right:6px;}
+html[data-identidade="espectro"] .design-tela .ds-precisa-ok{font-weight:400;font-size:13px;}
+html[data-identidade="espectro"] .design-tela .ds-precisa-chip{height:34px;padding:0 14px;border-radius:17px;border:1px solid var(--borda-forte);background:var(--card);font-size:13px;font-weight:400;color:var(--ink-3);display:inline-flex;align-items:center;gap:4px;}
+html[data-identidade="espectro"] .design-tela .ds-precisa-chip b{font-size:13px;font-weight:400;}
+html[data-identidade="espectro"] .design-tela .ds-precisa-chip:hover{color:var(--ink);transform:none;}
+html[data-identidade="espectro"] .design-tela .ds-precisa-chip.on{background:#001561;border-color:#001561;color:#fff;}
+html[data-identidade="espectro"] .design-tela .ds-precisa-chip.on b{color:#fff;}
+html[data-identidade="espectro"] .design-tela .ds-revisar-fila{min-height:34px;height:34px;padding:0 16px;border-radius:17px;font-size:13px;}
+
+/* ------------------------------------------------- barra de filtros: linha solta, pílulas */
+html[data-identidade="espectro"] .design-tela .ds-barra{padding:0;background:none;border:0;border-radius:0;box-shadow:none;gap:8px;margin:0 0 18px;}
+html[data-identidade="espectro"] .design-tela .ds-barra .campo.fina{height:34px;min-height:34px;padding:0 14px;border-radius:17px;font-size:13px;border:1px solid var(--borda-forte);background-color:var(--card);color:var(--ink-3);box-shadow:none;}
+html[data-identidade="espectro"] .design-tela .ds-barra select.campo.fina{padding-right:30px;}
+html[data-identidade="espectro"] .design-tela .ds-barra .campo.fina.ativo{color:var(--ink);border-color:var(--acento);}
+html[data-identidade="espectro"] .design-tela .ds-busca-cx{flex:0 1 260px;}
+html[data-identidade="espectro"] .design-tela .ds-busca-cx svg{left:14px;width:15px;height:15px;}
+html[data-identidade="espectro"] .design-tela .ds-busca{padding-left:36px !important;}
+html[data-identidade="espectro"] .design-tela .ds-barra .b.fina{min-height:34px;height:34px;padding:0 16px;border-radius:17px;font-size:13px;font-weight:400;background:var(--card);border:1px solid var(--borda);color:var(--ink);}
+html[data-identidade="espectro"] .design-tela .ds-barra .b.fina.on,
+html[data-identidade="espectro"] .design-tela .ds-barra .b.fina.ativo{border-color:var(--acento);color:var(--acento);}
+html[data-identidade="espectro"] .design-tela .ds-barra .b.fina i{font-style:normal;margin-left:2px;}
+html[data-identidade="espectro"] .design-tela .ds-total{font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .design-tela .ds-ver-final{font:inherit;font-size:13px;color:var(--acento);}
+html[data-identidade="espectro"] .design-tela .ds-barra .seg-vista{display:inline-flex;gap:2px;height:34px;padding:0 3px;align-items:center;border-radius:17px;background:var(--card);border:1px solid var(--borda);box-sizing:border-box;}
+html[data-identidade="espectro"] .design-tela .ds-barra .seg-vista button{height:26px;min-height:26px;padding:0 12px;border-radius:13px;font-size:13px;font-weight:400;color:var(--ink-3);background:none;border:0;box-shadow:none;display:inline-flex;align-items:center;gap:6px;}
+html[data-identidade="espectro"] .design-tela .ds-barra .seg-vista button svg{width:16px;height:16px;}
+html[data-identidade="espectro"] .design-tela .ds-barra .seg-vista button.on{background:var(--suave);color:var(--ink);box-shadow:none;}
+
+/* ------------------------------------------------- quadro (colunas por situação) */
+html[data-identidade="espectro"] .design-tela .ds-quadro{gap:16px;}
+html[data-identidade="espectro"] .design-tela .ds-col{background:none;border:0;border-radius:0;padding:0;}
+html[data-identidade="espectro"] .design-tela .ds-col header{padding:0 2px 12px;}
+html[data-identidade="espectro"] .design-tela .ds-col header b{font-size:13.5px;font-weight:400;color:var(--ink);}
+html[data-identidade="espectro"] .design-tela .ds-col header:before{width:6px;height:6px;}
+html[data-identidade="espectro"] .design-tela .ds-col .ds-cont{min-width:0;padding:0 10px;height:24px;line-height:24px;border-radius:999px;background:var(--card);border:1px solid var(--borda);font-weight:400;font-size:12px;color:var(--ink-3);}
+html[data-identidade="espectro"] .design-tela .ds-col .ds-lista{gap:16px;padding:0;background:none;}
+html[data-identidade="espectro"] .design-tela .ds-quadro .ds-col.vazia{border:1px dashed var(--borda-forte);border-radius:22px;padding:14px;opacity:1;}
+html[data-identidade="espectro"] .design-tela .ds-col-nada{font-size:12.5px;color:var(--ink-3);}
+html[data-identidade="espectro"] .design-tela .ds-lista-grade{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+
+/* ------------------------------------------------- cartão da peça */
+html[data-identidade="espectro"] .ds-card{padding:0;border-radius:22px;border:1px solid var(--borda);background:var(--card);overflow:hidden;box-shadow:none;display:flex;flex-direction:column;
+  transition:transform .12s, box-shadow .18s, border-color .18s;}
+html[data-identidade="espectro"] .ds-card:hover{transform:translateY(-2px);border-color:var(--borda);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .ds-card:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(115,40,165,.3);}
+html[data-identidade="espectro"] .ds-card.alta,
+html[data-identidade="espectro"] .ds-card.urgente{border-left-width:1px;}
+html[data-identidade="espectro"] .ds-card.urgente{box-shadow:inset 0 3px 0 var(--erro);}
+html[data-identidade="espectro"] .ds-card-midia{position:relative;height:160px;flex:none;background:var(--suave);}
+html[data-identidade="espectro"] .ds-card-midia .ds-thumb{width:100%;height:100%;border-radius:0;background-color:var(--suave);background-size:cover;background-position:center;}
+html[data-identidade="espectro"] .ds-card-midia .ds-thumb-vazia svg{width:34px;height:34px;color:var(--ink-4);}
+html[data-identidade="espectro"] .ds-quadro .ds-card-midia{height:132px;}
+html[data-identidade="espectro"] .ds-card-info{padding:12px 14px;min-width:0;}
+html[data-identidade="espectro"] .ds-card .ds-cli{margin:0;font-size:12px;color:var(--ink-3);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+html[data-identidade="espectro"] .ds-card h4{margin:2px 0 0;font-size:14px;font-weight:400;line-height:1.35;color:var(--ink);}
+html[data-identidade="espectro"] .ds-card .ds-pe{margin-top:8px;gap:8px;font-size:12.5px;color:var(--ink-3);}
+html[data-identidade="espectro"] .ds-card :is(.ds-resp, .ds-resp-vazio){font-size:12.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;display:block;}
+html[data-identidade="espectro"] .ds-card .ds-prazo{font-size:12.5px;color:var(--ink-3);}
+html[data-identidade="espectro"] .ds-card .ds-prazo.hoje{color:var(--ambar);}
+html[data-identidade="espectro"] .ds-card .ds-prazo.atrasada{color:var(--erro);}
+html[data-identidade="espectro"] .ds-card .ds-feedback{font-size:12px;font-weight:400;padding:2px 8px;border-radius:999px;}
+
+/* seleção em lote: a caixinha fica no canto direito da prévia, em Violeta Quantum quando marcada */
+html[data-identidade="espectro"] .ds-card{position:relative;}
+html[data-identidade="espectro"] .ds-selbox input:checked + i{background:#7328A5;border-color:#7328A5;}
+html[data-identidade="espectro"] [data-peca].ds-marcada{box-shadow:0 0 0 2px #7328A5 !important;background:var(--card) !important;}
+
+/* etiqueta de situação (cartão e ficha da peça): pílula 24 com ponto de 6 */
+html[data-identidade="espectro"] .ds-card-selo{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:400;white-space:nowrap;
+  background:var(--neutro-bg);color:var(--neutro);}
+html[data-identidade="espectro"] .ds-card-midia .ds-card-selo{position:absolute;left:10px;top:10px;}
+html[data-identidade="espectro"] .ds-card-selo i{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
+html[data-identidade="espectro"] .ds-card-selo.t-violeta{background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"] .ds-card-selo.t-ambar{background:var(--ambar-bg);color:var(--ambar);}
+html[data-identidade="espectro"] .ds-card-selo.t-ok{background:var(--ok-bg);color:var(--ok);}
+html[data-identidade="espectro"] .ds-card-selo.t-erro{background:var(--erro-bg);color:var(--erro);}
+html[data-identidade="espectro"] .ds-card-selo.t-neutro{background:var(--neutro-bg);color:var(--neutro);}
+/* por cima da prévia a etiqueta precisa de fundo opaco no escuro */
+html[data-identidade="espectro"][data-theme="dark"] .ds-card-selo.t-violeta{background:#2A1745;color:#C9A2EE;}
+html[data-identidade="espectro"][data-theme="dark"] .ds-card-midia .ds-card-selo.t-ambar{background:#3A2F12;}
+html[data-identidade="espectro"][data-theme="dark"] .ds-card-midia .ds-card-selo.t-ok{background:#123327;}
+html[data-identidade="espectro"][data-theme="dark"] .ds-card-midia .ds-card-selo.t-erro{background:#3D1C25;}
+html[data-identidade="espectro"][data-theme="dark"] .ds-card-midia .ds-card-selo.t-neutro{background:#22264A;}
+
+/* peça dentro do grupo de cliente (fila "Aguardando produção"): linha compacta */
+html[data-identidade="espectro"] .ds-card.grupo{flex-direction:row;align-items:center;border-radius:18px;}
+html[data-identidade="espectro"] .ds-card.grupo .ds-card-midia{width:56px;height:56px;margin:8px 0 8px 8px;border-radius:12px;overflow:hidden;}
+html[data-identidade="espectro"] .ds-card.grupo .ds-card-midia .ds-card-selo{display:none;}
+html[data-identidade="espectro"] .ds-card.grupo .ds-card-info{padding:8px 12px;flex:1;}
+html[data-identidade="espectro"] .ds-card.grupo h4{font-size:13.5px;}
+html[data-identidade="espectro"] .ds-card.grupo .ds-pe{margin-top:4px;}
+html[data-identidade="espectro"] .design-tela .ds-grupo-cli{border-radius:18px;background:var(--card);border:1px solid var(--borda);}
+html[data-identidade="espectro"] .design-tela .ds-grupo-cli summary b{font-weight:400;}
+html[data-identidade="espectro"] .design-tela .ds-grupo-cli .ds-card{margin:0 8px 8px;}
+
+/* ------------------------------------------------- lista (tabela) */
+html[data-identidade="espectro"] .design-tela .ds-tabela{border-radius:22px;border:1px solid var(--borda);box-shadow:none;}
+html[data-identidade="espectro"] .design-tela .ds-th{font-size:11.5px;font-weight:400;letter-spacing:.14em;color:var(--ink-3);background:var(--card);border-bottom:1px solid var(--borda);}
+html[data-identidade="espectro"] .design-tela .ds-tr{font-size:13.5px;border-top-color:var(--borda);}
+html[data-identidade="espectro"] .design-tela .ds-tr-titulo b{font-weight:400;}
+html[data-identidade="espectro"] .design-tela .ds-chip{font-weight:400;border-radius:999px;}
+
+/* ------------------------------------------------- equipe e vazio */
+html[data-identidade="espectro"] .design-tela .ds2-vazio{border-radius:26px;background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .design-tela .ds2-vazio-ic{background:var(--b7-espectro-curto);box-shadow:0 12px 30px rgba(224,47,117,.3);}
+html[data-identidade="espectro"] .design-tela .ds2-vazio b{font-size:22px;font-weight:400;letter-spacing:0;}
+
+/* ================================================================ CENTRAL DE DESIGN */
+html[data-identidade="espectro"] .dsc-tela .dsc-hero{position:relative;display:flex;align-items:center;gap:28px;flex-wrap:nowrap;margin:0 0 20px;padding:26px 28px;border-radius:26px;overflow:hidden;
+  background:var(--b7-espectro);color:#fff;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.35;mix-blend-mode:soft-light;
+  background:url('../../assets/brand/espectro/padrao-lampada-violeta.svg') center/cover no-repeat;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero > *{position:relative;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero-tx{flex:1;min-width:0;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero-rot{margin:0;font-size:12px;letter-spacing:.08em;opacity:.85;color:#fff;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero h2{margin:6px 0 0;font-size:34px;font-weight:400;line-height:1.05;letter-spacing:0;color:#fff;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero p:not(.dsc-hero-rot){margin:6px 0 0;font-size:14px;opacity:.9;color:#fff;max-width:none;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-nums{display:flex;gap:0;margin:0;flex:none;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-num{align-items:center;text-align:center;gap:0;padding:0 12px;background:none;border:0;border-radius:12px;color:#fff;min-width:0;max-width:120px;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-num:hover:not(:disabled){transform:none;background:rgba(255,255,255,.1);}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-num:disabled{opacity:.6;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-num b{font-size:36px;font-weight:400;line-height:1.45;letter-spacing:0;color:#fff;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-num span{font-size:12.5px;line-height:1.3;color:#fff;opacity:.9;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-num.on{background:none;border:0;}
+html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-num:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(255,255,255,.45);}
+/* o carregando (antes dos dados) ainda usa o cabeçalho simples */
+html[data-identidade="espectro"] .dsc-tela .dsc-cab:not(.dsc-hero) h1{font-size:42px;font-weight:400;letter-spacing:0;}
+
+/* seções: título 15, contagem em pílula */
+html[data-identidade="espectro"] .dsc-tela .dsc-sec{margin-bottom:26px;}
+html[data-identidade="espectro"] .dsc-tela .dsc-sec h2{font-size:15px;font-weight:400;letter-spacing:0;color:var(--ink);margin:0 0 12px;}
+html[data-identidade="espectro"] .dsc-tela .dsc-sec h2 span{font-size:12px;font-weight:400;padding:0 10px;height:24px;line-height:24px;border-radius:999px;background:var(--card);border:1px solid var(--borda);color:var(--ink-3);}
+html[data-identidade="espectro"] .dsc-tela .dsc-precisa h2{color:var(--ink);}
+html[data-identidade="espectro"] .dsc-tela .dsc-sub{font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .dsc-tela .dsc-fila{gap:10px;}
+html[data-identidade="espectro"] .dsc-tela :is(.dsc-item, .dsc-disp-row){border-radius:22px;border:1px solid var(--borda);background:var(--card);padding:12px 18px 12px 12px;}
+html[data-identidade="espectro"] .dsc-tela :is(.dsc-item, .dsc-disp-row):hover{border-color:var(--borda);transform:translateY(-2px);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .dsc-tela .dsc-item .ds-thumb{width:64px;height:64px;border-radius:14px;}
+html[data-identidade="espectro"] .dsc-tela .dsc-item h4{font-size:14px;font-weight:400;margin:6px 0 2px;}
+html[data-identidade="espectro"] .dsc-tela .dsc-meta{font-size:12.5px;color:var(--ink-3);}
+html[data-identidade="espectro"] .dsc-tela .dsc-meta i.atrasada,
+html[data-identidade="espectro"] .dsc-tela .dsc-meta i.hoje{font-weight:400;}
+html[data-identidade="espectro"] .dsc-tela .dsc-motivo{height:24px;line-height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;}
+html[data-identidade="espectro"] .dsc-tela .dsc-motivo.cliente,
+html[data-identidade="espectro"] .dsc-tela .dsc-motivo.ajuste{background:var(--ambar-bg);color:var(--ambar);}
+html[data-identidade="espectro"] .dsc-tela .dsc-motivo.comecar{background:#F0E8F8;color:#7328A5;}
+html[data-identidade="espectro"][data-theme="dark"] .dsc-tela .dsc-motivo.comecar{background:var(--violeta-bg);color:var(--acento);}
+html[data-identidade="espectro"] .dsc-tela .dsc-item .ds-prazo{font-size:12.5px;color:var(--ink-3);}
+html[data-identidade="espectro"] .dsc-tela .dsc-item .ds-prazo.hoje{color:var(--ambar);}
+html[data-identidade="espectro"] .dsc-tela .dsc-item .ds-prazo.atrasada{color:var(--erro);}
+html[data-identidade="espectro"] .dsc-tela .dsc-linhas{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+html[data-identidade="espectro"] .dsc-tela .dsc-linha{border-radius:22px;border:1px solid var(--borda);padding:18px 20px;gap:10px;}
+html[data-identidade="espectro"] .dsc-tela .dsc-linha:hover{transform:translateY(-2px);border-color:var(--borda);box-shadow:var(--sh-2);}
+html[data-identidade="espectro"] .dsc-tela .dsc-cli{font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-3);}
+html[data-identidade="espectro"] .dsc-tela .dsc-linha h3{font-size:17px;font-weight:400;letter-spacing:0;}
+html[data-identidade="espectro"] .dsc-tela .dsc-pct{font-size:26px;font-weight:400;letter-spacing:0;color:var(--acento);}
+html[data-identidade="espectro"] .dsc-tela .dsc-linha .ds-grupo-progresso{height:8px;border-radius:999px;background:var(--suave);}
+html[data-identidade="espectro"] .dsc-tela .dsc-linha .ds-grupo-progresso span{border-radius:999px;background:var(--b7-espectro-curto);}
+html[data-identidade="espectro"] .dsc-tela .dsc-linha-st{font-size:13px;}
+html[data-identidade="espectro"] .dsc-tela .dsc-abrir{font-weight:400;}
+html[data-identidade="espectro"] .dsc-tela .dsc-disp-tx b{font-size:14px;font-weight:400;}
+html[data-identidade="espectro"] .design-tela .ds-resumo-chip{height:24px;line-height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:400;}
+html[data-identidade="espectro"] .dsc-tela .dsc-disp-row .b{min-height:34px;height:34px;padding:0 16px;border-radius:17px;font-size:13px;}
+
+/* ================================================================ PEÇA (gaveta) */
+html[data-identidade="espectro"] .ds-ws-fundo{background:rgba(10,16,51,.34);backdrop-filter:blur(3px);}
+html[data-identidade="espectro"][data-theme="dark"] .ds-ws-fundo{background:rgba(3,4,15,.66);}
+html[data-identidade="espectro"] .ds-ws{background:var(--fundo);border:1px solid var(--esp-cartao-borda);border-radius:30px;box-shadow:var(--sh-3);}
+html[data-identidade="espectro"][data-theme="dark"] .ds-ws{background:#070920;}
+html[data-identidade="espectro"] .ds-ws-topo{align-items:flex-end;gap:10px;padding:30px 36px 18px;border-bottom:0;}
+html[data-identidade="espectro"] .ds-ws-topo .ico{width:48px;height:48px;border-radius:24px;flex:none;background:var(--card);border:1px solid rgba(10,16,51,.06);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:18px;}
+html[data-identidade="espectro"][data-theme="dark"] .ds-ws-topo .ico{border-color:var(--borda);}
+html[data-identidade="espectro"] .ds-ws-topo-rot{margin:0 0 8px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);line-height:1.45;}
+html[data-identidade="espectro"] .ds-ws-topo h3{margin:0;font-size:42px;font-weight:400;line-height:1;letter-spacing:0;color:var(--ink);}
+html[data-identidade="espectro"] .ds-ws .ds-fila{margin:0 36px 14px;border-radius:18px;border:0;padding:10px 16px;}
+html[data-identidade="espectro"] .ds-ws-corpo{gap:20px;padding:6px 36px 24px;}
+html[data-identidade="espectro"] .ds-ws-principal{border-radius:26px;background:var(--suave);padding:24px;}
+html[data-identidade="espectro"][data-theme="dark"] .ds-ws-principal{background:rgba(255,255,255,.04);}
+html[data-identidade="espectro"] .ds-ws-principal .ds-arte-moldura{border-radius:16px;border:0;background:var(--card);box-shadow:0 20px 50px rgba(10,16,51,.2);}
+html[data-identidade="espectro"] .ds-ws-principal .ds-arte-titulo{font-size:11.5px;font-weight:400;letter-spacing:.14em;color:var(--ink-3);}
+html[data-identidade="espectro"] .ds-ws-lateral{flex:0 0 360px;max-width:360px;padding:0 2px 0 0;border-left:0;background:none;display:flex;flex-direction:column;gap:16px;}
+html[data-identidade="espectro"] .ds-ws-lateral > :not(:empty){flex:none;margin:0;background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:var(--sh-2);border-radius:26px;padding:22px;box-sizing:border-box;}
+html[data-identidade="espectro"] .ds-ws-lateral > :empty{display:none;}
+/* a ficha: etiqueta, título 22, apoio 13 e os campos como pares rótulo/valor */
+html[data-identidade="espectro"] .ds-ws-ficha-tit{margin:10px 0 0;font-size:22px;line-height:1.2;color:var(--ink);overflow-wrap:anywhere;}
+html[data-identidade="espectro"] .ds-ws-ficha-meta{margin:2px 0 0;font-size:13px;color:var(--ink-3);}
+html[data-identidade="espectro"] .ds-ws-ficha .ds-dr-grade{margin:14px 0 0;gap:10px;}
+html[data-identidade="espectro"] .ds-ws-ficha .ds-dr-campo small{font-size:11.5px;font-weight:400;letter-spacing:.14em;color:var(--ink-3);}
+html[data-identidade="espectro"] .ds-ws-ficha .ds-dr-valor{font-size:13.5px;color:var(--ink);}
+html[data-identidade="espectro"] .ds-ws-ficha .campo.fina{min-height:38px;border-radius:14px;font-size:13.5px;}
+html[data-identidade="espectro"] .ds-ws-ficha .ds-ws-lateral-acao{margin-top:16px;}
+html[data-identidade="espectro"] .ds-ws-ficha .ds-ws-acao-primaria{min-height:34px;height:auto;padding:8px 16px;border-radius:17px;font-size:13px;}
+html[data-identidade="espectro"] .ds-ws-ficha .ds-ws-acoes-sec{margin-bottom:0;}
+html[data-identidade="espectro"] .ds-ws-ficha .ds-ws-acoes-sec .b{min-height:34px;border-radius:17px;font-size:13px;}
+html[data-identidade="espectro"] .ds-ws-ficha .ds-dr-compartilhar{margin-top:14px;}
+html[data-identidade="espectro"] .ds-ws-lateral details.ds-dr-bloco > summary{font-size:15px;font-weight:400;color:var(--ink);}
+html[data-identidade="espectro"] .ds-ws-lateral :is(h4, h5, b, strong){font-weight:400;}
+html[data-identidade="espectro"] .ds-ws-lateral .ds-versao{border-top:1px solid var(--borda);padding:10px 0;}
+html[data-identidade="espectro"] .ds-ws-lateral .ds-versao b{font-size:13.5px;}
+
+html[data-identidade="espectro"] .ds-ws-ficha .ds-dr-grade{margin-bottom:0;}
+html[data-identidade="espectro"] .ds-ws-ficha .ds-dr-salvo:empty{display:none;}
+html[data-identidade="espectro"] .ds-ws-lateral .ds-dr-bloco > h4{font-size:15px;margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+html[data-identidade="espectro"] .ds-ws-lateral .ds-dc-status{height:24px;line-height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;}
+html[data-identidade="espectro"] .ds-ws-lateral .ds-dc-vazio{font-size:13.5px;color:var(--ink-2);line-height:1.5;}
+html[data-identidade="espectro"] .ds-ws-lateral .ds-via-toggle{border-radius:17px;padding:3px;background:var(--suave);}
+html[data-identidade="espectro"] .ds-ws-lateral .ds-via-toggle button{border-radius:14px;font-size:13px;font-weight:400;}
+html[data-identidade="espectro"] .ds-ws-lateral :is(small, label > small){font-weight:400;}
+
+/* ================================================================ escuro */
+html[data-identidade="espectro"][data-theme="dark"] .design-tela .ds-barra .campo.fina{border-color:var(--borda);}
+html[data-identidade="espectro"][data-theme="dark"] .design-tela .ds-abas button:not(.on),
+html[data-identidade="espectro"][data-theme="dark"] .design-tela .ds-precisa-chip:not(.on){border-color:var(--borda);}
+
+/* ================================================================ celular */
+@media (max-width:760px){
+  html[data-identidade="espectro"] .design-tela .cab-conteudo.ds2-cab,
+  html[data-identidade="espectro"] .design-tela .cab-conteudo.dsc-pcab{flex-wrap:wrap;align-items:center;margin:0 0 14px;}
+  html[data-identidade="espectro"] .design-tela :is(.ds2-cab, .dsc-pcab) h1{font-size:30px !important;}
+  html[data-identidade="espectro"] .design-tela :is(.ds2-cab, .dsc-pcab) .b{min-height:42px;height:42px;padding:0 16px;font-size:14px;}
+  html[data-identidade="espectro"] .design-tela .ds-abas{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px 14px;padding:0 16px;}
+  html[data-identidade="espectro"] .design-tela .ds-abas::-webkit-scrollbar{display:none;}
+  /* o design.css antigo transforma as abas em sublinhado no celular (com !important) */
+  html[data-identidade="espectro"] .design-tela .ds-abas{gap:6px !important;margin:0 -16px 14px !important;padding:0 16px !important;border-bottom:0 !important;}
+  html[data-identidade="espectro"] .design-tela .ds-abas button{height:34px !important;padding:0 14px !important;border:1px solid var(--borda-forte) !important;border-radius:17px !important;background:var(--card) !important;color:var(--ink-3) !important;font-size:13px !important;font-weight:400 !important;}
+  html[data-identidade="espectro"] .design-tela .ds-abas button.on{background:#001561 !important;border-color:#001561 !important;color:#fff !important;}
+  html[data-identidade="espectro"][data-theme="dark"] .design-tela .ds-abas button.on{background:#7328A5 !important;border-color:#7328A5 !important;}
+  html[data-identidade="espectro"] .design-tela .ds-abas button::after{display:none !important;}
+  html[data-identidade="espectro"] .design-tela .ds-abas .ds-aba-n,
+  html[data-identidade="espectro"] .design-tela .ds-abas button.on .ds-aba-n{font-size:13px !important;font-weight:400;margin-left:4px !important;padding:0 !important;background:none !important;color:inherit !important;}
+  html[data-identidade="espectro"] .design-tela .ds-lista-grade{grid-template-columns:1fr;}
+  html[data-identidade="espectro"] .ds-card-midia{height:150px;}
+  html[data-identidade="espectro"] .dsc-tela .dsc-hero{flex-direction:column;align-items:stretch;gap:16px;padding:22px 20px;}
+  html[data-identidade="espectro"] .dsc-tela .dsc-hero h2{font-size:26px;}
+  html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));}
+  html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-num{padding:0 4px;max-width:none;}
+  html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-num b{font-size:28px;}
+  html[data-identidade="espectro"] .dsc-tela .dsc-hero .dsc-num span{font-size:11.5px;}
+  html[data-identidade="espectro"] .dsc-tela .dsc-linhas{grid-template-columns:1fr;}
+  html[data-identidade="espectro"] .ds-ws{border-radius:0;border:0;}
+  html[data-identidade="espectro"] .ds-ws-topo{padding:16px 16px 12px;align-items:center;}
+  html[data-identidade="espectro"] .ds-ws-topo .ico{width:40px;height:40px;}
+  html[data-identidade="espectro"] .ds-ws-topo h3{font-size:24px;line-height:1.1;}
+  html[data-identidade="espectro"] .ds-ws .ds-fila{margin:0 16px 12px;}
+  html[data-identidade="espectro"] .ds-ws-corpo{padding:0 16px 16px;gap:14px;}
+  html[data-identidade="espectro"] .ds-ws-principal{padding:14px;border-radius:22px;}
+  html[data-identidade="espectro"] .ds-ws-lateral{flex:none;max-width:none;width:100%;padding:0;}
+  html[data-identidade="espectro"] .ds-ws-lateral > :not(:empty){padding:18px;border-radius:22px;}
+}
