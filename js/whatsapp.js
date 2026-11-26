@@ -25,6 +25,7 @@ B7.WhatsApp = (function () {
   let podeCache = null;
   function podeEnviar() {
     const u = eu(); if (!u.id || u.papel === 'cliente') return false;
+    if (B7.Perm && B7.Perm.desligado && B7.Perm.desligado('whatsapp')) return false;   /* 4.92.0: desligado para a agência */
     if (B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro()) return false;   /* 4.86.0: Financeiro não tem WhatsApp */
     if (podeCache != null) return podeCache;
     const adm = B7.Auth && (B7.Auth.ehAdminReal ? B7.Auth.ehAdminReal() : B7.Auth.ehAdmin && B7.Auth.ehAdmin());

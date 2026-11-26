@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-4.92.0', versao: '4.92.0', em: '2026-11-26T18:00:00-03:00',
+    titulo: 'Desligar um módulo para a agência inteira',
+    itens: ['Em Configurações → Sistema da equipe → Módulos da agência, o administrador desliga um módulo (ex.: WhatsApp) para todo mundo: ele some do menu, da busca, do “Criar” e dos botões das telas.',
+      'Dá para deixar um motivo ("pausado até dezembro"), que aparece para quem abrir o endereço. Nada é apagado: religar devolve tudo como estava.'] },
   { id: 'v-4.91.7', versao: '4.91.7', em: '2026-11-25T18:00:00-03:00',
     titulo: 'Otto: chega de cobrar o que a equipe já respondeu',
     itens: ['Se a equipe foi a última a falar no grupo do cliente, o Otto não coloca mais esse cliente em "Clientes esperando a gente" — mesmo quando ainda falta uma entrega (ex.: mandar a arte ou o PDF).',
