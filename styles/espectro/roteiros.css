@@ -198,7 +198,7 @@ html[data-identidade="espectro"] #tela-editor .trilho .add svg{display:block;wid
   /* coluna de escrita: a principal; a prévia A4 fica num cartão à direita */
   html[data-identidade="espectro"] #tela-editor .escrita{flex:1 1 auto;width:auto;min-width:0;padding:0 2px 40px;}
   html[data-identidade="espectro"] body.foco #tela-editor .escrita{width:auto;}
-  html[data-identidade="espectro"] #tela-editor .previa{flex:0 0 38%;max-width:520px;border-radius:26px;background:var(--suave);border:1px solid var(--esp-cartao-borda);padding:20px 0 80px;}
+  html[data-identidade="espectro"] #tela-editor .previa{flex:0 0 34%;max-width:480px;border-radius:26px;background:var(--suave);border:1px solid var(--esp-cartao-borda);padding:20px 0 80px;}
 }
 @media (max-width:1000px){
   html[data-identidade="espectro"] #tela-editor .trilho{background:transparent;border-bottom:0;}
@@ -298,8 +298,13 @@ html[data-identidade="espectro"] #tela-editor .zoom button{border-radius:17px;fo
 html[data-identidade="espectro"] #tela-editor .zoom .zv{font-weight:400;}
 
 @media (max-width:760px){
-  html[data-identidade="espectro"] #tela-editor .topo .contexto b{font-size:24px;}
-  html[data-identidade="espectro"] #tela-editor .topo .contexto{gap:4px;}
+  html[data-identidade="espectro"] #tela-editor > .topo{flex-wrap:wrap;height:auto;row-gap:10px;gap:6px;align-items:center;
+    padding:calc(10px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 12px 12px;}
+  html[data-identidade="espectro"] #tela-editor .topo .contexto{order:20;flex:1 1 100%;min-width:0;gap:4px;}
+  html[data-identidade="espectro"] #tela-editor .topo .contexto b{font-size:28px;}
+  html[data-identidade="espectro"] #tela-editor #ed-status{align-self:center;margin:0;}
+  html[data-identidade="espectro"] #tela-editor .topo #bt-imprimir{width:34px;padding:0;justify-content:center;align-self:center;margin:0;}
+  html[data-identidade="espectro"] #tela-editor .topo > .menu{align-self:center;margin:0;}
   html[data-identidade="espectro"] #tela-editor .topo .contexto small{font-size:10.5px;letter-spacing:.1em;}
   html[data-identidade="espectro"] #tela-editor #bt-voltar{width:40px;height:40px;}
   html[data-identidade="espectro"] #tela-editor .ed2-cab{padding:20px 18px;border-radius:22px;}
