@@ -161,7 +161,7 @@ B7.DocSemana = (function () {
      A cor nunca carrega a informação sozinha: o texto está sempre lá.
      ================================================================= */
   const TIPOS = {
-    'Postagem':  { cor: '#C21C83' },
+    'Postagem':  { cor: '#E02F75' },
     'Gravação':  { cor: '#0E8074' },
     'Produção':  { cor: '#6D3FC4' },
     'Aprovação': { cor: '#A8790A' },
@@ -181,7 +181,7 @@ B7.DocSemana = (function () {
      TIPO no lugar — os dois sistemas nunca aparecem ao mesmo tempo na
      mesma linha (ver linhaItem). */
   const FORMATOS = {
-    'Card':            { cor: '#C21C83' }, /* magenta — post estático */
+    'Card':            { cor: '#E02F75' }, /* magenta — post estático */
     'Carrossel':       { cor: '#6D3FC4' }, /* violeta */
     'Reel':            { cor: '#0E8FA8' }, /* ciano/azul-esverdeado */
     'Story':           { cor: '#B9720A' }, /* âmbar */
@@ -507,7 +507,8 @@ B7.DocSemana = (function () {
         '<div class="ps-cab-linha"><h1>Status da semana</h1>' +
           '<span class="ps-periodo">' + esc(periodoTexto(r.semana_inicio, r.semana_fim)) + '</span></div>' +
       '</div>' +
-      '<img class="ps-logo" src="' + LOGO + '" alt="B7">' +
+      /* Espectro: a peça tem cabeçalho claro, então a marca vai colorida */
+      '<img class="ps-logo" src="' + (typeof document !== 'undefined' && document.documentElement.getAttribute('data-identidade') === 'espectro' ? 'assets/brand/logo-color.png' : LOGO) + '" alt="B7">' +
     '</div>';
   }
 
