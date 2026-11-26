@@ -443,6 +443,22 @@ html[data-identidade="espectro"] .login-caixa .lg-ou span{color:#AEB4D6;}
 html[data-identidade="espectro"] .login-caixa :is(.lg2-link, .login-legal a){color:#C9A2F0;}
 html[data-identidade="espectro"] .login-caixa .login-legal{color:rgba(174,180,214,.7);}
 html[data-identidade="espectro"] .login-caixa .login-aviso{border-radius:18px;}
+/* 5.18.0 quadro "Login · computador" (Fundamentos): sem rótulo em cima dos campos (o ícone fica dentro), a linha
+   Google | Núcleo 7 logo depois do Entrar e o "Esqueci minha senha" centralizado no fim */
+html[data-identidade="espectro"] .login-caixa{display:flex;flex-direction:column;}
+html[data-identidade="espectro"] .login-caixa .rot{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+html[data-identidade="espectro"] .login-caixa #lg-user{margin-top:22px;}
+html[data-identidade="espectro"] .login-caixa .login-senha{margin-top:12px;}
+html[data-identidade="espectro"] .login-caixa :is(#lg-user, #lg-senha){padding-left:54px;background-repeat:no-repeat;background-position:20px 50%;background-size:20px;}
+html[data-identidade="espectro"] .login-caixa #lg-user{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23AEB4D6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='3'/%3E%3Cpath d='M4 7l8 6 8-6'/%3E%3C/svg%3E");}
+html[data-identidade="espectro"] .login-caixa #lg-senha{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23AEB4D6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4.5' y='10.5' width='15' height='10' rx='3'/%3E%3Cpath d='M8 10.5V8a4 4 0 018 0v2.5'/%3E%3C/svg%3E");}
+html[data-identidade="espectro"] .login-caixa .esp-lg-alt{display:flex;gap:10px;margin-top:12px;}
+html[data-identidade="espectro"] .login-caixa .esp-lg-alt > *{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:50px;min-height:50px;padding:0 16px;font-size:14px;text-decoration:none;}
+html[data-identidade="espectro"] .login-caixa .esp-lg-so-cel{display:none;}
+html[data-identidade="espectro"] .login-caixa .login-esqueci{order:2;display:flex;justify-content:center;text-align:center;margin-top:18px;}
+html[data-identidade="espectro"] .login-caixa .login-esqueci .lg2-link{font-size:13.5px;}
+html[data-identidade="espectro"] .login-caixa .login-legal{order:3;margin-top:10px;text-align:center;}
+html[data-identidade="espectro"] .login-caixa .esp-lg-versao{display:none;}
 html[data-identidade="espectro"] .esp-login-logo{position:absolute;left:48px;top:40px;height:32px;z-index:1;}
 html[data-identidade="espectro"] .esp-login-assinatura{position:absolute;right:48px;bottom:40px;margin:0;font-size:14px;color:rgba(255,255,255,.75);z-index:1;}
 @media (max-width:760px){
@@ -455,6 +471,14 @@ html[data-identidade="espectro"] .esp-login-assinatura{position:absolute;right:4
   html[data-identidade="espectro"] .login-caixa .campo{height:50px;min-height:50px;border-radius:25px;}
   html[data-identidade="espectro"] .login-caixa .login-entrar{min-height:54px;border-radius:27px;}
   html[data-identidade="espectro"] :is(.esp-login-logo, .esp-login-assinatura){display:none;}
+  html[data-identidade="espectro"] .login-caixa .rot{position:static;width:auto;height:auto;overflow:visible;clip:auto;margin:16px 0 8px;font-size:13px;letter-spacing:0;text-transform:none;}
+  html[data-identidade="espectro"] .login-caixa #lg-user{margin-top:0;}
+  html[data-identidade="espectro"] .login-caixa .login-senha{margin-top:0;}
+  html[data-identidade="espectro"] .login-caixa .login-esqueci{order:0;justify-content:flex-end;text-align:right;margin-top:10px;}
+  html[data-identidade="espectro"] .login-caixa .esp-lg-alt{flex-direction:column;}
+  html[data-identidade="espectro"] .login-caixa .esp-lg-so-cel{display:inline;}
+  html[data-identidade="espectro"] .login-caixa .lg-n7{display:none;}
+  html[data-identidade="espectro"] .login-caixa .esp-lg-versao{display:block;order:4;margin:14px 0 0;text-align:center;font-size:12px;color:rgba(174,180,214,.7);}
 }
 
 @media (prefers-reduced-motion:reduce){

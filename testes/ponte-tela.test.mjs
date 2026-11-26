@@ -62,7 +62,7 @@ const espera = (pg, s, t = 9000) => pg.waitForSelector(s, { timeout: t }).catch(
   await espera(pg, '.tela-login .login-aviso');
   ok(/venceu/.test(await pg.$eval('.tela-login .login-aviso', e => e.innerText).catch(() => '')), 'bilhete vencido: volta ao login dizendo o que fazer');
   ok(!/VELHO/.test(await pg.evaluate(() => location.href)), 'mesmo recusado, o bilhete sai do endereço');
-  ok(/USUÁRIO OU E-MAIL/.test(await pg.$eval('label[for="lg-user"]', e => e.innerText).catch(() => '')), 'o login aceita usuário ou e-mail');
+  ok(/usuário ou e-mail/i.test(await pg.$eval('label[for="lg-user"]', e => e.textContent).catch(() => '')), 'o login aceita usuário ou e-mail');
   await print(pg, 'ponte-vencido');
   await ctx.close(); }
 

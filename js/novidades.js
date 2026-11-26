@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.18.0', versao: '5.18.0', em: '2026-11-26T21:00:00-03:00',
+    titulo: 'Ícones novos no menu e tela de entrada',
+    itens: ['O menu ganhou ícones desenhados para a identidade nova: traço fino e arredondado, cantos macios e o corte de 60° do B7.',
+      'A tela de entrada ficou igual ao desenho da marca: ícones dentro dos campos, os botões Google e Núcleo 7 lado a lado e o "Esqueci minha senha" no fim. No celular, a versão do sistema aparece no pé.'] },
   { id: 'v-5.17.0', versao: '5.17.0', em: '2026-11-26T20:00:00-03:00',
     titulo: 'Aparência na identidade nova: 3 paletas da marca',
     itens: ['Em Configurações → Aparência, as 11 paletas antigas viraram 3, todas dentro da nova marca: Padrão B7, Matriz (azuis) e Laser (rosa e coral).',
@@ -534,7 +538,7 @@ B7.NOVIDADES_VERSOES = [
             'Se a data da gravação passou e ela continua como agendada, quem grava recebe um aviso às 8h perguntando "Gravou?". É só abrir e concluir, remarcar ou marcar como cancelada.',
             'Gravações canceladas há mais de 30 dias vão sozinhas para Arquivados, sem apagar nada.'] },
   { id: 'v-4.4.5', versao: '4.4.5', em: '2026-11-05T10:00:00-03:00',
-    titulo: 'Ícones novos no menu',
+    titulo: 'Ícones novos no menu e tela de entrada',
     itens: ['O menu lateral, a barra de baixo do celular e o menu "Mais" ganharam ícones novos, de traço fino; o da página aberta fica cheio.',
             'O WhatsApp agora aparece com o logo oficial dele.'] },
   { id: 'v-4.4.4', versao: '4.4.4', em: '2026-11-05T09:00:00-03:00',

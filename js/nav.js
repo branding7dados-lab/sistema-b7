@@ -24,7 +24,7 @@ B7.Nav = (function () {
   const esc = s => B7.UI.esc(s);
   /* ícones da coleção Phosphor (MIT). 4.49.0: versão duotone, cheia em duas
      cores (styles/nav.css → "ícones em duas cores"). */
-  const IC = {
+  const IC_FOSFORO = {
     /* 4.49.0: Phosphor DUOTONE (MIT) — duas cores cheias: .d1 é o fundo do ícone, .d2 o traço */
     "painel": "<svg class=\"phi phd\" viewBox=\"0 0 256 256\" aria-hidden=\"true\"><path class=\"d1\" d=\"M232,152v24a8,8,0,0,1-8,8H32a8,8,0,0,1-8-8V153.13C24,95.65,70.15,48.2,127.63,48A104,104,0,0,1,232,152Z\"/><path class=\"d2\" d=\"M207.06,72.67A111.24,111.24,0,0,0,128,40h-.4C66.07,40.21,16,91,16,153.13V176a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V152A111.25,111.25,0,0,0,207.06,72.67ZM224,176H119.71l54.76-75.3a8,8,0,0,0-12.94-9.42L99.92,176H32V153.13c0-3.08.15-6.12.43-9.13H56a8,8,0,0,0,0-16H35.27c10.32-38.86,44-68.24,84.73-71.66V80a8,8,0,0,0,16,0V56.33A96.14,96.14,0,0,1,221,128H200a8,8,0,0,0,0,16h23.67c.21,2.65.33,5.31.33,8Z\"/></svg>",
     "gestao": "<svg class=\"phi phd\" viewBox=\"0 0 256 256\" aria-hidden=\"true\"><path class=\"d1\" d=\"M208,40V208H152V40Z\"/><path class=\"d2\" d=\"M224,200h-8V40a8,8,0,0,0-8-8H152a8,8,0,0,0-8,8V80H96a8,8,0,0,0-8,8v40H48a8,8,0,0,0-8,8v64H32a8,8,0,0,0,0,16H224a8,8,0,0,0,0-16ZM160,48h40V200H160ZM104,96h40V200H104ZM56,144H88v56H56Z\"/></svg>",
@@ -57,6 +57,46 @@ B7.Nav = (function () {
     "vercomo": "<svg class=\"phi phd\" viewBox=\"0 0 256 256\" aria-hidden=\"true\"><path class=\"d1\" d=\"M128,56C48,56,16,128,16,128s32,72,112,72,112-72,112-72S208,56,128,56Zm0,112a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z\"/><path class=\"d2\" d=\"M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z\"/></svg>",
     "whatsapp": "<svg class=\"phi phd\" viewBox=\"0 0 256 256\" aria-hidden=\"true\"><path class=\"d1\" d=\"M128,32A96,96,0,0,0,44.89,176.07L32.42,213.46a8,8,0,0,0,10.12,10.12l37.39-12.47A96,96,0,1,0,128,32Zm24,152a80,80,0,0,1-80-80,32,32,0,0,1,32-32l16,32-12.32,18.47a48.19,48.19,0,0,0,25.85,25.85L152,136l32,16A32,32,0,0,1,152,184Z\"/><path class=\"d2\" d=\"M187.58,144.84l-32-16a8,8,0,0,0-8,.5l-14.69,9.8a40.55,40.55,0,0,1-16-16l9.8-14.69a8,8,0,0,0,.5-8l-16-32A8,8,0,0,0,104,64a40,40,0,0,0-40,40,88.1,88.1,0,0,0,88,88,40,40,0,0,0,40-40A8,8,0,0,0,187.58,144.84ZM152,176a72.08,72.08,0,0,1-72-72A24,24,0,0,1,99.29,80.46l11.48,23L101,118a8,8,0,0,0-.73,7.51,56.47,56.47,0,0,0,30.15,30.15A8,8,0,0,0,138,155l14.62-9.74,23,11.48A24,24,0,0,1,152,176ZM128,24A104,104,0,0,0,36.18,176.88L24.83,210.93a16,16,0,0,0,20.24,20.24l34.05-11.35A104,104,0,1,0,128,24Zm0,192a87.87,87.87,0,0,1-44.06-11.81,8,8,0,0,0-6.54-.67L40,216,52.47,178.6a8,8,0,0,0-.66-6.54A88,88,0,1,1,128,216Z\"/></svg>"
   };
+
+  /* 5.18.0 identidade nova — ícones "Linha Espectro" (direção A, escolhida pelo Yury): traço de 1,8 fino e
+     arredondado, cantos macios e um corte de 60° discreto onde a forma deixa (o B7). Desenho próprio, 24×24.
+     No visual antigo continuam os Phosphor acima. .c = um detalhe cheio na cor do traço. */
+  const E = (d, c) => '<svg class="esp-ic" viewBox="0 0 24 24" aria-hidden="true">' + d + (c ? '<circle class="c" cx="' + c[0] + '" cy="' + c[1] + '" r="' + (c[2] || 1.2) + '"/>' : '') + '</svg>';
+  const IC_ESP = {
+    painel: E('<path d="M3.5 17.5a8.5 8.5 0 0117 0"/><path d="M3.5 17.5h17"/><path d="M12 17.5l3.6-4.6"/>'),
+    gestao: E('<path d="M3 20.5h18"/><path d="M5 20.5v-6h3.5v6"/><path d="M10.25 20.5V9h3.5v11.5"/><path d="M15.5 20.5v-8.2l3.5-2v10.2"/>'),
+    central: E('<path d="M4 4h6v6H4z"/><path d="M4 14h6v6H4z"/><path d="M14 14h6v6h-6z"/><path d="M14 10l3.4-6H20v6z"/>'),
+    clientes: E('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M15.6 4.9a3.4 3.4 0 010 6.3"/><path d="M17.6 14.6c2 .8 3.2 2.6 3.6 5.4"/>'),
+    publicacoes: E('<path d="M20.5 3.5L3.5 10.3l6.8 3.4 3.4 6.8z"/><path d="M10.3 13.7l10.2-10.2"/>'),
+    aprovacoes: E('<path d="M20.4 9.2A9 9 0 1116.2 4"/><path d="M8.2 12.4l2.8 2.8 5.4-5.8"/>'),
+    kanban: E('<rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><path d="M17 4h4v9l-4 2.4z"/>'),
+    design: E('<path d="M14.5 4.5l5 5L8 21H3v-5z"/><path d="M12.5 6.5l5 5"/>'),
+    video: E('<rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M15.5 10.5l6-3.5v10l-6-3.5"/>'),
+    gravacoes: E('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13.2" r="3.4"/>', [17.6, 10.4, 1.3]),
+    calendario: E('<path d="M3 7.5A2.5 2.5 0 015.5 5h13A2.5 2.5 0 0121 7.5V18a3 3 0 01-3 3H5.5A2.5 2.5 0 013 18.5z"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+    oportunidades: E('<path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/>'),
+    trends: E('<path d="M3 17l6-6 4 4 7-7"/><path d="M15 8h5v5"/>'),
+    roteiros: E('<path d="M5 3h9.5L19 7.5V21H5z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 16.5h5"/>'),
+    linhas: E('<path d="M9.5 6h11M9.5 12h11M9.5 18h11"/><circle class="c" cx="4.5" cy="12" r="1.2"/><circle class="c" cx="4.5" cy="18" r="1.2"/>', [4.5, 6, 1.6]),
+    semanas: E('<path d="M3 7.5A2.5 2.5 0 015.5 5h13A2.5 2.5 0 0121 7.5V18a3 3 0 01-3 3H5.5A2.5 2.5 0 013 18.5z"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M7 15h10"/>'),
+    legendas: E('<path d="M3 7.6L5.6 5H21v14H3z"/><path d="M10.6 10.3a2.1 2.1 0 100 3.4M16.6 10.3a2.1 2.1 0 100 3.4"/>'),
+    projetos: E('<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>'),
+    arquivados: E('<path d="M3 4h18v4H3z"/><path d="M5 8v12h14V8"/><path d="M10 12.5h4"/>'),
+    operacoes: E('<path d="M3 5.6L5.6 3H21v18H3z"/><path d="M3 9h18M9 9v12"/>'),
+    site: E('<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.5 3.8 5.6 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.6-3.8-9S9.5 5.5 12 3z"/>'),
+    jogos: E('<path d="M7 8h10a4 4 0 014 4.5l-.6 4a2.5 2.5 0 01-4.3 1.3L14 16h-4l-2.1 1.8a2.5 2.5 0 01-4.3-1.3l-.6-4A4 4 0 017 8z"/><path d="M8 11v3M6.5 12.5h3"/>'),
+    lixeira: E('<path d="M4 7h16M9 7V4.5h6V7"/><path d="M6 7l1 13h10l1-13"/>'),
+    usuarios: E('<circle cx="10" cy="8" r="3.5"/><path d="M3.5 20c.8-3.5 3.4-5.5 6.5-5.5 1.6 0 3 .5 4.2 1.4"/><path d="M18.5 14v6M15.5 17h6"/>'),
+    config: E('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>'),
+    atalhos: E('<path d="M3 8.6L5.6 6H21v12H3z"/><path d="M7 10.2h.01M10.5 10.2h.01M7 14h10"/>'),
+    aovivo: E('<path d="M8 8a5.6 5.6 0 000 8M16 8a5.6 5.6 0 010 8M5 5a10 10 0 000 14M19 5a10 10 0 010 14"/>', [12, 12, 2.1]),
+    mais: E('<circle cx="12" cy="12" r="9"/><circle class="c" cx="8" cy="12" r="1.1"/><circle class="c" cx="12" cy="12" r="1.1"/>', [16, 12, 1.3]),
+    vercomo: E('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
+    whatsapp: E('<path d="M12 3.5a8.5 8.5 0 00-7.4 12.7L3.5 20.5l4.4-1.1A8.5 8.5 0 1012 3.5z"/><circle class="c" cx="8.6" cy="12" r="1.05"/><circle class="c" cx="12" cy="12" r="1.05"/>', [15.4, 12, 1.2])
+  };
+  /* no Espectro, o conjunto novo; no visual antigo (ou um ícone que só exista lá), o Phosphor */
+  const espIc = () => document.documentElement.getAttribute('data-identidade') === 'espectro';
+  const IC = new Proxy(IC_FOSFORO, { get: (t, k) => (espIc() && IC_ESP[k]) || t[k] });
 
   /* ------------------------------------------------------------ itens
      Um registro por destino: rota, rótulo completo, rótulo curto (só a

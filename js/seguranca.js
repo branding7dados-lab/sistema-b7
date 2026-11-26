@@ -327,7 +327,10 @@ B7.Seguranca = (function () {
   async function botaoGoogleLogin(form) {
     if (!(await googleLigado()) || !form.isConnected) return;
     const bt = form.querySelector('.login-entrar'); if (!bt) return;
-    bt.insertAdjacentHTML('afterend', '<div class="lg-ou"><span>ou</span></div><button type="button" class="b contorno lg-google"><span class="lg-g-badge">' + GOOGLE_LOGO + '</span>Entrar com Google</button>');
+    /* 5.18.0 identidade nova: o Google entra na linha "Google | Núcleo 7" do quadro de login, sem o "ou" */
+    const alt = form.querySelector('.esp-lg-alt');
+    if (alt) alt.insertAdjacentHTML('afterbegin', '<button type="button" class="b contorno lg-google"><span class="lg-g-badge">' + GOOGLE_LOGO + '</span><span class="esp-lg-so-cel">Entrar com </span>Google</button>');
+    else bt.insertAdjacentHTML('afterend', '<div class="lg-ou"><span>ou</span></div><button type="button" class="b contorno lg-google"><span class="lg-g-badge">' + GOOGLE_LOGO + '</span>Entrar com Google</button>');
     form.querySelector('.lg-google').onclick = async () => {
       try { await entrarComGoogle(); } catch (e) { const er = form.querySelector('#lg-erro'); if (er) er.textContent = traduzirErro(e.message, 'login'); }
     };
