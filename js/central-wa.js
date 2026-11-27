@@ -17,10 +17,10 @@ B7.CentralWA = (function () {
   const sb = () => B7.sb;
   const eu = () => (B7.Auth && B7.Auth.usuario()) || {};
   const souAdmin = () => !!(B7.Auth && (B7.Auth.ehAdminReal ? B7.Auth.ehAdminReal() : B7.Auth.ehAdmin && B7.Auth.ehAdmin()));
-  const PAL = ['#E8452C', '#1B8F6A', '#5E47DE', '#C21C83', '#2E8BFF', '#F0A443', '#0EA5A4', '#9333EA', '#D97706', '#DB2777'];
+
   /* identidade Espectro: avatares e nomes só nas cores da marca */
   const PAL_ESP = ['#7328A5', '#001561', '#E02F75', '#520083', '#FF5A57'];
-  const corDe = s => { let h = 0; for (const ch of String(s || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const pal = document.documentElement.dataset.identidade === 'espectro' ? PAL_ESP : PAL; return pal[h % pal.length]; };
+  const corDe = s => { let h = 0; for (const ch of String(s || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const pal = PAL_ESP; return pal[h % pal.length]; };
   const ini = s => { const p = String(s || '?').replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/).filter(Boolean); return ((p[0] || '?')[0] + (p[1] ? p[1][0] : (p[0] || '')[1] || '')).toUpperCase(); };
   const num = jid => String(jid || '').split('@')[0];
   /* 4.52.6: @lid é um código interno do WhatsApp, não é telefone */

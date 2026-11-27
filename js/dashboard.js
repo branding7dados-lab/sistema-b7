@@ -2055,18 +2055,12 @@ B7.Dashboard = (function () {
        neste aparelho). Menu, botões, brilho e "sua cor" ficam em Mais opções. */
     const OK_COR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
     /* 5.17.0 identidade nova: as 3 paletas da marca em cartões (quadro Config-aparencia), sem "Mais opções" */
-    const coresRapidas = () => (B7.Identidade && B7.Identidade.ligada() ? '<div class="cfg-cores cfg-pals" role="radiogroup" aria-label="Paleta">' +
+    const coresRapidas = () => '<div class="cfg-cores cfg-pals" role="radiogroup" aria-label="Paleta">' +
       B7.Aparencia.bolinhas().map(b => '<button type="button" role="radio" class="cfg-cor cfg-pal' + (b.on ? ' on' : '') + '" aria-checked="' + b.on + '" data-cor="' + b.id + '">' +
         '<span class="cfg-pal-faixa">' + (b.faixa || []).map(c => '<b style="background:' + c + '"></b>').join('') + '</span>' +
         '<span class="cfg-pal-pe"><span>' + esc(b.nome) + '</span>' + OK_COR + '</span></button>').join('') +
       '</div><div class="cfg-cores-pe">' +
-        (B7.Aparencia.pessoal() ? '<button type="button" class="cfg-cor-link" data-cor-equipe>Usar a da equipe</button>' : '<span class="cfg-cor-nota">Igual à da equipe</span>') + '</div>' : '') ||
-      '<div class="cfg-cores" role="radiogroup" aria-label="Cor do sistema">' +
-      B7.Aparencia.bolinhas().map(b => '<button type="button" role="radio" class="cfg-cor' + (b.on ? ' on' : '') + '" aria-checked="' + b.on + '" data-cor="' + b.id + '" title="' + esc(b.nome) + '" aria-label="' + esc(b.nome) + '">' +
-        '<i style="background:' + b.fundo + '">' + OK_COR + '</i>' + (B7.Identidade && B7.Identidade.ligada() ? '<span class="cfg-cor-nome">' + esc(b.nome) + '</span>' : '') + '</button>').join('') +
-      '</div><div class="cfg-cores-pe">' +
-        (B7.Aparencia.pessoal() ? '<button type="button" class="cfg-cor-link" data-cor-equipe>Usar a da equipe</button>' : '<span class="cfg-cor-nota">Igual à da equipe</span>') +
-        '<button type="button" class="cfg-cor-mais" data-ap-pessoal>Mais opções' + SETA_CFG + '</button></div>';
+        (B7.Aparencia.pessoal() ? '<button type="button" class="cfg-cor-link" data-cor-equipe>Usar a da equipe</button>' : '<span class="cfg-cor-nota">Igual à da equipe</span>') + '</div>';
 
     /* zzz164: os aplicativos ficam na aba Geral, para todo mundo (antes
        só o administrador via, na aba Sistema). Celular Android no
@@ -2169,11 +2163,11 @@ B7.Dashboard = (function () {
         (B7.Abertura ? L({ ic: 'animacao', tom: 'violeta', t: 'Estilo da abertura',
             d: 'como o B7 abre; vale neste aparelho · padrão do sistema: ' + esc((B7.Abertura.ESTILOS.find(e => e[0] === B7.Abertura.padraoDoSistema()) || ['', 'Streaming'])[1]),
             dir: sel('abertura_estilo', B7.Abertura.valido(B7.pref.ler('abertura_estilo', null)) || 'padrao',
-              [['padrao', 'Padrão do sistema']].concat(B7.Abertura.ESTILOS, B7.Programador && B7.Programador.eh() ? B7.Abertura.SO_PROG || [] : []), 'Estilo da abertura') }) : '') +
+              [['padrao', 'Padrão do sistema']].concat(B7.Abertura.ESTILOS), 'Estilo da abertura') }) : '') +
         (B7.Abertura && B7.Abertura.CARGAS ? L({ ic: 'atualizar', tom: 'azul', t: 'Tela de carregamento',
             d: 'o que aparece enquanto o B7 carrega; vale neste aparelho · padrão do sistema: ' + esc((B7.Abertura.CARGAS.find(e => e[0] === B7.Abertura.cargaDoSistema()) || ['', 'Relâmpago'])[1]),
             dir: sel('carregamento_estilo', B7.Abertura.cargaValida(B7.pref.ler('carregamento_estilo', null)) || 'padrao',
-              [['padrao', 'Padrão do sistema']].concat(B7.Abertura.CARGAS, B7.Programador && B7.Programador.eh() ? B7.Abertura.SO_PROG || [] : []), 'Estilo da tela de carregamento') }) : '') +
+              [['padrao', 'Padrão do sistema']].concat(B7.Abertura.CARGAS), 'Estilo da tela de carregamento') }) : '') +
         (ehAdm ?         L({ ic: 'som', tom: 'laranja', t: 'Trilha sonora', d: 'som na animação de entrada', cls: 'cfg-alterna',
             dir: chave('som_abertura', !!B7.pref.ler('som_abertura', true), 'Trilha sonora da abertura') }) +
         L({ ic: 'play', tom: 'rosa', t: 'Testar abertura', d: 'a sequência completa, com som', botao: true, attrs: ' data-ver-abertura' }) +
@@ -2270,7 +2264,7 @@ B7.Dashboard = (function () {
     }
     const secSisEquipe = !ehAdm ? '' :
       (ehAdm && B7.Aparencia ? grupo('Aparência do sistema', 'Vale para toda a equipe (é o padrão de quem não escolheu a sua).',
-        L({ ic: 'tema', tom: 'rosa', t: B7.Identidade && B7.Identidade.ligada() ? 'Paleta da equipe' : 'Cor, menu, botões e datas especiais', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' }) +
+        L({ ic: 'tema', tom: 'rosa', t: 'Paleta da equipe', d: '<span data-ap-d>' + esc(B7.Aparencia.resumo()) + '</span>', botao: true, attrs: ' data-aparencia' }) +
         /* zzz231: a abertura de todo mundo ou de uma pessoa só */
         (B7.AberturaAdm ? L({ ic: 'play', tom: 'violeta', t: 'Abertura do sistema', d: 'a animação de entrada para todos ou para uma pessoa', botao: true, attrs: ' data-abertura-adm' }) : '')) : '') +
       (ehAdm && podeDesligarModulos() ? grupo('Módulos da agência',
@@ -2357,12 +2351,11 @@ B7.Dashboard = (function () {
     const dentro = !!pedida && SECOES.some(x => x[0] === pedida);
     const secDe = id => SECOES.find(x => x[0] === id);
     /* Espectro: "Você › Perfil" acima do título (quadros Config-*) */
-    const espCfg = document.documentElement.getAttribute('data-identidade') === 'espectro';
     const trilhaCfg = id => { const s = secDe(id); return s ? esc(((BLOCOS.find(b => b[0] === s[5]) || [])[1] || '') + ' › ' + s[1]) : ''; };
 
     painel().innerHTML = '<div class="conteudo entra cfg-tela cfg-v2' + (dentro ? ' cfg-dentro' : '') + '">' +
       '<div class="cfg-grade"><aside class="cfg-lado">' +
-        '<header class="cfg-topo">' + (espCfg ? '<p class="cfg-trilha" data-cfg-trilha>' + trilhaCfg(abaAtual) + '</p>' : '') + '<h1 class="cfg-titulo">Configurações</h1>' +
+        '<header class="cfg-topo">' + ('<p class="cfg-trilha" data-cfg-trilha>' + trilhaCfg(abaAtual) + '</p>') + '<h1 class="cfg-titulo">Configurações</h1>' +
           '<p class="cfg-sub">Sua conta e o jeito do B7' + (ehAdm ? ' — e o da equipe' : '') + '.</p></header>' +
         (u ? '<button type="button" class="cfg-eu" data-abrir-perfil><span class="cfg-eu-marca" aria-hidden="true"></span>' + (B7.UI.avatarPessoa ? B7.UI.avatarPessoa(u, 'cfg-eu-av') : '') +
           '<span class="cfg-eu-tx"><b>' + esc(u.nome || u.username || '') + '</b><small>' + esc((u.papel === 'admin' && (B7.Auth && B7.Auth.ehFinanceiro && B7.Auth.ehFinanceiro()) ? 'Financeiro' : PAPEL_CFG[u.papel]) || u.papel || '') +
@@ -2670,7 +2663,6 @@ B7.Dashboard = (function () {
     const btRd = p.querySelector('[data-redistribuir]'); if (btRd) btRd.onclick = () => B7.Redistribuicao.abrir();
     const btAp = p.querySelector('[data-aparencia]'); if (btAp) btAp.onclick = () => B7.Aparencia.abrir();
     const btAb = p.querySelector('[data-abertura-adm]'); if (btAb) btAb.onclick = () => B7.AberturaAdm.abrir();
-    const btApEu = p.querySelector('[data-ap-pessoal]'); if (btApEu) btApEu.onclick = () => B7.Aparencia.abrir({ pessoal: true });
     /* zzz163: bolinhas de cor — troca na hora */
     const pintarCores = () => {
       const atual = B7.Aparencia.paletaAtual(), d = p.querySelector('[data-ap-eu-d]');

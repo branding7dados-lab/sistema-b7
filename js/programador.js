@@ -2,7 +2,7 @@
    PROGRAMADOR (antigo "Admin supremo")
    zzz292: a abertura e o carregamento do programador agora são estilos
    escolhíveis como os outros (Configurações → Abertura e sons), só
-   listados para ele: js/abertura-cenas.js (cena) e styles/abertura.css.
+   listados para ele (5.23.1: saíram com as aberturas do visual antigo).
    Esta camada por cima não toca mais sozinha (ficava por cima da outra).
    zzz291. Quem tem o cargo (perfis.superadmin = 'supremo') fica marcado
    neste aparelho (localStorage b7_prog); o <head> do index.html põe a

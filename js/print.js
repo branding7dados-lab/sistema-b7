@@ -15,9 +15,7 @@ B7.Folha = (function () {
      • ficha (fundo branco)   → símbolo colorido, que imprime com contraste;
      • abertura (fundo preto) → lockup branco. */
   /* Espectro: marca nova (assets/brand/espectro); lida a cada folha, porque a identidade troca sem recarregar */
-  const ESPECTRO_ID = () => typeof document !== 'undefined' && document.documentElement.getAttribute('data-identidade') === 'espectro';
-  const MARCA = () => ESPECTRO_ID() ? svgPronto(E_SIMBOLO, 2117, 2072) : 'assets/brand/symbol-color.png';
-  const LOGO  = () => ESPECTRO_ID() ? svgPronto(E_LOGO, 2971, 654) : 'assets/brand/logo-white.png';
+  const LOGO  = () => svgPronto(E_LOGO, 2971, 654);
 
   const paragrafos = txt => {
     const ls = String(txt || '').split('\n').map(s => s.trim()).filter(Boolean);
@@ -29,45 +27,10 @@ B7.Folha = (function () {
   };
   const vazio = t => !String(t || '').trim();
 
-  const CLASSE = {
-    'Gancho': 'bl-gancho', 'Narrativa': 'bl-narrativa',
-    'Narração': 'bl-narracao', 'CTA': 'bl-cta'
-  };
-
-  /* 4.47.0: ficha nova. Linha do tempo das cenas (bolinha numerada à
-     esquerda), tipo da cena em etiqueta arredondada, cartões leves e o
-     número do roteiro num selo — antes o "01" vazado batia na faixa da
-     cena 1 e tudo era faixa preta e rosa. Mesma API (folhaHTML) e mesmo
-     ajuste automático de escala (--fs). */
   const ROTULO = { 'Gancho': 'Gancho', 'Narrativa': 'Narrativa', 'Narração': 'Narração', 'CTA': 'Chamada (CTA)' };
   const CHAVE = { 'Gancho': 'gancho', 'Narrativa': 'narrativa', 'Narração': 'narracao', 'CTA': 'cta' };
-  const IC_CAM = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M15 10l5-3v10l-5-3M4 7h11v10H4z"/></svg>';
-  const IC_MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
-  const IC_SETA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg>';
 
-  function cenaHTML(cena, indice) {
-    const tipo = CHAVE[cena.tipo] ? cena.tipo : 'Narrativa';
-    const k = CHAVE[tipo];
-    const etiqueta = (cena.funcao && cena.funcao.trim()) ? cena.funcao.trim() : ROTULO[tipo];
-    let corpo;
-    if (tipo === 'Gancho') {
-      corpo = '<div class="rt-gancho"><span class="rt-aspas">&ldquo;</span>' + paragrafos(cena.texto) + '</div>';
-    } else if (tipo === 'CTA') {
-      corpo = '<div class="rt-cta"><div class="rt-cta-tx">' + paragrafos(cena.texto) + '</div><span class="rt-cta-ic">' + IC_SETA + '</span></div>';
-    } else if (tipo === 'Narração') {
-      corpo = '<div class="rt-narracao"><span class="rt-mic">' + IC_MIC + '</span><div>' + paragrafos(cena.texto) + '</div></div>' +
-        (vazio(cena.sugestao_cenas) ? '' : '<div class="rt-sug">' + IC_CAM + '<b>Imagens:</b><div>' + paragrafos(cena.sugestao_cenas) + '</div></div>');
-    } else {
-      corpo = '<div class="rt-narrativa">' + paragrafos(cena.texto) + '</div>';
-    }
-    return '<div class="rt-cena c-' + k + '">' +
-      '<span class="rt-bola">' + (indice + 1) + '</span>' +
-      '<div class="rt-cena-cx">' +
-        '<div class="rt-cena-meta"><span class="rt-tipo">' + esc(etiqueta) + '</span>' +
-          (vazio(cena.direcao) ? '' : '<span class="rt-dir">' + esc(cena.direcao) + '</span>') + '</div>' +
-        corpo +
-      '</div></div>';
-  }
+
 
   /* Espectro (5.x): a ficha do quadro "Ficha A4 do roteiro" — faixa Azul Matriz no alto,
      dados da gravação em cartões, cenas numa linha do tempo de hexágonos e uma caixinha
@@ -152,46 +115,10 @@ B7.Folha = (function () {
 
   /* ctx = { cliente, clienteLogo, dataGravacao, gravacao, roteiro, cenas, indice, total, semCliente }
      dataGravacao é opcional: sem data, ela some em vez de mostrar vazio. */
-  function folhaHTML(ctx) {
-    if (ESPECTRO_ID()) return folhaEspectro(ctx);
-    const r = ctx.roteiro;
-    const cenas = ctx.cenas.map((c, i) => cenaHTML(c, i)).join('<div class="esp"></div>');
-    const num = String(ctx.indice + 1).padStart(2, '0');
-    const total = String(ctx.total || 1).padStart(2, '0');
-    const n = ctx.cenas.length;
-    const meta = ctx.semCliente ? '' :
-      '<div class="rt-cli">' +
-        (ctx.clienteLogo ? '<span class="rt-cli-logo"><img src="' + esc(ctx.clienteLogo) + '" alt=""></span>' : '') +
-        '<div class="rt-cli-tx"><b class="' + (ctx.cliente ? '' : 'fraco') + '">' + esc(ctx.cliente || 'Cliente') + '</b>' +
-          '<small>' + esc([ctx.gravacao || 'Gravação', ctx.dataGravacao].filter(Boolean).join(' · ')) + '</small></div>' +
-      '</div>';
-    return '<div class="folha rt" data-roteiro="' + esc(r.id) + '" style="--fs:' + (r.escala || 1) + '">' +
-      '<div class="rt-faixa"></div>' +
-      '<div class="rt-cab"><div class="rt-marca"><img src="' + MARCA() + '" alt=""><span><b>Branding7</b><small>Roteiro de gravação</small></span></div>' + meta + '</div>' +
-      '<div class="rt-topo">' +
-        '<div class="rt-selo"><small>ROTEIRO</small><b>' + num + '</b><i>de ' + total + '</i></div>' +
-        '<div class="rt-topo-tx">' +
-          '<div class="rt-kicker">' + n + ' cena' + (n === 1 ? '' : 's') + (ctx.semCliente || !ctx.gravacao ? '' : ' &nbsp;·&nbsp; ' + esc(ctx.gravacao)) + '</div>' +
-          '<h2 class="' + (vazio(r.titulo) ? 'fraco' : '') + '">' + esc(r.titulo || 'Título do roteiro') + '</h2>' +
-          (vazio(r.objetivo) ? '' : '<div class="rt-obj"><b>Objetivo</b><span>' + esc(r.objetivo) + '</span></div>') +
-          (vazio(r.observacao_gravacao) ? '' : '<div class="rt-nota"><b>Na gravação</b><span>' + esc(r.observacao_gravacao) + '</span></div>') +
-        '</div>' +
-      '</div>' +
-      '<div class="folha-corpo rt-corpo"><div class="esp"></div><div class="rt-cenas">' + cenas + '</div><div class="esp fim"></div></div>' +
-      takesHTML(n) +
-      '<div class="rt-pe"><span>Branding7 &nbsp;·&nbsp; Roteiros de gravação</span><b>' + num + ' / ' + total + '</b></div>' +
-      '<div class="aviso-overflow">PASSOU DA PÁGINA — REDUZA A FONTE (A−) OU TIRE UMA CENA</div>' +
-    '</div>';
-  }
+  function folhaHTML(ctx) { return folhaEspectro(ctx); }
 
-  /* Uma caixinha por cena, para o videomaker ir marcando o que já gravou.
-     Cresce junto com o roteiro. */
-  function takesHTML(quantas) {
-    const caixas = [];
-    for (let i = 1; i <= quantas; i++) caixas.push('<span class="rt-tk"><i></i>' + i + '</span>');
-    return '<div class="takes rt-takes"><b>Cenas gravadas</b>' + caixas.join('') +
-      '<span class="rt-tk-sp"></span><span class="rt-tk rt-tk-ok"><i></i>Aprovado</span></div>';
-  }
+
+
 
   /* 4.47.2: capa clara, comum aos roteiros e à linha editorial.
      o = { kicker, titulo (HTML), sub, cliente, clienteLogo, dados:[[rótulo, valor]],
@@ -251,7 +178,7 @@ B7.Folha = (function () {
   }
 
   /* já deixa os logos do Espectro lidos para o primeiro PDF sair com eles */
-  if (ESPECTRO_ID()) { svgPronto(E_LOGO, 2971, 654); svgPronto(E_SIMBOLO, 2117, 2072); }
+  svgPronto(E_LOGO, 2971, 654); svgPronto(E_SIMBOLO, 2117, 2072);
 
   return { folhaHTML, aberturaHTML, capa, ajustar, estourou, marcarOverflow, svgPronto };
 })();

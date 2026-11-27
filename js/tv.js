@@ -34,7 +34,6 @@ B7.TV = (function () {
   const ROT = { atraso: 'com atraso', atencao: 'pedem atenção', andamento: 'em andamento', ok: 'em dia', vazio: 'sem movimento' };
   const PESO = { atraso: 0, atencao: 1, andamento: 2, ok: 3, vazio: 4 };
   /* as sete etapas do Panorama, na mesma ordem, em nome curto para o cabeçalho */
-  const ETAPA_CURTA = ['Linha', 'Rot.', 'Grav.', 'Vídeo', 'Design', 'Aprov.', 'Publ.'];
 
   let raiz = null, pulso = 0, giro = 0, troca = 0, ultima = 0, diaPintado = '', pagina = 0, trava = null, antes = '#/';
   const S = { panorama: null, gravacoes: null, publicacoes: null, pubSemana: null, hojeDia: null, clima: null, erro: false };
@@ -185,8 +184,7 @@ B7.TV = (function () {
     const cx = raiz && raiz.querySelector('#tv-logo'); if (!cx) return;
     cx.hidden = modoAtivo !== 'logo';
     if (cx.hidden) { cx.dataset.k = ''; return; }
-    const padrao = espectro() ? (cfg.visual === 'claro' ? 'assets/brand/espectro/horizontal-preto.svg' : 'assets/brand/espectro/horizontal-branco.svg')
-      : (cfg.visual === 'claro') ? 'assets/brand/logo-color.png' : 'assets/brand/logo-white.png';
+    const padrao = cfg.visual === 'claro' ? 'assets/brand/espectro/horizontal-preto.svg' : 'assets/brand/espectro/horizontal-branco.svg';
     const img = cfg.logo_img || padrao, frase = String(cfg.logo_frase || '').trim();
     const k = img + '|' + frase + '|' + (cfg.logo_relogio ? 1 : 0);
     if (cx.dataset.k !== k) {
@@ -315,24 +313,9 @@ B7.TV = (function () {
     if (a.getMinutes() === 0) aplicarFundo();
   }
 
-  function resumo(linhas) {
-    const n = { atraso: 0, atencao: 0, andamento: 0, ok: 0, vazio: 0 };
-    let soma = 0, com = 0;
-    linhas.forEach(l => { n[l.estado]++; if (l.etapas) { soma += l.pct; com++; } });
-    const pct = com ? Math.round(soma / com * 100) : 0, r = 52, c = 2 * Math.PI * r;
-    return '<section class="tv-resumo" aria-label="Resumo do mês">' +
-      '<div class="tv-anel" role="img" aria-label="Andamento médio do mês: ' + pct + '%"><svg viewBox="0 0 120 120">' +
-        '<circle class="f" cx="60" cy="60" r="' + r + '"/><circle class="v" cx="60" cy="60" r="' + r + '" style="--c:' + c.toFixed(1) + ';--o:' + (c * (1 - pct / 100)).toFixed(1) + '"/></svg>' +
-        '<b><span data-conta="' + pct + '">' + pct + '</span><i>%</i></b></div>' +
-      '<div class="tv-resumo-tx"><span>Andamento do mês</span><strong>' + com + (com === 1 ? ' cliente' : ' clientes') + ' com movimento</strong></div>' +
-      '<div class="tv-nums">' + ['ok', 'andamento', 'atencao', 'atraso'].map(k =>
-        '<div class="tv-num tv-e-' + k + '"><b data-conta="' + n[k] + '">' + n[k] + '</b><span>' + ROT[k] + '</span></div>').join('') + '</div>' +
-    '</section>';
-  }
 
   /* Espectro (quadro "Painel de TV"): quatro cartões cheios no alto e cada cliente num cartão com a
      barra do mês e a etiqueta do estado. Os números saem do mesmo panorama_mes e das publicações de hoje. */
-  const espectro = () => document.documentElement.getAttribute('data-identidade') === 'espectro';
   const ROT_CARTAO = { atraso: 'Atrasado', atencao: 'Atenção', andamento: 'Em dia', ok: 'Entregue', vazio: 'Sem movimento' };
   const COR_AV = ['#7328A5', '#001561', '#E02F75', '#520083', '#FF5A57'];
   const numero = v => Number(v) || 0;
@@ -378,27 +361,16 @@ B7.TV = (function () {
 
   /* quantos clientes cabem numa página: mede a altura que sobrou */
   function capacidade() {
-    const cx = raiz && raiz.querySelector('#tv-clientes-corpo');
-    if (espectro()) return capacidadeCartoes(cx);
-    /* tela estreita (não é TV): a lista inteira, rolando, sem páginas */
-    if (window.innerWidth <= 1100) return { colunas: 1, porColuna: 999, total: 999 };
-    /* duas colunas só se sobrar espaço para o nome do cliente (o tamanho "maior" estreita a tela útil) */
-    const vw = window.innerWidth, util = vw / zoomAtual();
-    const celula = Math.min(41, Math.max(28, vw * 0.0215)), lado = Math.min(460, Math.max(300, vw * 0.24));
-    const nome = (util - lado - 130) / 2 - (38 + 7 * (celula + 5) + 60 + 40);
-    const colunas = util >= 1280 && nome >= 140 ? 2 : 1;
-    const alt = cx ? cx.clientHeight : 600;
-    /* uma linha de cada coluna é o cabeçalho com o nome das etapas */
-    const porColuna = Math.max(4, Math.floor(alt / Math.max(36, window.innerHeight * 0.052)) - 1);
-    return { colunas, porColuna, total: colunas * porColuna };
+    return capacidadeCartoes(raiz && raiz.querySelector('#tv-clientes-corpo'));
   }
+
 
   function clientes(linhas) {
     const cx = raiz.querySelector('#tv-clientes-corpo'); if (!cx) return;
     const vivos = linhas.filter(l => l.estado !== 'vazio').sort((a, b) => PESO[a.estado] - PESO[b.estado] || a.pct - b.pct ||
       String(a.c.nome).localeCompare(String(b.c.nome), 'pt-BR'));
     /* Espectro: mede um cartão de verdade antes de contar quantos cabem */
-    if (espectro() && vivos.length) { cx.innerHTML = cartaoCliente(vivos[0], 0); altCartao = cx.firstChild.offsetHeight || altCartao; }
+    if (vivos.length) { cx.innerHTML = cartaoCliente(vivos[0], 0); altCartao = cx.firstChild.offsetHeight || altCartao; }
     const cap = capacidade(), paginas = Math.max(1, Math.ceil(vivos.length / cap.total));
     if (pagina >= paginas) pagina = 0;
     const fatia = vivos.slice(pagina * cap.total, (pagina + 1) * cap.total);
@@ -407,23 +379,7 @@ B7.TV = (function () {
     if (nota) nota.textContent = [paginas > 1 ? 'página ' + (pagina + 1) + ' de ' + paginas : '',
       parados ? parados + (parados === 1 ? ' cliente sem movimento' : ' clientes sem movimento') : ''].filter(Boolean).join(' · ');
     if (!vivos.length) { cx.innerHTML = '<p class="tv-vazio">Nenhum cliente com movimento neste mês.</p>'; return; }
-    const porCol = Math.min(cap.porColuna, Math.ceil(fatia.length / cap.colunas));
-    cx.style.setProperty('--tv-colunas', cap.colunas);
-    cx.style.setProperty('--tv-linhas', porCol + 1);
-    const cab = '<div class="tv-cli tv-cli-cab" aria-hidden="true"><span class="tv-cli-nome"></span><span class="tv-cli-etapas">' +
-      ETAPA_CURTA.map(r => '<i>' + r + '</i>').join('') + '</span><b class="tv-cli-pct"></b></div>';
-    const linha = (l, i) =>
-      '<div class="tv-cli tv-e-' + l.estado + '" style="--i:' + i + '">' + B7.UI.avatarCliente(l.c.nome, l.c.logo_url, 'tv-cli-av') +
-        '<span class="tv-cli-nome">' + esc(l.c.nome) + '</span>' +
-        '<span class="tv-cli-etapas">' + B7.Panorama.ETAPAS.map(([k]) => {
-          const x = l.cels[k];
-          return '<i class="tv-e-' + x.estado + '">' + esc(x.valor || '') + '</i>';
-        }).join('') + '</span>' +
-        '<b class="tv-cli-pct">' + (l.etapas ? Math.round(l.pct * 100) + '%' : '') + '</b></div>';
-    if (espectro()) { cx.innerHTML = fatia.map(cartaoCliente).join(''); return; }
-    let html = '';
-    for (let c = 0; c * porCol < fatia.length; c++) html += cab + fatia.slice(c * porCol, (c + 1) * porCol).map((l, i) => linha(l, c * porCol + i)).join('');
-    cx.innerHTML = html;
+    cx.innerHTML = fatia.map(cartaoCliente).join('');
   }
 
   function etapas(linhas) {
@@ -501,10 +457,10 @@ B7.TV = (function () {
     const primeira = !corpo.dataset.pronto; corpo.dataset.pronto = '1';
     corpo.className = 'tv-corpo' + (tela === 'semana' ? ' tv-tela-semana' : tela === 'mural' ? ' tv-tela-semana tv-tela-mural' : (cfg.clientes ? '' : ' sem-clientes') + (lado ? '' : ' sem-lado')) +
       (entrando || primeira ? ' tv-entra' : '');
-    const esp = espectro(), and = esp ? andamentoMes(S.panorama) : null;
-    corpo.innerHTML = (esp ? resumoEspectro(S.panorama) : resumo(S.panorama)) + (tela === 'semana' ? semana() : tela === 'mural' ? mural()
+    const and = andamentoMes(S.panorama);
+    corpo.innerHTML = resumoEspectro(S.panorama) + (tela === 'semana' ? semana() : tela === 'mural' ? mural()
       : (cfg.clientes ? '<section class="tv-bloco tv-clientes"><header><h2>Clientes em ' + MES[a.getMonth()] + '</h2>' +
-          (esp ? '<span class="tv-and">' + and.pct + '% de andamento · ' + and.com + (and.com === 1 ? ' cliente' : ' clientes') + ' com movimento</span>' : '') +
+          '<span class="tv-and">' + and.pct + '% de andamento · ' + and.com + (and.com === 1 ? ' cliente' : ' clientes') + ' com movimento</span>' +
           '<span class="tv-nota" id="tv-clientes-nota"></span></header>' +
           '<div class="tv-clientes-corpo" id="tv-clientes-corpo"></div></section>' : '') +
         (lado ? '<aside class="tv-lado">' + lado + '</aside>' : ''));
@@ -561,8 +517,8 @@ B7.TV = (function () {
     raiz = document.createElement('div');
     raiz.className = 'tv'; raiz.id = 'tv-raiz';
     raiz.innerHTML =
-      '<header class="tv-cab"><div class="tv-marca"><img class="tv-logo claro" src="' + (espectro() ? 'assets/brand/espectro/horizontal-preto.svg' : 'assets/brand/logo-color.png') + '" alt="Branding7">' +
-          '<img class="tv-logo escuro" src="' + (espectro() ? 'assets/brand/espectro/horizontal-branco.svg' : 'assets/brand/logo-white.png') + '" alt="" aria-hidden="true"></div>' +
+      '<header class="tv-cab"><div class="tv-marca"><img class="tv-logo claro" src="' + 'assets/brand/espectro/horizontal-preto.svg' + '" alt="Branding7">' +
+          '<img class="tv-logo escuro" src="' + 'assets/brand/espectro/horizontal-branco.svg' + '" alt="" aria-hidden="true"></div>' +
         '<div class="tv-hoje" id="tv-hoje" hidden></div>' +
         '<div class="tv-relogio" id="tv-relogio"></div></header>' +
       '<div class="tv-recado" id="tv-recado" role="status" hidden></div>' +

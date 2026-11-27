@@ -56,8 +56,8 @@ B7.Pacotes = (function () {
     if (!alvo.isConnected) return;
     const ed = podeEditar();
     /* Espectro, na Gestão: a tabela do quadro "Serviços contratados" (styles/espectro/gestao.css).
-       Nas Configurações e no visual antigo segue a lista de sempre, logo abaixo. */
-    if (op.gestao && document.documentElement.dataset.identidade === 'espectro') {
+       Nas Configurações, os cartões do quadro "Pacotes de produção", logo abaixo. */
+    if (op.gestao) {
       const cel = (rot, v) => '<span class="pcg-c" data-rot="' + rot + '">' + v + '</span>';
       alvo.innerHTML = '<section class="pcg"><h2 class="pcg-t">Serviços contratados</h2>' +
         '<div class="pcg-tab"><div class="pcg-cab" aria-hidden="true"><span>Serviço</span><span>Por mês</span><span>O que vem</span><span>Dias de postagem</span><span>Clientes</span></div>' +
@@ -70,7 +70,7 @@ B7.Pacotes = (function () {
             : '<div class="pcg-l pcg-vazio"><span class="pcg-nome"><span class="pcg-nome-tx"><b>Nenhum serviço cadastrado ainda</b>' + (ed ? '<small>crie o primeiro abaixo</small>' : '') + '</span></span></div>') +
           (ed ? '<button type="button" class="pcg-l pcg-novo" data-pc-novo><span class="pcg-nome"><span class="avatar sm" aria-hidden="true">+</span><span class="pcg-nome-tx"><b>Novo serviço</b><small>ex.: 8 cards + 4 carrosséis + 4 reels</small></span></span></button>' : '') +
         '</div><p class="pcg-nota">O que a B7 vende: cada serviço diz o que o cliente recebe por mês — é a entrega mínima dele. Os serviços de cada cliente são escolhidos no cadastro dele, e lá dá para ajustar as quantidades só para ele.</p></section>';
-    } else if (!op.gestao && document.documentElement.dataset.identidade === 'espectro') {
+    } else {
       /* Espectro, nas Configurações: os cartões do quadro "Pacotes de produção"
          (styles/espectro/config-adm.css) — nome, total do mês, o que vem e os dias. */
       const ok = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
@@ -84,18 +84,7 @@ B7.Pacotes = (function () {
         (ed ? '<button type="button" class="pcc-card pcc-novo" data-pc-novo><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><b>Novo serviço</b><small>ex.: 8 cards + 4 carrosséis + 4 reels</small></button>' : '') +
         (!lista.length && !ed ? '<p class="pcc-vazio">Nenhum serviço cadastrado ainda.</p>' : '') +
         '</div><p class="pcc-nota">O que cada cliente contrata por mês. Ao criar uma linha editorial com os serviços contratados, os conteúdos já nascem com o tipo e a data espalhada pelo mês. Os serviços de cada cliente ficam no cadastro dele.</p></section>';
-    } else
-    alvo.innerHTML = '<section class="cfg-g"><h2 class="cfg-g-t">' + 'Serviços contratados</h2>' +
-      '<p class="cfg-g-nota">' + (op.gestao ? 'O que a B7 vende: cada serviço diz o que o cliente recebe por mês — é a entrega mínima dele. Os serviços de cada cliente são escolhidos no cadastro dele, e lá dá para ajustar as quantidades só para ele.'
-        : 'O que cada cliente contrata por mês. Ao criar uma linha editorial com os serviços contratados, os conteúdos já nascem com o tipo e a data espalhada pelo mês. Os serviços de cada cliente ficam no cadastro dele.') + '</p>' +
-      '<div class="cfg-lista">' +
-        (lista.length ? lista.map(p => '<div class="cfg-l"><span class="cfg-l-tx"><b>' + esc(p.nome) + '</b><small>' + esc(resumo(p)) +
-            (p.descricao ? ' · ' + esc(p.descricao) : '') +
-            (op.gestao ? ' · ' + (uso[p.id] ? uso[p.id] + (uso[p.id] === 1 ? ' cliente' : ' clientes') : 'nenhum cliente') : '') + '</small></span>' +
-            (ed ? '<button type="button" class="b fina contorno" data-pc-editar="' + esc(p.id) + '">Editar</button>' : '') + '</div>').join('')
-          : '<div class="cfg-l"><span class="cfg-l-tx"><b>Nenhum serviço cadastrado ainda</b><small>crie o primeiro abaixo</small></span></div>') +
-        (ed ? '<button type="button" class="cfg-l eq-novo" data-pc-novo><span class="cfg-l-tx"><b>Novo serviço</b><small>ex.: 8 cards + 4 carrosséis + 4 reels</small></span><span class="cfg-acao" aria-hidden="true">Criar</span></button>' : '') +
-      '</div></section>';
+    }
     const novo = alvo.querySelector('[data-pc-novo]'); if (novo) novo.onclick = () => editor(null, () => montar(alvo, op));
     alvo.querySelectorAll('[data-pc-editar]').forEach(b => b.onclick = () => editor(lista.find(p => p.id === b.dataset.pcEditar), () => montar(alvo, op)));
   }

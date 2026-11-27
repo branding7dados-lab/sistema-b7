@@ -182,7 +182,7 @@ B7.Conteudo = (function () {
         campo('OBSERVAÇÕES', dados.observacoes, t + ' data-campo="observacoes"' +
           ex('Regras da conta: hashtags, o que evitar, combinados com o cliente.')),
         /* Espectro (quadro "Cliente · inteligência"): as seções são cartões numa grade; abrem ao toque */
-        !(B7.Identidade && B7.Identidade.ligada())) +
+        false) +
 
       sec('icp', 'ICP — cliente ideal',
         campo('PERFIL', dados.icp_perfil, t + ' data-campo="icp_perfil"') +

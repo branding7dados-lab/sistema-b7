@@ -61,9 +61,8 @@ B7.Seguranca = (function () {
   /* 5.18.0 quadros "Código de verificação em movimento" e "Senha nova em movimento" (Telas em movimento) — só na
      identidade nova. O campo de verdade continua (preenchimento automático do celular, colar, leitor de tela);
      as 6 caixas são o desenho por cima, acendendo a cada número e ficando verdes quando o código confere. */
-  const espNovo = () => document.documentElement.getAttribute('data-identidade') === 'espectro';
   function caixasCodigo(campo) {
-    if (!espNovo() || !campo) return null;
+    if (!campo) return null;
     const caixa = document.createElement('div');
     caixa.className = 'esp-cod';
     caixa.innerHTML = '<span class="esp-cod-caixas" aria-hidden="true">' + '<i></i>'.repeat(6) + '</span>';
@@ -92,7 +91,6 @@ B7.Seguranca = (function () {
   }
   /* força da senha e as regras que o sistema confere de verdade (10 caracteres, letras e números) e as duas iguais */
   function forcaSenha(form, s1, s2) {
-    if (!espNovo()) return;
     const regra = form.querySelector('.es-regra');
     const html = '<div class="esp-forca" aria-hidden="true"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>' +
       '<p class="esp-forca-rot">Força: <b>—</b></p>' +
@@ -160,17 +158,15 @@ B7.Seguranca = (function () {
       const cod = form.querySelector('#es-cod'), s1 = form.querySelector('#es-senha'), s2 = form.querySelector('#es-senha2');
       const erro = form.querySelector('#lg-erro'), bt = form.querySelector('.login-entrar'), olho = form.querySelector('.login-olho');
       cod.addEventListener('input', () => { cod.value = cod.value.replace(/\D/g, '').slice(0, 6); if (cod.value.length === 6) s1.focus(); });
-      if (espNovo()) {
-        const h = form.querySelector('h1'); if (h) h.textContent = 'Crie a senha nova';
-        bt.textContent = 'Salvar senha nova';
-        caixasCodigo(cod); forcaSenha(form, s1, s2);
-      }
+      { const h = form.querySelector('h1'); if (h) h.textContent = 'Crie a senha nova'; }
+      bt.textContent = 'Salvar senha nova';
+      caixasCodigo(cod); forcaSenha(form, s1, s2);
       olho.onclick = () => { const v = s1.type === 'text'; s1.type = s2.type = v ? 'password' : 'text'; olho.classList.toggle('on', !v); };
       form.querySelector('#es-voltar').onclick = () => voltar(usuario);
       const re = form.querySelector('#es-reenviar');
       re.onclick = async () => {
         re.disabled = true; erro.textContent = '';
-        try { await auth({ acao: 'senha_esqueci', username: usuario }); if (espNovo()) contagem(re, 45, 'Reenviar código'); else { re.textContent = 'Código reenviado'; setTimeout(() => { re.textContent = 'Reenviar código'; re.disabled = false; }, 30000); } }
+        try { await auth({ acao: 'senha_esqueci', username: usuario }); contagem(re, 45, 'Reenviar código'); }
         catch (e) { erro.textContent = e.message || 'Não foi possível reenviar.'; re.disabled = false; }
       };
       form.onsubmit = async e => {
@@ -185,7 +181,7 @@ B7.Seguranca = (function () {
           s1.value = s2.value = '';
           passo3();
         } catch (ex) {
-          bt.disabled = false; bt.textContent = espNovo() ? 'Salvar senha nova' : 'Trocar senha';
+          bt.disabled = false; bt.textContent = 'Salvar senha nova';
           erro.textContent = ex.message || 'Não foi possível trocar a senha.';
           if (/código/i.test(erro.textContent)) { cod.value = ''; cod.focus(); }
         }
@@ -222,7 +218,7 @@ B7.Seguranca = (function () {
         '<button type="button" class="lg2-link" id="lg-voltar">Voltar</button></div>';
     const cod = form.querySelector('#lg-cod'), erro = form.querySelector('#lg-erro'), bt = form.querySelector('.login-entrar');
     const caixas = caixasCodigo(cod);
-    if (espNovo()) { const h = form.querySelector('h1'); if (h) h.textContent = 'Verificação em 2 etapas'; }
+    { const h = form.querySelector('h1'); if (h) h.textContent = 'Verificação em 2 etapas'; }
     /* 5.18.0: código conferido — as caixas ficam verdes e o cartão diz "Verificado" antes de entrar */
     const verificado = () => {
       if (!caixas) return;
@@ -237,7 +233,7 @@ B7.Seguranca = (function () {
     const re = form.querySelector('#lg-reenviar');
     if (re) re.onclick = async () => {
       re.disabled = true; erro.textContent = '';
-      try { await auth({ acao: 'login_2fa_reenviar', desafio: info.desafio }); erro.textContent = ''; if (espNovo()) contagem(re, 45, 'Reenviar código'); else { re.textContent = 'Código reenviado'; setTimeout(() => { re.textContent = 'Reenviar código'; re.disabled = false; }, 30000); } }
+      try { await auth({ acao: 'login_2fa_reenviar', desafio: info.desafio }); erro.textContent = ''; contagem(re, 45, 'Reenviar código'); }
       catch (e) { erro.textContent = e.message || 'Não foi possível reenviar.'; re.disabled = false; }
     };
     let indo = false;
@@ -260,7 +256,7 @@ B7.Seguranca = (function () {
       }
     };
     setTimeout(() => cod.focus(), 60);
-    if (re && espNovo()) contagem(re, 45, 'Reenviar código');
+    if (re) contagem(re, 45, 'Reenviar código');
     /* zzz221: o botão do e-mail aprova a entrada; esta tela pergunta de tempos em tempos e entra sozinha */
     if (porEmail) {
       const inicio = Date.now();
