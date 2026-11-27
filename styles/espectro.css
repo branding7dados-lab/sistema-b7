@@ -60,7 +60,7 @@ html[data-identidade="espectro"][data-theme="dark"]{
   --acento:#B57BE6; --acento-suave:rgba(181,123,230,.14); --violeta-bg:rgba(var(--esp-v-rgb,115,40,165),.24);
   --magenta:#FF5C9A; --roxo:#9A5BD0;
   --sidebar:#05061A; --sidebar-2:#0C0E2A;
-  --fundo:#03040F; --card:#0F1230; --suave:#171A3C; --elevado:#161937;
+  --fundo:#02030C; --card:#0F1230; --suave:#171A3C; --elevado:#161937;
   --borda:#23264A; --borda-forte:#2E3158;
   --ink:#F3F4FA; --ink-2:#C4C8E4; --ink-3:#AEB4D6; --ink-4:#8086AE;
   --ok:#4FD69C; --ok-bg:rgba(79,214,156,.13); --ambar:#F2C14E; --ambar-bg:rgba(242,193,78,.14);
@@ -85,7 +85,7 @@ html[data-identidade="espectro"][data-theme="dark"] body{
     radial-gradient(800px 700px at 40% 85%, rgba(var(--esp-v-rgb,115,40,165),.28), transparent 70%),
     radial-gradient(600px 500px at 92% 55%, rgba(var(--esp-m-rgb,224,47,117),.22), transparent 70%),
     radial-gradient(500px 400px at 100% 100%, rgba(255,90,87,.18), transparent 70%),
-    #03040F;
+    #02030C;
   background-attachment:fixed;}
 /* Grimblade em tudo (manual: "a Inter sai"). Fica de fora o que tem fonte própria:
    código, a ficha A4 impressa e as aberturas animadas (próximas entregas). A Grimblade
