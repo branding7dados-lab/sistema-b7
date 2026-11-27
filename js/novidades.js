@@ -26,8 +26,9 @@ window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
   { id: 'v-5.20.3', versao: '5.20.3', em: '2026-11-27T09:00:00-03:00',
-    titulo: 'Menu lateral mais limpo',
-    itens: ['O atalho "Central" saiu do pé do menu lateral. Quem usa outros sistemas da casa continua achando a Central no menu da conta.'] },
+    titulo: 'Menu lateral mais limpo e cenas com mais espaço',
+    itens: ['O atalho "Central" saiu do pé do menu lateral. Quem usa outros sistemas da casa continua achando a Central no menu da conta.',
+      'No editor de roteiros, em telas de notebook, a lista de roteiros vira uma coluna só com os números (o título aparece ao passar o mouse) e os cartões de cena ganham bem mais espaço.'] },
   { id: 'v-5.20.2', versao: '5.20.2', em: '2026-11-27T00:30:00-03:00', rota: 'gravacao',
     titulo: 'Prévia do roteiro sem cortes',
     itens: ['No editor de roteiros, o controle de zoom da prévia agora fica ao lado do botão da IA, e não mais escondido embaixo dele.',
