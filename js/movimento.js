@@ -821,7 +821,7 @@ window.B7 = window.B7 || {};
     if (!raiz || !window.MutationObserver || raiz._espChega) return;
     raiz._espChega = true;
     new MutationObserver(ms => {
-      if (reduz() || document.documentElement.dataset.identidade !== 'espectro') return;
+      if (reduz()) return;
       ms.forEach(m => {
         const saiu = [...m.removedNodes].some(n => n.nodeType === 1 && (n.classList.contains('esqueleto-tela') || (n.querySelector && n.querySelector(':scope > .esqueleto-tela'))));
         if (!saiu) return;

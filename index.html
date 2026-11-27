@@ -41,33 +41,12 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   /* 5.23.0: a identidade Espectro é a oficial e a única (o <html> já nasce com data-identidade="espectro").
      A opção de voltar ao visual antigo saiu; a escolha antiga guardada no aparelho é apagada aqui. */
   try { localStorage.removeItem('b7_pref_identidade'); } catch (e) {}
-  /* zzz140: cor do sistema e data especial da abertura, a partir da cópia guardada no aparelho */
+  /* a paleta da marca (Padrão B7, Matriz ou Laser) a partir da cópia guardada no aparelho: a pessoal manda sobre a
+     da equipe (js/admin-extra.js, B7.Aparencia; styles/espectro/paletas.css) */
   try {
-    var ap = JSON.parse(localStorage.getItem('b7_sis_aparencia') || 'null');
-    /* zzz159: a aparência pessoal (deste aparelho) manda sobre a do
-       sistema; as datas especiais continuam vindo do sistema */
-    var eu = JSON.parse(localStorage.getItem('b7_ap_pessoal') || 'null');
-    /* 5.17.0: no Espectro valem só as 3 paletas da marca (html[data-paleta], styles/espectro/paletas.css);
-       o CSS de cor guardado pelo visual antigo e as datas especiais não pintam nada lá */
-    if (document.documentElement.getAttribute('data-identidade') === 'espectro') {
-      var pal = (eu && eu.paleta) || (ap && ap.paleta);
-      if (pal === 'matriz' || pal === 'laser') document.documentElement.setAttribute('data-paleta', pal);
-      ap = null; eu = null;
-    }
-    if (eu && ap) ap = { css: eu.css || '', estacoes: (ap && ap.estacoes) || [] };
-    else if (eu) ap = { css: eu.css || '', estacoes: [] };
-    if (ap) {
-      var rz = document.documentElement;
-      if (ap.css) { var st = document.createElement('style'); st.id = 'b7-aparencia'; st.textContent = ap.css; document.head.appendChild(st); rz.setAttribute('data-ap', '1'); }
-      var hj = new Date(), nn = (hj.getMonth() + 1) * 100 + hj.getDate();
-      (ap.estacoes || []).some(function (e) {
-        var d = e.de.split('/'), a = e.ate.split('/'), i = d[1] * 100 + Number(d[0]), f = a[1] * 100 + Number(a[0]);
-        if (!(i <= f ? (nn >= i && nn <= f) : (nn >= i || nn <= f))) return false;
-        rz.setAttribute('data-estacao', e.cor);
-        if (e.frase) { rz.style.setProperty('--estacao-frase', JSON.stringify(e.frase)); rz.setAttribute('data-estacao-frase', '1'); }
-        return true;
-      });
-    }
+    var ap = JSON.parse(localStorage.getItem('b7_sis_aparencia') || 'null'), eu = JSON.parse(localStorage.getItem('b7_ap_pessoal') || 'null');
+    var pal = (eu && eu.paleta) || (ap && ap.paleta);
+    if (pal === 'matriz' || pal === 'laser') document.documentElement.setAttribute('data-paleta', pal);
   } catch (e) {}
   /* zzz259: dentro do app Android a abertura espera o código carregar (ver
      o script logo depois do bloco da abertura) */
@@ -77,27 +56,10 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   try { if (sessionStorage.getItem('b7_abertura')) document.documentElement.classList.add('ab-curta'); } catch (e) {}
   /* zzz269: troca de conta ("Entrar como" e "Voltar para minha conta") abre direto, sem abertura */
   try { if (sessionStorage.getItem('b7_troca_rapida')) { sessionStorage.removeItem('b7_troca_rapida'); document.documentElement.classList.add('ab-sem'); } } catch (e) {}
-  /* zzz230/zzz231: estilo da abertura completa, antes da primeira pintura
-     (o CSS da sequência começa a andar nela). Ordem: a escolha da pessoa
-     neste aparelho (Configurações → Aparência); se for "Padrão do sistema",
-     o que o administrador definiu para ela ou para todos (guardado por
-     js/sistema.js em b7_ab_padrao); senão streaming. Quem tinha desligado
-     as partículas (zzz227) fica com a clássica.
-     streaming · hiper · bigbang · classica */
-  try {
-    var b7Ok = function (e) { return /^(streaming|hiper|bigbang|classica|tinta|glitch|aurora|neon|mosaico|estudio|programador)$/.test(e || '') ? e : null; };
-    var b7Est = b7Ok(JSON.parse(localStorage.getItem('b7_pref_abertura_estilo') || 'null'));
-    if (!b7Est) {
-      var b7Pp = localStorage.getItem('b7_pref_abertura_particulas');
-      b7Est = b7Pp !== null && JSON.parse(b7Pp) === false ? 'classica' : (b7Ok(localStorage.getItem('b7_ab_padrao')) || 'streaming');
-    }
-    document.documentElement.setAttribute('data-ab-estilo', b7Est);
-    /* zzz234: estilo do carregamento (a versão curta): o da pessoa, senão o do sistema */
-    var b7Cg = function (e) { return /^(relampago|pulso|orbita|barra|brilho|pontos|programador)$/.test(e || '') ? e : null; };
-    document.documentElement.setAttribute('data-ab-carga', b7Cg(JSON.parse(localStorage.getItem('b7_pref_carregamento_estilo') || 'null')) || b7Cg(localStorage.getItem('b7_carga_padrao')) || 'relampago');
-  } catch (e) { document.documentElement.setAttribute('data-ab-estilo', 'streaming'); }
-  /* 5.14.0 identidade nova: só as 3 aberturas e os 6 carregamentos do Espectro (js/app.js, B7.Abertura)
-     5.16.0: as aberturas são as 3 "Cine" do artefato (ignicao · hiperespaco · aurora-espectro) */
+  /* estilo da abertura e do carregamento, antes da primeira pintura: a escolha da pessoa neste aparelho
+     (Configurações → Abertura e sons) ou o padrão do sistema (js/sistema.js, b7_ab_padrao / b7_carga_padrao).
+     As 3 aberturas "Cine" (ignicao · hiperespaco · aurora-espectro) e os 6 carregamentos do Espectro (js/app.js,
+     B7.Abertura). Uma escolha do visual antigo cai na Ignição e no Corte. */
   try {
     {
       var b7H = document.documentElement, b7Ab = /^(ignicao|hiperespaco|aurora-espectro)$/, b7Cs = /^(corte|lampada|faixa|tres-pontos|anel|hexagono)$/;
@@ -344,14 +306,6 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
 </script>
 <!-- som da abertura: logo depois dela, para sincronizar com a animação -->
 <script src="js/abertura-som.js"></script>
-<!-- zzz227: partículas da abertura (montam a lâmpada e escrevem o logo) -->
-<script src="js/abertura-particulas.js"></script>
-<!-- zzz230: abertura "streaming" (mergulho no logo e faixas de luz) -->
-<script src="js/abertura-faixas.js"></script>
-<!-- zzz231: abertura "hiperespaço" (estrelas que viram riscos de luz) -->
-<script src="js/abertura-hiper.js"></script>
-<!-- zzz234: aberturas tinta, glitch, aurora, neon e mosaico -->
-<script src="js/abertura-cenas.js"></script>
 
 <div id="app">
 

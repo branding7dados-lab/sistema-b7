@@ -621,36 +621,27 @@ B7.Rota = (function () {
   /* zzz231: streaming encurtou (as faixas abrem direto o sistema) e entrou o hiperespaço */
   /* zzz234: tinta · glitch · aurora · neon · mosaico */
   /* 5.16.0: as aberturas Cine do Espectro saem quando a cena assenta (styles/espectro/aberturas-cine.css) */
-  const DURACAO_ESTILO = { ignicao: 7000, hiperespaco: 6300, 'aurora-espectro': 4400, streaming: 3600, hiper: 4000, bigbang: 6400, classica: 6400, tinta: 4200, glitch: 4200, aurora: 4200, neon: 3800, mosaico: 4200, estudio: 4200, programador: 4200 };
+  const DURACAO_ESTILO = { ignicao: 7000, hiperespaco: 6300, 'aurora-espectro': 4400 };
   const duracaoAbertura = () => reduzMov() ? 6400 : (DURACAO_ESTILO[document.documentElement.getAttribute('data-ab-estilo')] || 6400);
   B7.duracaoAbertura = duracaoAbertura;
   /* qual abertura vale para esta pessoa neste aparelho (a mesma regra do <head> do index.html) */
-  const ESTILOS_AB = [['streaming', 'Streaming'], ['estudio', 'Estúdio'], ['hiper', 'Hiperespaço'], ['tinta', 'Tinta'], ['glitch', 'Glitch'], ['aurora', 'Aurora'],
-                      ['neon', 'Neon'], ['mosaico', 'Mosaico'], ['bigbang', 'Big bang'], ['classica', 'Clássica']];
-  /* zzz234: o carregamento (a versão curta, ao recarregar) também tem estilos */
-  const CARGAS = [['relampago', 'Relâmpago'], ['pulso', 'Pulso'], ['orbita', 'Órbita'], ['barra', 'Barra'], ['brilho', 'Brilho'], ['pontos', 'Pontos']];
-  /* zzz292: exclusivos do cargo Programador (só aparecem para ele na escolha pessoal) */
-  const SO_PROG = [['programador', 'Programador </>']];
   /* 5.14.0 identidade nova (quadros Aberturas e Carregamentos): as 10 aberturas viram 3 e os
      carregamentos viram os 6 do Espectro (CSS em styles/espectro/aberturas.css). O que a pessoa
-     tinha escolhido no visual antigo cai no padrão novo; quem voltar ao visual antigo reencontra o seu. */
+     tinha escolhido no visual antigo cai no padrão novo (5.23.1: as do visual antigo saíram do código). */
   /* 5.16.0: as 3 aberturas são as "Cine" do artefato (Ignição, Hiperespaço, Aurora); Faísca, Corte e Pulso
      saíram (quem tinha escolhido uma delas cai na Ignição) */
   const ESTILOS_ESP = [['ignicao', 'Ignição'], ['hiperespaco', 'Hiperespaço'], ['aurora-espectro', 'Aurora']];
   const CARGAS_ESP = [['corte', 'Corte do B7'], ['lampada', 'Lâmpada'], ['faixa', 'Faixa 60°'], ['tres-pontos', 'Três pontos'], ['anel', 'Anel Espectro'], ['hexagono', 'Hexágono']];
-  const espAb = () => document.documentElement.getAttribute('data-identidade') === 'espectro';
   B7.Abertura = {
-    get ESTILOS() { return espAb() ? ESTILOS_ESP : ESTILOS_AB; },
-    get CARGAS() { return espAb() ? CARGAS_ESP : CARGAS; },
-    get SO_PROG() { return espAb() ? [] : SO_PROG; },
-    valido: e => (espAb() ? ESTILOS_ESP : ESTILOS_AB.concat(SO_PROG)).some(x => x[0] === e) ? e : null,
-    cargaValida: e => (espAb() ? CARGAS_ESP : CARGAS.concat(SO_PROG)).some(x => x[0] === e) ? e : null,
-    padraoDoSistema() { const p = espAb() ? 'ignicao' : 'streaming'; try { return B7.Abertura.valido(localStorage.getItem('b7_ab_padrao')) || p; } catch (e) { return p; } },
-    cargaDoSistema() { const p = espAb() ? 'corte' : 'relampago'; try { return B7.Abertura.cargaValida(localStorage.getItem('b7_carga_padrao')) || p; } catch (e) { return p; } },
+    get ESTILOS() { return ESTILOS_ESP; },
+    get CARGAS() { return CARGAS_ESP; },
+    valido: e => ESTILOS_ESP.some(x => x[0] === e) ? e : null,
+    cargaValida: e => CARGAS_ESP.some(x => x[0] === e) ? e : null,
+    padraoDoSistema() { const p = 'ignicao'; try { return B7.Abertura.valido(localStorage.getItem('b7_ab_padrao')) || p; } catch (e) { return p; } },
+    cargaDoSistema() { const p = 'corte'; try { return B7.Abertura.cargaValida(localStorage.getItem('b7_carga_padrao')) || p; } catch (e) { return p; } },
     resolver() {
       const minha = B7.Abertura.valido(B7.pref ? B7.pref.ler('abertura_estilo', null) : null);
       if (minha) return minha;
-      try { const pp = localStorage.getItem('b7_pref_abertura_particulas'); if (!espAb() && pp !== null && JSON.parse(pp) === false) return 'classica'; } catch (e) {}
       return B7.Abertura.padraoDoSistema();
     },
     resolverCarga() { return B7.Abertura.cargaValida(B7.pref ? B7.pref.ler('carregamento_estilo', null) : null) || B7.Abertura.cargaDoSistema(); },
@@ -659,175 +650,15 @@ B7.Rota = (function () {
       document.documentElement.setAttribute('data-ab-carga', B7.Abertura.resolverCarga());
     }
   };
-  /* no streaming a abertura termina dentro das faixas de luz: não há logo para voar */
-  const semVoo = el => el.classList.contains('inicial') && document.documentElement.getAttribute('data-ab-estilo') === 'streaming' && !reduzMov();
   const MINIMO_ABERTURA_MS = reduzMov() ? 0 : curta ? 950 : duracaoAbertura();   /* zzz110: corte longo */
 
-  /* Para onde o logo voa: o lugar onde ele mora na tela que ficou pronta.
-     Lockup (logo inteiro) → caixa de login ou barra lateral aberta.
-     Só o símbolo → barra lateral recolhida ou topo do celular. */
-  function destinoDoLogo() {
-    const visivel = el => {
-      if (!el) return false;
-      const r = el.getBoundingClientRect();
-      return r.width > 4 && r.height > 4 && r.bottom > 0 && r.right > 0 &&
-        r.top < innerHeight && r.left < innerWidth && getComputedStyle(el).visibility !== 'hidden';
-    };
-    const tema = document.documentElement.getAttribute('data-theme');
-    const opcoes = [
-      ['.tela-login .login-marca', 'lockup'],
-      ['.marca-lateral img.lockup', 'lockup'],
-      ['.marca-lateral img.simbolo', 'simbolo'],
-      ['.topo-marca ' + (tema === 'dark' ? '.tm-branca' : '.tm-cor'), 'simbolo']
-    ];
-    for (const [sel, tipo] of opcoes) {
-      const alvo = document.querySelector(sel);
-      if (visivel(alvo)) return { alvo, tipo, branco: /white/.test(alvo.getAttribute('src') || '') };
-    }
-    return null;
-  }
 
-  /* O voo: o elemento da abertura sai do lugar dele e pousa exatamente
-     sobre o destino (posição e tamanho medidos na hora). Só transform e
-     opacidade; o destino fica invisível até o pouso e então assume. */
-  function voarLogo(el) {
-    if (reduzMov() || !el.animate) return 0;
-    if (semVoo(el)) return 0;
-    const d = destinoDoLogo();
-    if (!d) { el.classList.add('sem-voo'); return 420; }
-    const marca = el.querySelector('.ab-marca'), simbolo = el.querySelector('.ab-simbolo');
-    const voa = d.tipo === 'lockup' ? marca : simbolo;
-    if (!voa) { el.classList.add('sem-voo'); return 420; }
-    /* zzz296 (Kevin: "ainda acho pesada, queria mudar"): o logo não viaja
-       mais pela tela. O do centro some no lugar (encolhe um pouco e
-       apaga) e o da barra aparece no lugar dele, num fade curto. */
-    if (!window.B7_VOO_ANTIGO) {
-      [voa, simbolo, marca].forEach(n => { if (n) n.style.animation = 'none'; });
-      marca && marca.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.94)' }],
-        { duration: 260, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' });
-      d.alvo.animate([{ opacity: 0, transform: 'scale(.9)' }, { opacity: 1, transform: 'none' }],
-        { duration: 340, delay: 140, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
-      return 300;
-    }
-    const de = voa.getBoundingClientRect(), para = d.alvo.getBoundingClientRect();
-    /* o símbolo do logo tem proporção fixa: encaixa pela altura */
-    const s = d.tipo === 'lockup' ? para.width / de.width : para.height / de.height;
-    const dx = (para.left + para.width / 2) - (de.left + de.width / 2);
-    const dy = (para.top + para.height / 2) - (de.top + de.height / 2);
-    /* zzz295 (Kevin: "tá muito pesada"): voo mais curto e macio, sem rastro e sem brilho no pouso */
-    const DUR = 560, curva = 'cubic-bezier(.32,.72,0,1)';
-    d.alvo.classList.add('ab-destino');
-    voa.style.transformOrigin = '50% 50%';
-    /* a animação CSS da peça para aqui: o voo parte do quadro final dela */
-    [voa, simbolo, marca].forEach(n => { if (n) n.style.animation = 'none'; });
-    const quadros = [{ transform: 'none' }, { transform: 'translate3d(' + dx + 'px,' + dy + 'px,0) scale(' + s + ')' }];
-    voa.animate(quadros, { duration: DUR, easing: curva, fill: 'forwards' });
-    /* destino branco (fundo escuro): a lâmpada colorida vira a branca no ar */
-    if (d.branco) {
-      const cor = el.querySelector('.ab-cor'), branca = el.querySelector('.ab-branca');
-      if (cor) cor.animate([{ opacity: 1 }, { opacity: 0 }], { duration: DUR * .7, delay: DUR * .2, easing: 'ease-in-out', fill: 'forwards' });
-      if (branca) branca.animate([{ opacity: 0 }, { opacity: 1 }], { duration: DUR * .7, delay: DUR * .2, easing: 'ease-in-out', fill: 'forwards' });
-    }
-    /* só o símbolo voa: a palavra recua e some no caminho */
-    if (d.tipo === 'simbolo') {
-      const palavra = el.querySelector('.ab-palavra');
-      if (palavra) { palavra.style.animation = 'none';
-        palavra.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translate3d(14px,0,0)' }],
-          { duration: 260, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }); }
-    }
-    /* pouso: o destino assume e a peça da abertura se apaga no mesmo quadro */
-    setTimeout(() => {
-      d.alvo.classList.remove('ab-destino'); d.alvo.classList.add('ab-pousou');
-      voa.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: 'ease-out', fill: 'forwards' });
-      setTimeout(() => d.alvo.classList.remove('ab-pousou'), 260);
-    }, DUR - 20);
-    return DUR + 120;
-  }
 
-  /* =================================================================
-     ONDA DE LUZ (zzo) — a luz da lâmpada constrói o app.
-     Quando a abertura sai, um clarão nasce no centro da íris e um anel
-     de luz corre pela borda dela até as pontas da tela. Cada peça do
-     app (topo, barra de baixo, blocos e cartões da tela) acende o
-     contorno no instante exato em que o anel passa por ela — na ordem
-     da distância, como se a luz estivesse desenhando o sistema.
-     Tudo numa camada própria por cima (contornos fantasmas medidos na
-     hora): não mexe nas animações de entrada de cada tela (o Painel tem
-     as dele), então nada pisca nem briga.
-     ================================================================= */
-  const IRIS = { dur: 800, atraso: 40, curva: [.7, 0, .25, 1] };   /* = abIris no CSS */
-  /* em quanto tempo (0–1) a curva da íris chega a "y" (0–1) */
-  function tempoDaCurva(y, [x1, y1, x2, y2]) {
-    if (y <= 0) return 0; if (y >= 1) return 1;
-    const b = (t, a, c) => 3 * a * t * (1 - t) * (1 - t) + 3 * c * t * t * (1 - t) + t * t * t;
-    let lo = 0, hi = 1;
-    for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (b(m, y1, y2) < y) lo = m; else hi = m; }
-    return b((lo + hi) / 2, x1, x2);
-  }
-  function pecasDaOnda() {
-    const H = innerHeight, W = innerWidth;
-    const visivel = r => r.width > 40 && r.height > 22 && r.bottom > 0 && r.top < H && r.right > 0 && r.left < W;
-    let base = [...document.querySelectorAll('.topo-global, .nav-inferior, .lateral, #painel-dashboard .conteudo > *, .tela-login .login-caixa')];
-    /* bloco alto (lista, grade, seção inteira): desce pelos filhos até
-       chegar em peças do tamanho de um cartão — é o cartão que acende */
-    const pecas = [];
-    const coletar = (el, nivel) => {
-      if (pecas.length >= 34) return;
-      const r = el.getBoundingClientRect();
-      if (!visivel(r)) return;
-      if (r.height > H * .42 && el.children.length && nivel < 5) { [...el.children].forEach(f => coletar(f, nivel + 1)); return; }
-      if (r.height <= H * .6) pecas.push([el, r]);
-    };
-    base.forEach(el => coletar(el, 0));
-    return pecas;
-  }
-  function ondaDeLuz() {
-    if (reduzMov()) return;
-    const W = innerWidth, H = innerHeight;
-    const cx = W / 2, cy = H / 2 - H * .06;           /* centro da íris (abIris: 50% calc(50% - 6vh)) */
-    const RMAX = 1.2 * Math.max(W, H);                /* 120vmax */
-    const camada = document.createElement('div');
-    camada.className = 'ab-luz';
-    camada.setAttribute('aria-hidden', 'true');
-    camada.style.setProperty('--cx', cx + 'px');
-    camada.style.setProperty('--cy', cy + 'px');
-    camada.innerHTML = '<i class="ab-luz-clarao"></i><i class="ab-luz-anel"></i>';
-    /* contornos: cada peça acende quando o anel (≈ raio + 40px) a alcança */
-    pecasDaOnda().forEach(([el, r], i) => {
-      const px = Math.max(r.left, Math.min(cx, r.right)), py = Math.max(r.top, Math.min(cy, r.bottom));
-      const d = Math.hypot(px - cx, py - cy);
-      const quando = IRIS.atraso + IRIS.dur * tempoDaCurva(Math.max(0, d - 40) / RMAX, IRIS.curva);
-      const c = document.createElement('i');
-      c.className = 'ab-luz-peca';
-      const raio = getComputedStyle(el).borderTopLeftRadius;
-      Object.assign(c.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
-        borderRadius: raio && raio !== '0px' ? raio : '12px', animationDelay: Math.round(quando) + 'ms' });
-      /* o brilho que atravessa a peça vem do lado da luz */
-      c.style.setProperty('--ang', (Math.atan2((r.top + r.height / 2) - cy, (r.left + r.width / 2) - cx) * 180 / Math.PI + 90).toFixed(0) + 'deg');
-      camada.appendChild(c);
-    });
-    document.body.appendChild(camada);
-    setTimeout(() => camada.remove(), IRIS.atraso + IRIS.dur + 1100);
-  }
-  /* o logo pousou no topo (zzp): um halo curto atrás dele e a mesma faixa
-     de luz da abertura passando uma vez pelo desenho do logo — antes era
-     uma onda, que repetia as ondas da ignição */
-  function brilhoDoPouso(alvo) {
-    if (reduzMov() || !alvo) return;
-    const r = alvo.getBoundingClientRect();
-    const lado = Math.max(r.width, r.height) * 2.2;
-    const halo = document.createElement('i');
-    halo.className = 'ab-pouso-halo';
-    halo.setAttribute('aria-hidden', 'true');
-    Object.assign(halo.style, { left: (r.left + r.width / 2 - lado / 2) + 'px', top: (r.top + r.height / 2 - lado / 2) + 'px', width: lado + 'px', height: lado + 'px' });
-    const ref = document.createElement('i');
-    ref.className = 'ab-pouso-reflexo';
-    ref.setAttribute('aria-hidden', 'true');
-    Object.assign(ref.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
-    ref.style.setProperty('--ab-img', 'url("' + alvo.src + '")');
-    document.body.append(halo, ref);
-    setTimeout(() => { halo.remove(); ref.remove(); }, 900);
-  }
+
+
+
+
+
 
   /* zzz112 — "às vezes a abertura não vai toda, vai só metade".
      O tempo que falta era contado pelo relógio da página
@@ -899,17 +730,10 @@ B7.Rota = (function () {
     /* 5.16.0 identidade nova: a saída é a do quadro do artefato (a câmera aproxima e a cena apaga,
        styles/espectro/aberturas-cine.css). Nada da saída antiga: sem a onda de luz contornando as
        peças, sem o sistema "assentando" e sem o voo do logo. */
-    const nova = espAb();
-    if (!nova) ondaDeLuz();
-    /* o sistema assenta por baixo do céu que se dissolve (uma vez) */
-    if (!nova && !reduzMov()) {
-      document.body.classList.add('ab-revela');
-      setTimeout(() => document.body.classList.remove('ab-revela'), 1000);
-    }
     el.classList.add('saindo');
     if (B7.SomAbertura) B7.SomAbertura.aoSair();
     pintarBarraDoSistema();
-    const tempo = nova ? (reduzMov() ? 0 : 600) : voarLogo(el);
+    const tempo = reduzMov() ? 0 : 600;
     /* remove só depois do pouso e do céu sumir: tirar antes devolve o
        corte seco que a abertura existe para evitar */
     setTimeout(() => { el.remove(); document.documentElement.classList.remove('ab-sem'); }, Math.max(tempo, reduzMov() ? 220 : 640));

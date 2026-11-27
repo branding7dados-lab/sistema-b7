@@ -46,7 +46,6 @@ B7.DocSemana = (function () {
       await document.fonts.ready;
     } catch (e) { /* segue mesmo assim — melhor tentar montar do que travar */ }
   }
-  const LOGO = 'assets/brand/logo-white.png';
 
   const DIAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
   const MESES_CURTO = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN',
@@ -508,7 +507,7 @@ B7.DocSemana = (function () {
           '<span class="ps-periodo">' + esc(periodoTexto(r.semana_inicio, r.semana_fim)) + '</span></div>' +
       '</div>' +
       /* Espectro: a peça tem cabeçalho claro, então a marca vai colorida */
-      '<img class="ps-logo" src="' + (typeof document !== 'undefined' && document.documentElement.getAttribute('data-identidade') === 'espectro' ? 'assets/brand/logo-color.png' : LOGO) + '" alt="B7">' +
+      '<img class="ps-logo" src="assets/brand/logo-color.png" alt="B7">' +
     '</div>';
   }
 

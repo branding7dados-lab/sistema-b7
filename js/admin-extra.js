@@ -452,343 +452,89 @@ B7.Comunicado = (function () {
   return { abrir, enviarPara };
 })();
 
-/* ------------------------------------------------------------ APARÊNCIA
-   O que o administrador escolhe e a equipe toda recebe (sistema_config
-   .aparencia, entregue na consulta de cada minuto, sistema_avisos):
-     · COR DO SISTEMA — nove cores prontas ou uma cor personalizada;
-     · MENU LATERAL — padrão, tingido pela cor ou grafite;
-     · BOTÕES — degradê ou sólidos;
-     · BRILHO DE FUNDO — uma luz suave da cor atrás das telas;
-     · DATAS ESPECIAIS DA ABERTURA — cor e frase em datas escolhidas.
-   Claro ou escuro continua sendo escolha de cada pessoa. A logo, o desenho
-   da abertura e as cores de status (pronto, revisão, erro) são da marca.
-   O CSS é montado aqui, a partir das escolhas, e uma cópia fica no aparelho
-   (b7_sis_aparencia) para o <head> de index.html aplicar antes da primeira
-   pintura. Só visual: nada de regra, acesso ou dado. */
+/* ------------------------------------------------------------ APARÊNCIA (5.23.1: só a identidade Espectro)
+   A paleta da marca: Padrão B7, Matriz ou Laser (quadro "Config-aparencia"). O administrador escolhe o
+   padrão da equipe (sistema_config.aparencia, entregue na consulta de cada minuto, sistema_avisos) e cada
+   pessoa pode ter a sua só neste aparelho (b7_ap_pessoal) — enquanto tiver, a dela manda.
+   A paleta vira html[data-paleta] (styles/espectro/paletas.css); o <head> do index.html lê as mesmas cópias
+   do aparelho para pintar antes da primeira pintura. Claro ou escuro continua sendo escolha de cada pessoa.
+   As opções do visual antigo (11 cores, cor personalizada, menu, botões, brilho, fundos, cantos e as datas
+   especiais da abertura) saíram junto com ele. Só visual: nada de regra, acesso ou dado. */
 B7.Aparencia = (function () {
-  const U = B7.AdUI, esc = U.esc;
-  const CHAVE = 'b7_sis_aparencia';
+  const esc = B7.AdUI.esc;
+  const CHAVE = 'b7_sis_aparencia', CHAVE_EU = 'b7_ap_pessoal';
   const PALETAS = [
-    { id: 'b7', nome: 'Padrão B7', l: ['#3A1E86', '#7C1E85', '#C21C83'], d: ['#5B44C0', '#9A44A8', '#E2409C'] },
-    { id: 'oceano', nome: 'Oceano', l: ['#1E3FA0', '#2A5FB5', '#0E7FB8'], d: ['#4A62D8', '#5B8FE0', '#3FB0E8'] },
-    { id: 'floresta', nome: 'Floresta', l: ['#1D5E4A', '#0E7C6B', '#139A63'], d: ['#3E9C7C', '#2DB5A0', '#34D399'] },
-    { id: 'porsol', nome: 'Pôr do sol', l: ['#8A1F3D', '#B4261F', '#D9461F'], d: ['#C0405E', '#E5503F', '#FF7A4D'] },
-    { id: 'rubi', nome: 'Rubi', l: ['#6B0F2A', '#A3123F', '#D6194F'], d: ['#A32550', '#CC2F5F', '#F0467A'] },
-    { id: 'ametista', nome: 'Ametista', l: ['#3B1B8F', '#5B2BC4', '#7C3AED'], d: ['#6D4FD6', '#8B5CF6', '#A78BFA'] },
-    { id: 'indigo', nome: 'Índigo', l: ['#1E1B6B', '#2F32B3', '#4338CA'], d: ['#4547B8', '#5B63E6', '#818CF8'] },
-    { id: 'dourado', nome: 'Dourado', l: ['#7C3A0A', '#A85A0B', '#CF7B06'], d: ['#B45F13', '#D6891A', '#F5A524'] },
-    { id: 'grafite', nome: 'Grafite', l: ['#1F2937', '#374151', '#4B5563'], d: ['#3B4252', '#566074', '#6E7A91'] },
-    /* zzz169: paletas novas — cada uma com o claro e o escuro pensados juntos */
-    { id: 'turquesa', nome: 'Turquesa', l: ['#0B4A5A', '#0B6670', '#0A7A80'], d: ['#24808E', '#2FA6AD', '#4FD1C5'] },
-    { id: 'coral', nome: 'Coral', l: ['#7D2738', '#A8383F', '#BF4428'], d: ['#B8505E', '#E06A5A', '#FF8A66'] },
-    { id: 'ardosia', nome: 'Ardósia', l: ['#1F2C45', '#2E4266', '#3B5A8C'], d: ['#4A5D86', '#6A82B0', '#8FA9DA'] },
-    { id: 'oliva', nome: 'Oliva', l: ['#34401A', '#4D5F1C', '#5E7417'], d: ['#6A7C30', '#8EA43A', '#B4CB4E'] },
-    { id: 'framboesa', nome: 'Framboesa', l: ['#5A1747', '#8A1C5E', '#B0206F'], d: ['#9A3A7E', '#C9479A', '#F06BB8'] }
-  ];
-  /* 5.17.0 identidade nova (quadro Config-aparencia): as 11 paletas viram 3, dentro da marca. No Espectro a
-     paleta vira html[data-paleta] e styles/espectro/paletas.css troca o destaque; nada do CSS gerado abaixo
-     (menu, botões, cantos, fundos tingidos, brilho) vale lá, e as datas especiais não tingem a abertura. */
-  const PALETAS_ESP = [
     { id: 'b7', nome: 'Padrão B7', faixa: ['#001561', '#520083', '#7328A5', '#E02F75', '#FF5A57'] },
     { id: 'matriz', nome: 'Matriz', faixa: ['#001561', '#0A2A8A', '#2A4BC0', '#6E86E0', '#C9D3F5'] },
     { id: 'laser', nome: 'Laser', faixa: ['#520083', '#E02F75', '#FF5A57', '#FF8E6B', '#FFD2C2'] }
   ];
-  const esp = () => document.documentElement.getAttribute('data-identidade') === 'espectro';
-  const paletaEsp = c => (c && PALETAS_ESP.some(p => p.id === c.paleta)) ? c.paleta : 'b7';
-  function pintarPaletaEsp(c) {
-    const r = document.documentElement, id = esp() ? paletaEsp(c) : 'b7';
+  /* qualquer coisa que não seja uma das 3 (inclusive as paletas antigas guardadas) vira o Padrão B7 */
+  const paleta = c => (c && PALETAS.some(p => p.id === c.paleta)) ? c.paleta : 'b7';
+  const normalizar = c => ({ paleta: paleta(c) });
+  const ler = k => { try { const c = JSON.parse(localStorage.getItem(k) || 'null'); return c ? normalizar(c) : null; } catch (e) { return null; } };
+  let cfg = ler(CHAVE) || { paleta: 'b7' };
+  let meu = ler(CHAVE_EU);
+  const efetiva = () => meu || cfg;
+
+  function pintar(c) {
+    const r = document.documentElement, id = paleta(c);
     if (id === 'b7') r.removeAttribute('data-paleta'); else r.setAttribute('data-paleta', id);
   }
-  /* zzz169: intensidade do tom nos fundos e formato dos cantos */
-  const TINTAS = [['neutro', 'Neutro', 'cinzas quase puros'], ['suave', 'Suave', 'um leve tom da cor'], ['vivo', 'Colorido', 'fundos bem tingidos']];
-  const FATOR_TINTA = { neutro: .12, suave: 1, vivo: 2 };
-  const CANTOS = { retos: [6, 8, 10, 12], padrao: [10, 14, 18, 22], redondos: [14, 18, 24, 28] };
-  const MENUS = [['padrao', 'Padrão', 'o azul-noite da B7'], ['tingido', 'Tingido', 'toma o tom da cor escolhida'], ['grafite', 'Grafite', 'cinza bem escuro, neutro']];
-  const CORES = [['rosa', 'Rosa (o da B7)', '#C21C83'], ['vermelho', 'Vermelho', '#D6194F'], ['dourado', 'Dourado', '#CF7B06'], ['verde', 'Verde', '#139A63'], ['azul', 'Azul', '#2A5FB5']];
-  const SUGESTOES = [
-    { nome: 'Natal', de: '15/12', ate: '26/12', cor: 'verde', frase: 'Feliz Natal, equipe' },
-    { nome: 'Ano Novo', de: '27/12', ate: '03/01', cor: 'dourado', frase: 'Feliz Ano Novo' },
-    { nome: 'Outubro Rosa', de: '01/10', ate: '31/10', cor: 'rosa', frase: 'Outubro Rosa' },
-    { nome: 'Novembro Azul', de: '01/11', ate: '30/11', cor: 'azul', frase: 'Novembro Azul' }
-  ];
-  const RE_DATA = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])$/, RE_HEX = /^#[0-9a-fA-F]{6}$/;
-  const PADRAO = { paleta: 'b7', cor: '', menu: 'padrao', botoes: 'degrade', brilho: false, tinta: 'suave', cantos: 'padrao', estacoes: [] };
-  let cfg = Object.assign({}, PADRAO);
-
-  /* ---- cor personalizada: a partir de UMA cor, monta as três do degradê, no claro e no escuro ---- */
-  function hexHsl(hex) {
-    const n = parseInt(hex.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
-    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
-    let h = 0, s = 0;
-    if (d) {
-      s = d / (1 - Math.abs(2 * l - 1));
-      h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-      h = Math.round(h * 60); if (h < 0) h += 360;
-    }
-    return [h, s, l];
-  }
-  function hslHex(h, s, l) {
-    h = ((h % 360) + 360) % 360; s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l));
-    const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
-    const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
-    return '#' + [r, g, b].map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
-  }
-  /* contraste WCAG entre duas cores */
-  function luz(hex) {
-    const n = parseInt(hex.slice(1), 16);
-    return [n >> 16 & 255, n >> 8 & 255, n & 255].map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); })
-      .reduce((t, v, i) => t + v * [.2126, .7152, .0722][i], 0);
-  }
-  const contraste = (a, b) => { const x = luz(a), y = luz(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
-  /* zzz163: qualquer cor escolhida vira um tom que dá para ler — no claro,
-     texto branco em cima do botão; no escuro, a cor em cima do fundo */
-  function derivar(hex) {
-    const [h, s0, l0] = hexHsl(hex), s = Math.max(s0, .35);
-    let lc = Math.min(l0, .5);
-    while (lc > .12 && contraste(hslHex(h, s, lc), '#FFFFFF') < 4.5) lc -= .02;
-    let ld = Math.max(Math.min(l0 + .12, .7), .52);
-    /* zzz169: no escuro mede contra o card (mais claro que o fundo) — vale para os dois */
-    while (ld < .85 && contraste(hslHex(h, s, ld), '#1B1426') < 4.5) ld += .02;
-    return { l: guardar([hslHex(h - 28, s * .95, lc * .58), hslHex(h - 14, s, lc * .8), hslHex(h, s, lc)], false),
-             d: [hslHex(h - 28, s * .85, ld - .22), hslHex(h - 14, s * .92, ld - .1), hslHex(h, s, ld)] };
-  }
-  /* zzz169: trava de contraste para qualquer trio de cores. No claro, os três
-     tons levam texto branco por cima (botões em degradê) → 4.5:1 contra o
-     branco. No escuro, o acento vira texto/ícone sobre os cards → 4.5:1
-     contra o card escuro. Só mexe na luminosidade; o tom fica. */
-  function guardar(t, escuro) {
-    return t.map((hex, i) => {
-      let [h, s, l] = hexHsl(hex), n = 0;
-      if (!escuro) while (l > .08 && contraste(hslHex(h, s, l), '#FFFFFF') < 4.5 && n++ < 60) l -= .01;
-      else if (i === 2) while (l < .9 && contraste(hslHex(h, s, l), '#1B1426') < 4.5 && n++ < 60) l += .01;
-      return n ? hslHex(h, s, l) : hex;
-    });
-  }
-  const cacheGuard = {};
-  function valores(c) {
-    if (c.paleta === 'custom' && RE_HEX.test(c.cor || '')) return derivar(c.cor);
-    const p = PALETAS.find(x => x.id === c.paleta) || PALETAS[0];
-    if (p.id === 'b7') return { l: p.l, d: p.d };   /* o padrão da marca fica exatamente igual */
-    return cacheGuard[p.id] || (cacheGuard[p.id] = { l: guardar(p.l, false), d: guardar(p.d, true) });
-  }
-  const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; };
-  const MENU_GRAFITE = ['#101216', '#191c23'];
-  function menuVars(c, v) {
-    if (c.menu === 'grafite') return '--sidebar:' + MENU_GRAFITE[0] + ';--sidebar-2:' + MENU_GRAFITE[1] + ';';
-    if (c.menu === 'tingido') return '--sidebar:color-mix(in srgb,' + v + ' 34%,#05040d);--sidebar-2:color-mix(in srgb,' + v + ' 46%,#0a0818);';
-    return '';
-  }
-  /* zzz163: os neutros do B7 (fundo, bordas, textos, esqueletos) têm um
-     subtom violeta. Com outra cor, eles giram para o tom dela — o verde
-     fica com cinzas esverdeados, e não com um fundo lilás. Mesma
-     luminosidade de antes, então o contraste não muda. */
-  const NEUTROS_CLARO = { '--fundo': '#F6F5FA', '--suave': '#F4F2F9', '--borda': '#EAE7F2', '--ink': '#15122B', '--ink-2': '#3B3557',
-    '--ink-3': '#6F688C', '--ink-4': '#9E97B5', '--neutro': '#5B5480', '--neutro-bg': '#F0EDF8', '--esq-1': '#EEEBF5', '--esq-2': '#F7F5FB' };
-  const NEUTROS_ESCURO = { '--fundo': '#0F0A18', '--card': '#1B1426', '--suave': '#221934', '--elevado': '#241A31', '--borda': '#2C2340',
-    '--borda-forte': '#3A2F52', '--ink': '#F0ECF7', '--ink-2': '#CFC7DF', '--ink-3': '#A79CBE', '--ink-4': '#7C7295', '--neutro': '#B3A8CC',
-    /* zzz246: sem esta linha o escuro herdava o --neutro-bg CLARO do tema
-       (caixas "neutras" ficavam quase brancas, com o título branco sumido) */
-    '--neutro-bg': '#B3A8CC',
-    '--esq-1': '#241A31', '--esq-2': '#2E2340', '--topo-bg': '#150F22' };
-  /* no escuro estes viram transparência por cima do fundo, como no global.css */
-  const ALFA_ESCURO = { '--topo-bg': .86, '--neutro-bg': .13 };
-  /* zzz169: quanto do tom vai para os neutros — a intensidade (neutro/suave/
-     colorido) só multiplica a saturação; a luminosidade nunca muda, então o
-     contraste dos textos sobre fundo e cards continua o mesmo */
-  const fatorNeutro = (c, val) => {
-    const sp = hexHsl(val.l[0])[1];
-    return Math.max(0, Math.min(1.15, sp / .63)) * (FATOR_TINTA[c.tinta] || 1);
-  };
-  function neutros(c, val, escuro) {
-    if (c.paleta === 'b7' && (c.tinta || 'suave') === 'suave') return '';
-    const h = hexHsl(val.l[0])[0], f = fatorNeutro(c, val);
-    const tab = escuro ? NEUTROS_ESCURO : NEUTROS_CLARO;
-    return Object.keys(tab).map(k => {
-      const [, s0, l0] = hexHsl(tab[k]), hex = hslHex(h, s0 * f, l0);
-      return k + ':' + (escuro && ALFA_ESCURO[k] ? rgba(hex, ALFA_ESCURO[k]) : k === '--topo-bg' ? rgba(hex, .86) : hex) + ';';
-    }).join('');
-  }
-  const cantosVars = c => {
-    const r = CANTOS[c.cantos]; if (!r || c.cantos === 'padrao') return '';
-    return '--r-sm:' + r[0] + 'px;--r:' + r[1] + 'px;--r-lg:' + r[2] + 'px;--r-xl:' + r[3] + 'px;';
-  };
-  const ativo = c => c.paleta !== 'b7' || c.menu !== 'padrao' || c.botoes === 'solido' || !!c.brilho ||
-    (c.tinta && c.tinta !== 'suave') || (c.cantos && c.cantos !== 'padrao');
-  function gerarCSS(c) {
-    if (esp() || !ativo(c)) return '';
-    const val = valores(c);
-    const bloco = (sel, t, escuro) => {
-      const v = t[0], r = t[1], m = t[2];
-      /* o menu lateral é escuro nos dois temas: as luzes dele saem sempre
-         dos tons escuros da paleta (zzz161) */
-      let s = sel + '{--sb-luz1:' + val.d[0] + ';--sb-luz2:' + val.d[2] + ';' +
-        /* zzz163: os tons do claro também no escuro, para heróis e fundos escuros */
-        '--base-violeta:' + val.l[0] + ';--base-roxo:' + val.l[1] + ';--base-magenta:' + val.l[2] + ';' +
-        '--violeta:' + v + ';--roxo:' + r + ';--magenta:' + m + ';--acento:' + m + ';--acento-suave:' + rgba(m, escuro ? .16 : .09) + ';--violeta-bg:' + rgba(v, escuro ? .2 : .12) + ';' +
-        '--grad:linear-gradient(118deg,#001559 0%,' + v + ' 34%,' + r + ' 66%,' + m + ' 100%);' +
-        '--grad-curto:' + (c.botoes === 'solido' ? 'linear-gradient(0deg,' + m + ',' + m + ')' : 'linear-gradient(120deg,' + v + ' 0%,' + r + ' 52%,' + m + ' 100%)') + ';' +
-        menuVars(c, val.l[0]) + neutros(c, val, escuro) + (escuro ? '' : cantosVars(c)) + '}';
-      if (c.brilho) s += sel + ' body{background-image:radial-gradient(70vmax 50vmax at 100% -8%,' + rgba(m, escuro ? .13 : .1) + ',transparent 70%),radial-gradient(60vmax 46vmax at -8% 108%,' + rgba(v, escuro ? .18 : .1) + ',transparent 70%);background-attachment:fixed;}';
-      return s;
-    };
-    return bloco('html[data-ap]', val.l, false) + bloco('html[data-ap][data-theme="dark"]', val.d, true);
-  }
-  function aplicarCSS(c) {
-    const css = gerarCSS(c), r = document.documentElement;
-    let st = document.getElementById('b7-aparencia');
-    if (!css) { if (st) st.remove(); r.removeAttribute('data-ap'); return css; }
-    if (!st) { st = document.createElement('style'); st.id = 'b7-aparencia'; document.head.appendChild(st); }
-    if (st.textContent !== css) st.textContent = css;
-    r.setAttribute('data-ap', '1');
-    return css;
-  }
-
-  /* ---- datas especiais da abertura ---- */
-  const ordem = dm => { const p = String(dm).split('/'); return Number(p[1]) * 100 + Number(p[0]); };
-  function estacaoDe(c, quando) {
-    const d = quando || new Date(), n = (d.getMonth() + 1) * 100 + d.getDate();
-    return ((c && c.estacoes) || []).find(e => {
-      const i = ordem(e.de), f = ordem(e.ate);
-      return i <= f ? (n >= i && n <= f) : (n >= i || n <= f);   /* 27/12 → 03/01 atravessa o ano */
-    }) || null;
-  }
-  function pintarEstacao(est) {
-    const r = document.documentElement;
-    if (est && !esp()) {
-      r.setAttribute('data-estacao', est.cor);
-      if (est.frase) { r.style.setProperty('--estacao-frase', JSON.stringify(est.frase)); r.setAttribute('data-estacao-frase', '1'); }
-      else r.removeAttribute('data-estacao-frase');
-    } else { r.removeAttribute('data-estacao'); r.removeAttribute('data-estacao-frase'); r.style.removeProperty('--estacao-frase'); }
-  }
-  function normalizar(c) {
-    c = c && typeof c === 'object' ? c : {};
-    return { paleta: PALETAS.some(p => p.id === c.paleta) || PALETAS_ESP.some(p => p.id === c.paleta) || (c.paleta === 'custom' && RE_HEX.test(c.cor || '')) ? c.paleta : 'b7',
-      cor: c.paleta === 'custom' && RE_HEX.test(c.cor || '') ? c.cor : '',
-      menu: ['padrao', 'tingido', 'grafite'].includes(c.menu) ? c.menu : 'padrao',
-      botoes: c.botoes === 'solido' ? 'solido' : 'degrade', brilho: c.brilho === true,
-      /* zzz169: valores antigos (sem estes campos) caem no padrão de antes */
-      tinta: FATOR_TINTA[c.tinta] ? c.tinta : 'suave', cantos: CANTOS[c.cantos] ? c.cantos : 'padrao',
-      estacoes: Array.isArray(c.estacoes) ? c.estacoes : [] };
-  }
-  try { const c = JSON.parse(localStorage.getItem(CHAVE) || 'null'); if (c) cfg = normalizar(c); } catch (e) {}
-
-  /* ---- APARÊNCIA PESSOAL (zzz159) ------------------------------------
-     O administrador define a aparência PADRÃO da equipe (acima). Cada
-     pessoa pode ter a sua, só neste aparelho: enquanto houver uma escolha
-     pessoal, ela manda — mudar o padrão do sistema não a derruba. "Usar o
-     padrão do sistema" apaga a escolha e volta ao do administrador.
-     As datas especiais da abertura continuam sendo só do sistema. */
-  const CHAVE_EU = 'b7_ap_pessoal';
-  let meu = null;
-  try { const c = JSON.parse(localStorage.getItem(CHAVE_EU) || 'null'); if (c) meu = normalizar(c); } catch (e) {}
-  const efetiva = () => meu || cfg;
-  /* zzz163: a cópia do CSS no aparelho foi feita por uma versão anterior;
-     refaz agora para o próximo <head> já pintar com as regras novas */
-  (function renovarCopias() {
+  /* as cópias antigas do aparelho podiam trazer CSS do visual antigo: regrava só com a paleta */
+  (function limparCopias() {
     try {
-      if (meu) localStorage.setItem(CHAVE_EU, JSON.stringify(Object.assign({}, meu, { css: gerarCSS(meu) })));
-      if (localStorage.getItem(CHAVE)) localStorage.setItem(CHAVE, JSON.stringify(Object.assign({}, cfg, { css: gerarCSS(cfg) })));
+      if (meu) localStorage.setItem(CHAVE_EU, JSON.stringify(meu));
+      if (localStorage.getItem(CHAVE)) { if (cfg.paleta === 'b7') localStorage.removeItem(CHAVE); else localStorage.setItem(CHAVE, JSON.stringify(cfg)); }
     } catch (e) {}
-    if (ativo(efetiva())) aplicarCSS(efetiva());
-    pintarPaletaEsp(efetiva());
+    const velho = document.getElementById('b7-aparencia'); if (velho) velho.remove();
+    document.documentElement.removeAttribute('data-ap');
+    pintar(efetiva());
   })();
+
   function guardarPessoal(c) {
     meu = c ? normalizar(c) : null;
-    try {
-      if (!meu) localStorage.removeItem(CHAVE_EU);
-      else localStorage.setItem(CHAVE_EU, JSON.stringify(Object.assign({}, meu, { css: gerarCSS(meu) })));
-    } catch (e) {}
+    try { if (!meu) localStorage.removeItem(CHAVE_EU); else localStorage.setItem(CHAVE_EU, JSON.stringify(meu)); } catch (e) {}
     aplicar();
   }
-
-  function aplicar(c) { const x = c || efetiva(); aplicarCSS(x); pintarPaletaEsp(x); pintarEstacao(estacaoDe(cfg)); }
+  function aplicar(c) { pintar(c || efetiva()); }
   /* recebe o que veio do banco; null = conta que não recebe (Portal) */
   function sincronizar(c) {
     if (c === null || c === undefined || typeof c !== 'object') return;
     cfg = normalizar(c);
-    const css = gerarCSS(cfg);
-    aplicarCSS(efetiva()); pintarPaletaEsp(efetiva()); pintarEstacao(estacaoDe(cfg));
-    try {
-      if (!css && !cfg.estacoes.length && paletaEsp(cfg) === 'b7') localStorage.removeItem(CHAVE);
-      else localStorage.setItem(CHAVE, JSON.stringify(Object.assign({}, cfg, { css })));
-    } catch (e) {}
+    pintar(efetiva());
+    try { if (cfg.paleta === 'b7') localStorage.removeItem(CHAVE); else localStorage.setItem(CHAVE, JSON.stringify(cfg)); } catch (e) {}
   }
   /* a cópia do aparelho pode estar atrasada: antes de editar, lê o que está no banco */
   async function trazer() {
     try { const r = await B7.DB.rpc('sistema_avisos'); if (r && r.aparencia) sincronizar(r.aparencia); } catch (e) {}
   }
-  /* zzz169: tinta e cantos vão junto; o banco sem migration_aparencia_v3.sql
-     simplesmente os ignora (e recusa as paletas novas — avisamos abaixo) */
-  const gravar = c => B7.DB.rpc('aparencia_definir', { p_valor: { paleta: c.paleta, cor: c.cor, menu: c.menu, botoes: c.botoes, brilho: c.brilho, tinta: c.tinta, cantos: c.cantos, estacoes: c.estacoes } })
-    .catch(e => {
-      if (e && /inv[aá]lid/i.test(e.tecnico || e.message || '') && PALETAS.findIndex(p => p.id === c.paleta) > 8)
-        throw new Error('Esta paleta nova ainda não foi liberada no banco (migration_aparencia_v3.sql). Use outra por enquanto ou salve só para você.');
-      throw e;
-    });
+  /* o banco ainda guarda os campos de antes: vão no padrão (sem datas especiais, que eram do visual antigo) */
+  const gravar = c => B7.DB.rpc('aparencia_definir', { p_valor: { paleta: paleta(c), cor: '', menu: 'padrao', botoes: 'degrade', brilho: false, tinta: 'suave', cantos: 'padrao', estacoes: [] } });
   async function definirPaleta(p) {
     await trazer();
-    const nova = Object.assign({}, cfg, { paleta: p, cor: p === 'custom' ? cfg.cor : '' });
+    const nova = { paleta: paleta({ paleta: p }) };
     await gravar(nova); sincronizar(nova);
   }
-  const nomePaleta = c => esp() ? PALETAS_ESP.find(x => x.id === paletaEsp(c)).nome : c.paleta === 'custom' ? 'Personalizada' : (PALETAS.find(x => x.id === c.paleta) || PALETAS[0]).nome;
-  const rotuloPaleta = id => esp() ? PALETAS_ESP.find(x => x.id === paletaEsp({ paleta: id })).nome : id === 'custom' ? 'Personalizada' : (PALETAS.find(x => x.id === id) || PALETAS[0]).nome;
-  const extrasDe = c => [c.menu !== 'padrao' ? 'menu ' + (c.menu === 'tingido' ? 'tingido' : 'grafite') : '', c.botoes === 'solido' ? 'botões sólidos' : '', c.brilho ? 'brilho' : '',
-    c.tinta === 'neutro' ? 'fundos neutros' : c.tinta === 'vivo' ? 'fundos coloridos' : '', c.cantos === 'retos' ? 'cantos retos' : c.cantos === 'redondos' ? 'cantos redondos' : ''].filter(Boolean);
-  const resumoDe = c => { const extra = esp() ? [] : extrasDe(c); return nomePaleta(c) + (extra.length ? ' · ' + extra.join(', ') : ''); };
-  const resumoPessoal = () => meu ? resumoDe(meu) + ' · sua escolha' : resumoDe(cfg) + ' · o padrão do sistema';
-  const resumo = () => {
-    const n = esp() ? 0 : cfg.estacoes.length;
-    return resumoDe(cfg) + (n ? ' · ' + n + (n === 1 ? ' data especial' : ' datas especiais') : '');
-  };
-
-  /* ---- a prévia: uma telinha do B7 com as escolhas, no claro ou no escuro (zzz163) ---- */
-  function tom(c, val, hex) {
-    if (c.paleta === 'b7' && (c.tinta || 'suave') === 'suave') return hex;
-    const h = hexHsl(val.l[0])[0], [, s0, l0] = hexHsl(hex);
-    return hslHex(h, s0 * fatorNeutro(c, val), l0);
-  }
-  function previa(c, escuro) {
-    const val = valores(c), t = escuro ? val.d : val.l, v = t[0], r = t[1], m = t[2];
-    const sb = c.menu === 'grafite' ? MENU_GRAFITE[0] : c.menu === 'tingido' ? 'color-mix(in srgb,' + val.l[0] + ' 34%,#05040d)' : (escuro ? '#0A0714' : '#0B0A1E');
-    const btn = c.botoes === 'solido' ? m : 'linear-gradient(120deg,' + v + ',' + r + ' 52%,' + m + ')';
-    const N = escuro ? NEUTROS_ESCURO : NEUTROS_CLARO, n = k => tom(c, val, N[k]);
-    const bg = n('--fundo'), card = escuro ? n('--card') : '#fff', ink = n('--ink'), ink3 = n('--ink-3'), borda = n('--borda');
-    const glow = c.brilho ? 'radial-gradient(120% 90% at 100% -10%,' + rgba(m, escuro ? .22 : .16) + ',transparent 65%),radial-gradient(90% 80% at -10% 110%,' + rgba(v, escuro ? .3 : .16) + ',transparent 65%),' : '';
-    const heroi = 'linear-gradient(135deg,color-mix(in srgb,' + val.l[0] + ' 46%,#000),' + val.l[0] + ' 55%,' + val.l[1] + ')';
-    return '<div class="ap-prev" style="--pv-v:' + v + ';--pv-m:' + m + ';--pv-l1:' + val.d[0] + ';--pv-l2:' + val.d[2] + ';--pv-sb:' + sb + ';--pv-btn:' + btn +
-        ';--pv-bg:' + bg + ';--pv-card:' + card + ';--pv-ink:' + ink + ';--pv-ink3:' + ink3 + ';--pv-borda:' + borda + ';--pv-heroi:' + heroi + ';--pv-glow:' + (glow || 'none') +
-        ';--pv-r:' + (CANTOS[c.cantos] || CANTOS.padrao)[1] + 'px;--pv-c1:' + v + ';--pv-c2:' + r + '" aria-hidden="true">' +
-      '<aside class="pv-side"><i class="pv-logo"></i><i></i><i class="on"></i><i></i><i></i><i></i></aside>' +
-      '<div class="pv-main">' +
-        '<div class="pv-top"><span class="pv-busca"></span><span class="pv-criar">+ Criar</span></div>' +
-        '<div class="pv-heroi"><i class="pv-anel"></i><span><small>ANDAMENTO DO MÊS</small><b>Outubro</b></span></div>' +
-        '<div class="pv-card"><div class="pv-l"><b>Resumo do mês</b><span class="pv-chip">Em revisão</span></div>' +
-          '<small>12 de 18 entregas</small><i class="pv-barra"><u></u></i>' +
-          /* zzz169: mini gráfico com as três cores da paleta */
-          '<span class="pv-graf">' + [46, 70, 38, 88, 60, 76, 52].map((a, i) => '<i style="height:' + a + '%;background:var(--pv-' + ['c1', 'c2', 'm'][i % 3] + ')"></i>').join('') + '</span>' +
-          '<div class="pv-btns"><span class="pv-btn">Salvar</span><span class="pv-btn2">Cancelar</span><span class="pv-tg"><i></i></span></div></div>' +
-      '</div></div>';
-  }
-  const OK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const rotuloPaleta = id => PALETAS.find(x => x.id === paleta({ paleta: id })).nome;
+  const resumo = () => rotuloPaleta(cfg.paleta);
+  const resumoPessoal = () => meu ? rotuloPaleta(meu.paleta) + ' · sua escolha' : rotuloPaleta(cfg.paleta) + ' · o padrão do sistema';
 
   /* troca de cor com um esmaecer suave da tela inteira, onde o navegador deixa */
   function aplicarSuave(c) {
     const anima = document.startViewTransition && !(B7.Desempenho && B7.Desempenho.animacoesLigadas && !B7.Desempenho.animacoesLigadas()) &&
       !matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const pinta = () => { aplicarCSS(c); pintarPaletaEsp(c); };
+    const pinta = () => pintar(c);
     if (!anima) return pinta();
     try { const vt = document.startViewTransition(pinta); vt.ready.catch(() => {}); vt.finished.catch(() => {}); } catch (e) { pinta(); }
   }
 
-  /* opcoes.pessoal = a folha da própria pessoa (só neste aparelho) */
-  /* 5.17.0: no Espectro, a "Aparência do sistema" é só a paleta padrão da equipe, nas 3 da marca (quadro
-     Config-aparencia). Menu, botões, cantos, fundos tingidos, brilho e datas especiais são do visual antigo. */
-  async function abrirEspectro() {
+  /* a paleta da equipe (administrador): as 3 da marca em cartões */
+  async function abrir() {
     await trazer();
     const OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
     const m = B7.UI.modal('<h3>Paleta da equipe</h3><p class="sub">O padrão de quem não escolheu a sua em Configurações → Aparência. As 3 dentro da nova marca.</p>' +
-      '<div class="cfg-cores cfg-pals" role="radiogroup" aria-label="Paleta da equipe">' + PALETAS_ESP.map(p =>
-        '<button type="button" role="radio" class="cfg-cor cfg-pal' + (paletaEsp(cfg) === p.id ? ' on' : '') + '" aria-checked="' + (paletaEsp(cfg) === p.id) + '" data-pal="' + p.id + '">' +
+      '<div class="cfg-cores cfg-pals" role="radiogroup" aria-label="Paleta da equipe">' + PALETAS.map(p =>
+        '<button type="button" role="radio" class="cfg-cor cfg-pal' + (paleta(cfg) === p.id ? ' on' : '') + '" aria-checked="' + (paleta(cfg) === p.id) + '" data-pal="' + p.id + '">' +
         '<span class="cfg-pal-faixa">' + p.faixa.map(c => '<b style="background:' + c + '"></b>').join('') + '</span>' +
         '<span class="cfg-pal-pe"><span>' + esc(p.nome) + '</span>' + OK + '</span></button>').join('') + '</div>' +
       '<div class="acoes"><button type="button" class="b contorno" data-fecha>Fechar</button></div>');
@@ -798,236 +544,28 @@ B7.Aparencia = (function () {
       try {
         await definirPaleta(b.dataset.pal);
         m.querySelectorAll('[data-pal]').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-checked', on); });
-        B7.UI.toast('Paleta da equipe: ' + PALETAS_ESP.find(p => p.id === b.dataset.pal).nome + '. A equipe recebe em até 1 minuto.');
+        B7.UI.toast('Paleta da equipe: ' + rotuloPaleta(b.dataset.pal) + '. A equipe recebe em até 1 minuto.');
         if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig();
       } catch (e) { B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' }); }
       m.querySelectorAll('[data-pal]').forEach(x => { x.disabled = false; });
     });
   }
-  async function abrir(opcoes) {
-    if (esp() && !(opcoes && opcoes.pessoal)) return abrirEspectro();
-    const euMesmo = !!(opcoes && opcoes.pessoal);
-    if (!euMesmo) await trazer();
-    const base = euMesmo ? efetiva() : cfg;
-    const salvo = normalizar(base), rascunho = normalizar(base);
-    let gravou = false, escuroPrev = document.documentElement.getAttribute('data-theme') === 'dark';
-    /* zzz169: o tema é de cada pessoa (b7_tema, em app.js); aplica na hora e Cancelar devolve */
-    let temaIni = 'sistema'; try { temaIni = localStorage.getItem('b7_tema') || 'sistema'; } catch (e) {}
-    const temaRasc = { tema: temaIni };
-    const voltar = () => {
-      if (gravou) return;
-      if (temaRasc.tema !== temaIni && B7.definirTema) B7.definirTema(temaIni);
-      aplicarSuave(euMesmo ? efetiva() : cfg);
-    };
-    const m = B7.UI.modal('<h3>' + (euMesmo ? 'Minha aparência' : 'Aparência do sistema') + '</h3>' +
-      '<p class="sub">' + (euMesmo
-        ? 'Só para você, neste aparelho. Enquanto você tiver uma escolha aqui, ela manda — mesmo que a administração mude a cor da equipe.'
-        : 'Vale para toda a equipe (quem escolheu a própria cor continua com a dela). Claro ou escuro continua sendo escolha de cada pessoa.') + '</p>' +
-      '<div class="ap-grade">' +
-        '<div class="ap-prev-col"><div id="ap-previa"></div>' +
-          '<div class="ap-prev-pe"><span class="ap-seg" role="radiogroup" aria-label="Tema da prévia"><button type="button" data-tp="l" role="radio">Claro</button><button type="button" data-tp="d" role="radio">Escuro</button></span>' +
-          '<small>A tela atrás já mostra. Cancelar desfaz.</small></div></div>' +
-        '<div class="ap-ctl">' +
-          '<section class="ap-sec"><h4 class="ad-t">Cor</h4><div class="ap-paletas" id="ap-paletas" role="radiogroup" aria-label="Cor do sistema"></div>' +
-            '<div class="ap-custom" id="ap-custom" hidden><label class="ap-conta" title="Escolher no seletor"><input type="color" id="ap-cor" aria-label="Escolher a cor"><i></i></label>' +
-              '<input class="campo ap-hex" id="ap-hex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Código da cor (ex.: #1E88E5)" placeholder="#1E88E5">' +
-              '<span class="ap-tons" id="ap-tons"></span><small class="ap-ajuste" id="ap-ajuste"></small></div></section>' +
-          '<section class="ap-sec"><h4 class="ad-t">Menu lateral</h4><div class="ap-menus" id="ap-menus" role="radiogroup" aria-label="Menu lateral"></div></section>' +
-          '<section class="ap-sec ap-duas"><div><h4 class="ad-t">Botões</h4><div class="ap-seg" id="ap-botoes" role="radiogroup" aria-label="Estilo dos botões"></div></div>' +
-            '<div><h4 class="ad-t">Brilho de fundo</h4><label class="ap-troca"><input type="checkbox" id="ap-brilho"><span class="ap-troca-tr" aria-hidden="true"><i></i></span><span>Luz suave da cor atrás das telas</span></label></div></section>' +
-          /* zzz169: intensidade do tom, cantos e (só na folha pessoal) o tema */
-          '<section class="ap-sec"><h4 class="ad-t">Fundos</h4><div class="ap-seg ap-seg-larga" id="ap-tinta" role="radiogroup" aria-label="Intensidade da cor nos fundos"></div><small class="ap-dica" id="ap-tinta-d"></small></section>' +
-          '<section class="ap-sec ap-duas"><div><h4 class="ad-t">Cantos</h4><div class="ap-seg" id="ap-cantos" role="radiogroup" aria-label="Cantos"></div></div>' +
-            (euMesmo ? '<div><h4 class="ad-t">Tema</h4><div class="ap-seg" id="ap-tema" role="radiogroup" aria-label="Tema claro ou escuro"></div></div>' : '<div></div>') + '</section>' +
-        '</div></div>' +
-      (euMesmo ? '' :
-        '<section class="ap-sec ap-sec-datas"><h4 class="ad-t">Datas especiais da abertura</h4>' +
-        '<p class="sub ap-sub">Nessas datas, a animação de entrada muda de cor e mostra a frase. Fora delas, a abertura é a de sempre.</p>' +
-        '<div id="ap-lista"></div>' +
-        '<div class="ap-add"><button type="button" class="b fina contorno" id="ap-nova">+ Data própria</button><button type="button" class="b fina contorno" id="ap-sug">+ Sugestões (Natal, Ano Novo, Outubro Rosa, Novembro Azul)</button></div></section>') +
-      '<div class="acoes">' +
-        (euMesmo
-          ? (meu ? '<button type="button" class="b contorno ap-esq" id="ap-padrao">Usar a da equipe</button>' : '')
-          : '<button type="button" class="b contorno ap-esq" id="ap-b7">Voltar ao padrão B7</button>') +
-        '<button type="button" class="b contorno" data-fecha>Cancelar</button>' +
-        '<button type="button" class="b pri" id="ap-salvar">Salvar</button></div>', { larga: true, extra: 'ap-modal', aoFechar: voltar });
-    const cxP = m.querySelector('#ap-paletas'), cxM = m.querySelector('#ap-menus'), cxB = m.querySelector('#ap-botoes'), cxL = m.querySelector('#ap-lista'), cxV = m.querySelector('#ap-previa');
-    const cxC = m.querySelector('#ap-custom'), inCor = m.querySelector('#ap-cor'), inHex = m.querySelector('#ap-hex');
-    const reabrirConfig = () => { if (location.hash.indexOf('#/config') === 0 && B7.Dashboard && B7.Dashboard.abrirConfig) B7.Dashboard.abrirConfig(); };
-    const btPadrao = m.querySelector('#ap-padrao');
-    if (btPadrao) btPadrao.onclick = () => {
-      gravou = true; guardarPessoal(null); m.fechar();
-      B7.UI.toast('Voltou para a cor da equipe.');
-      reabrirConfig();
-    };
-    const btB7 = m.querySelector('#ap-b7');
-    if (btB7) btB7.onclick = () => { Object.assign(rascunho, { paleta: 'b7', cor: '', menu: 'padrao', botoes: 'degrade', brilho: false, tinta: 'suave', cantos: 'padrao' }); pintarTudo(true); };
-    const gradeDe = t => 'linear-gradient(135deg,' + t[0] + ',' + t[1] + ' 52%,' + t[2] + ')';
 
-    const aoVivo = suave => {
-      (suave ? aplicarSuave : aplicarCSS)(rascunho); pintarEstacao(estacaoDe(salvo));
-      cxV.innerHTML = previa(rascunho, escuroPrev);
-    };
-    const pintarTemaPrev = () => m.querySelectorAll('[data-tp]').forEach(b => { const on = (b.dataset.tp === 'd') === escuroPrev; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
-    const pintarCustom = () => {
-      const on = rascunho.paleta === 'custom';
-      cxC.hidden = !on;
-      if (!on) return;
-      const cor = RE_HEX.test(rascunho.cor) ? rascunho.cor : '#7C3AED', d = derivar(cor);
-      inCor.value = cor.toLowerCase(); inCor.parentNode.querySelector('i').style.background = cor;
-      if (document.activeElement !== inHex) inHex.value = cor;
-      m.querySelector('#ap-tons').innerHTML = d.l.concat(d.d[2]).map(x => '<i style="background:' + x + '"></i>').join('');
-      m.querySelector('#ap-ajuste').textContent = d.l[2] !== hslHex(...hexHsl(cor).map((x, i) => i === 1 ? Math.max(x, .35) : x))
-        ? 'O tom foi ajustado para o texto branco continuar legível.' : '';
-    };
-    const pintarPaletas = () => {
-      const cor = RE_HEX.test(rascunho.cor) ? rascunho.cor : '';
-      cxP.innerHTML = PALETAS.map(p => '<button type="button" role="radio" aria-checked="' + (rascunho.paleta === p.id) + '" data-p="' + p.id + '" class="ap-pal' + (rascunho.paleta === p.id ? ' on' : '') + '" title="' + esc(p.nome) + '">' +
-          '<i style="background:' + gradeDe(p.l) + '">' + OK_SVG + '</i><span>' + esc(p.nome) + '</span></button>').join('') +
-        '<button type="button" role="radio" aria-checked="' + (rascunho.paleta === 'custom') + '" data-p="custom" class="ap-pal ap-pal-c' + (rascunho.paleta === 'custom' ? ' on' : '') + '" title="Escolha qualquer cor">' +
-          '<i style="background:' + (rascunho.paleta === 'custom' && cor ? gradeDe(derivar(cor).l) : 'conic-gradient(#e11d48,#f59e0b,#16a34a,#0ea5e9,#7c3aed,#e11d48)') + '">' + OK_SVG + '</i><span>Sua cor</span></button>';
-      cxP.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
-        if (b.dataset.p === 'custom') {
-          if (rascunho.paleta !== 'custom') { rascunho.paleta = 'custom'; if (!RE_HEX.test(rascunho.cor)) rascunho.cor = '#7C3AED'; }
-          pintarPaletas(); pintarMenus(); aoVivo(true);
-          setTimeout(() => { try { inCor.showPicker ? inCor.showPicker() : inCor.click(); } catch (e) { inHex.focus(); } }, 60);
-          return;
-        }
-        rascunho.paleta = b.dataset.p; rascunho.cor = ''; pintarPaletas(); pintarMenus(); aoVivo(true);
-      });
-      pintarCustom();
-    };
-    const usarCor = (hex, suave) => {
-      rascunho.paleta = 'custom'; rascunho.cor = hex.toUpperCase();
-      const c = cxP.querySelector('.ap-pal-c i'); if (c) c.style.background = gradeDe(derivar(rascunho.cor).l);
-      pintarCustom(); pintarMenus(); aoVivo(suave);
-    };
-    inCor.oninput = () => usarCor(inCor.value);
-    inHex.oninput = () => { let v = inHex.value.trim(); if (v && v[0] !== '#') v = '#' + v; if (RE_HEX.test(v)) usarCor(v, true); };
-    inHex.onblur = () => { inHex.value = rascunho.cor || ''; };
-    const pintarMenus = () => {
-      cxM.innerHTML = MENUS.map(x => {
-        const fundo = x[0] === 'grafite' ? MENU_GRAFITE[0] : x[0] === 'tingido' ? 'color-mix(in srgb,' + valores(rascunho).l[0] + ' 34%,#05040d)' : '#0B0A1E';
-        return '<button type="button" role="radio" aria-checked="' + (rascunho.menu === x[0]) + '" data-mn="' + x[0] + '" class="ap-menu' + (rascunho.menu === x[0] ? ' on' : '') + '">' +
-          '<i style="background:' + fundo + ';--mn-luz:' + valores(rascunho).d[2] + '"><u></u><u></u><u></u></i><span><b>' + x[1] + '</b><small>' + x[2] + '</small></span></button>';
-      }).join('');
-      cxM.querySelectorAll('[data-mn]').forEach(b => b.onclick = () => { rascunho.menu = b.dataset.mn; pintarMenus(); aoVivo(true); });
-    };
-    const pintarBotoes = () => {
-      cxB.innerHTML = [['degrade', 'Degradê'], ['solido', 'Sólidos']].map(x => '<button type="button" role="radio" aria-checked="' + (rascunho.botoes === x[0]) + '" data-bt="' + x[0] + '"' + (rascunho.botoes === x[0] ? ' class="on"' : '') + '>' + x[1] + '</button>').join('');
-      cxB.querySelectorAll('[data-bt]').forEach(b => b.onclick = () => { rascunho.botoes = b.dataset.bt; pintarBotoes(); aoVivo(); });
-    };
-    const seg = (cx, itens, chave, aoMudar) => {
-      if (!cx) return;
-      cx.innerHTML = itens.map(x => '<button type="button" role="radio" aria-checked="' + (rascunho[chave] === x[0]) + '" data-v="' + x[0] + '"' + (rascunho[chave] === x[0] ? ' class="on"' : '') + ' title="' + esc(x[2] || x[1]) + '">' + x[1] + '</button>').join('');
-      cx.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { rascunho[chave] = b.dataset.v; aoMudar(); });
-    };
-    const cxT = m.querySelector('#ap-tinta'), cxR = m.querySelector('#ap-cantos'), cxTema = m.querySelector('#ap-tema');
-    const pintarTinta = () => {
-      seg(cxT, TINTAS, 'tinta', () => { pintarTinta(); aoVivo(true); });
-      const t = TINTAS.find(x => x[0] === rascunho.tinta); m.querySelector('#ap-tinta-d').textContent = t ? 'Fundos, bordas e textos com ' + t[2] + '.' : '';
-    };
-    const pintarCantos = () => seg(cxR, [['retos', 'Retos'], ['padrao', 'Padrão'], ['redondos', 'Redondos']], 'cantos', () => { pintarCantos(); aoVivo(); });
-    const pintarTema = () => {
-      if (!cxTema) return;
-      cxTema.innerHTML = [['light', 'Claro'], ['dark', 'Escuro'], ['sistema', 'Auto', 'Segue o aparelho']].map(x => '<button type="button" role="radio" aria-checked="' + (temaRasc.tema === x[0]) + '" data-v="' + x[0] + '"' + (temaRasc.tema === x[0] ? ' class="on"' : '') + ' title="' + (x[2] || x[1]) + '">' + x[1] + '</button>').join('');
-      cxTema.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
-        temaRasc.tema = b.dataset.v;
-        const mudar = () => B7.definirTema && B7.definirTema(temaRasc.tema);
-        const anima = document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (anima) { try { const vt = document.startViewTransition(mudar); vt.ready.catch(() => {}); vt.finished.catch(() => {}); } catch (e) { mudar(); } } else mudar();
-        escuroPrev = document.documentElement.getAttribute('data-theme') === 'dark';
-        pintarTema(); pintarTemaPrev(); cxV.innerHTML = previa(rascunho, escuroPrev);
-      });
-    };
-    const lerLinhas = () => !cxL ? null : cxL.querySelectorAll('.ap-linha').forEach(l => {
-      const e = rascunho.estacoes[Number(l.dataset.i)]; if (!e) return;
-      l.querySelectorAll('[data-f]').forEach(c => { e[c.dataset.f] = c.value; });
-    });
-    const linha = (e, i) => {
-      const hoje = estacaoDe(salvo), vigor = hoje && hoje.nome === e.nome && hoje.de === e.de;
-      const cor = (CORES.find(c => c[0] === e.cor) || CORES[0])[2];
-      return '<div class="ap-linha ad-in" data-i="' + i + '" style="--i:' + i + '"><i class="ap-bola" style="background:' + cor + '"></i>' +
-        '<input class="campo" data-f="nome" maxlength="40" value="' + esc(e.nome) + '" placeholder="Nome (ex.: Natal)" aria-label="Nome da data">' +
-        '<span class="ap-datas"><input class="campo" data-f="de" maxlength="5" value="' + esc(e.de) + '" placeholder="dd/mm" aria-label="Começa em"><i>até</i><input class="campo" data-f="ate" maxlength="5" value="' + esc(e.ate) + '" placeholder="dd/mm" aria-label="Termina em"></span>' +
-        '<select class="campo" data-f="cor" aria-label="Cor da abertura">' + CORES.map(c => '<option value="' + c[0] + '"' + (c[0] === e.cor ? ' selected' : '') + '>' + c[1] + '</option>').join('') + '</select>' +
-        '<input class="campo ap-frase" data-f="frase" maxlength="40" value="' + esc(e.frase) + '" placeholder="Frase na abertura (opcional)" aria-label="Frase">' +
-        '<span class="ap-acoes">' + (vigor ? '<em class="ap-vigor">em vigor hoje</em>' : '') + '<button type="button" class="b fina contorno" data-ver>Ver</button><button type="button" class="adm-link perigo" data-rm>Remover</button></span></div>';
-    };
-    const pintarLista = () => {
-      if (!cxL) return;
-      cxL.innerHTML = rascunho.estacoes.length ? rascunho.estacoes.map(linha).join('') : '<p class="ad-vazio">Nenhuma data cadastrada.</p>';
-      cxL.querySelectorAll('.ap-linha').forEach(l => {
-        const i = Number(l.dataset.i);
-        l.querySelector('[data-f="cor"]').onchange = ev => { lerLinhas(); const c = CORES.find(x => x[0] === ev.target.value); l.querySelector('.ap-bola').style.background = c ? c[2] : '#C21C83'; };
-        l.querySelector('[data-rm]').onclick = () => { lerLinhas(); rascunho.estacoes.splice(i, 1); pintarLista(); };
-        l.querySelector('[data-ver]').onclick = () => {
-          lerLinhas(); const e = rascunho.estacoes[i];
-          if (!RE_DATA.test(e.de) || !RE_DATA.test(e.ate)) { B7.UI.toast('Use o formato dd/mm nas datas.', { tipo: 'erro' }); return; }
-          pintarEstacao({ cor: e.cor, frase: e.frase });
-          if (B7.reverAbertura) B7.reverAbertura();
-          setTimeout(() => pintarEstacao(estacaoDe(salvo)), 12000);
-        };
-      });
-    };
-    const chB = m.querySelector('#ap-brilho');
-    function pintarTudo(suave) { chB.checked = rascunho.brilho; pintarPaletas(); pintarMenus(); pintarBotoes(); pintarTinta(); pintarCantos(); pintarTema(); aoVivo(suave); }
-    m.querySelectorAll('[data-tp]').forEach(b => b.onclick = () => { escuroPrev = b.dataset.tp === 'd'; pintarTemaPrev(); cxV.innerHTML = previa(rascunho, escuroPrev); });
-    chB.onchange = () => { rascunho.brilho = chB.checked; aoVivo(true); };
-    if (!euMesmo) m.querySelector('#ap-nova').onclick = () => {
-      lerLinhas(); if (rascunho.estacoes.length >= 12) { B7.UI.toast('Máximo de 12 datas.', { tipo: 'erro' }); return; }
-      rascunho.estacoes.push({ nome: '', de: '', ate: '', cor: 'rosa', frase: '' }); pintarLista();
-    };
-    if (!euMesmo) m.querySelector('#ap-sug').onclick = () => {
-      lerLinhas();
-      SUGESTOES.forEach(s => { if (rascunho.estacoes.length < 12 && !rascunho.estacoes.some(e => e.nome === s.nome)) rascunho.estacoes.push(Object.assign({}, s)); });
-      pintarLista();
-    };
-    m.querySelector('#ap-salvar').onclick = async () => {
-      if (euMesmo) {
-        gravou = true; guardarPessoal(rascunho); m.fechar();
-        B7.UI.toast('Aparência salva para você, neste aparelho.');
-        reabrirConfig();
-        return;
-      }
-      lerLinhas();
-      for (const e of rascunho.estacoes) {
-        e.nome = String(e.nome || '').trim(); e.frase = String(e.frase || '').trim();
-        if (!e.nome) { B7.UI.toast('Dê um nome a cada data.', { tipo: 'erro' }); return; }
-        if (!RE_DATA.test(e.de) || !RE_DATA.test(e.ate)) { B7.UI.toast('“' + e.nome + '”: use o formato dd/mm nas datas (ex.: 25/12).', { tipo: 'erro' }); return; }
-        if (/["\\]/.test(e.nome + e.frase)) { B7.UI.toast('Aspas e barra invertida não entram nos textos.', { tipo: 'erro' }); return; }
-      }
-      const bt = m.querySelector('#ap-salvar'); bt.disabled = true; bt.textContent = 'Salvando…';
-      try {
-        await gravar(rascunho);
-        gravou = true; sincronizar(rascunho); m.fechar();
-        B7.UI.toast('Aparência salva. A equipe recebe em até 1 minuto.');
-        reabrirConfig();
-      } catch (e) { bt.disabled = false; bt.textContent = 'Salvar'; B7.UI.toast((e && e.message) || 'Não foi possível salvar.', { tipo: 'erro' }); }
-    };
-    pintarTudo(); pintarLista(); pintarTemaPrev();
-  }
-
-  /* zzz163: escolher a cor direto na tela de Configurações, sem abrir a
-     janela — vale só para a pessoa, neste aparelho */
+  /* escolher a paleta direto na tela de Configurações — vale só para a pessoa, neste aparelho */
   function escolherRapido(id) {
-    const base = normalizar(efetiva());
     if (id === 'equipe') { guardarPessoal(null); aplicarSuave(efetiva()); return; }
-    const nova = Object.assign({}, base, { paleta: id, cor: id === 'custom' ? base.cor : '' });
-    meu = normalizar(nova);
+    meu = normalizar({ paleta: id });
     aplicarSuave(meu);
-    try { localStorage.setItem(CHAVE_EU, JSON.stringify(Object.assign({}, meu, { css: gerarCSS(meu) }))); } catch (e) {}
+    try { localStorage.setItem(CHAVE_EU, JSON.stringify(meu)); } catch (e) {}
   }
-  /* as bolinhas para a tela de Configurações */
+  /* os cartões de paleta para a tela de Configurações */
   function bolinhas() {
-    const atual = efetiva();
-    if (esp()) return PALETAS_ESP.map(p => ({ id: p.id, nome: p.nome, faixa: p.faixa, fundo: 'linear-gradient(135deg,' + p.faixa.join(',') + ')', on: paletaEsp(atual) === p.id }));
-    return PALETAS.map(p => ({ id: p.id, nome: p.nome, fundo: 'linear-gradient(135deg,' + p.l[0] + ',' + p.l[1] + ' 52%,' + p.l[2] + ')', on: atual.paleta === p.id }));
+    const atual = paleta(efetiva());
+    return PALETAS.map(p => ({ id: p.id, nome: p.nome, faixa: p.faixa, fundo: 'linear-gradient(135deg,' + p.faixa.join(',') + ')', on: atual === p.id }));
   }
 
   return { abrir, sincronizar, aplicar, escolherRapido, bolinhas, resumo, resumoPessoal, definirPaleta, rotuloPaleta,
-           paletaAtual: () => esp() ? paletaEsp(efetiva()) : efetiva().paleta, pessoal: () => meu, usarDoSistema: () => guardarPessoal(null),
-           _estacaoDe: estacaoDe, _gerarCSS: gerarCSS, _derivar: derivar, PALETAS };
+           paletaAtual: () => paleta(efetiva()), pessoal: () => meu, usarDoSistema: () => guardarPessoal(null), PALETAS };
 })();
 
 /* ------------------------------------------------- RESUMO DA SEMANA (IA) */
