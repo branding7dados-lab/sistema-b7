@@ -164,8 +164,8 @@ html[data-identidade="espectro"][data-theme="dark"] .fundo-modal{--veu:rgba(0,0,
 /* estado vazio: o símbolo novo no lugar da lâmpada antiga */
 html[data-identidade="espectro"] .estado-b7 .b7-marca{background-image:url('../assets/brand/espectro/simbolo.svg') !important;}
 
-/* rolagem fina, discreta */
-html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-3) 35%, transparent) transparent;}
+/* rolagem fina, discreta — "thin" também no Windows, que sem isso desenha a barra larga com setinhas */
+html[data-identidade="espectro"] *{scrollbar-color:color-mix(in srgb, var(--ink-3) 35%, transparent) transparent;scrollbar-width:thin;}
 
 /* ------------------------------------------------------------ casca: computador e tablet
    A barra lateral vira o MENU FLUTUANTE: 84 px, a 24 px das bordas, só ícones (o nome no
