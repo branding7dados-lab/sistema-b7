@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.20.2', versao: '5.20.2', em: '2026-11-27T00:30:00-03:00', rota: 'gravacao',
+    titulo: 'Zoom da prévia do roteiro livre',
+    itens: ['No editor de roteiros, o controle de zoom da prévia agora fica ao lado do botão da IA, e não mais escondido embaixo dele.'] },
   { id: 'v-5.20.1', versao: '5.20.1', em: '2026-11-26T23:30:00-03:00',
     titulo: 'Cartão da sua conta com o desenho novo',
     itens: ['Ao clicar no seu nome, no pé do menu, abre um cartão ao lado dele com o topo no degradê da marca, o status em pílulas coloridas e o "Meu dia" em três blocos com os números grandes.',
