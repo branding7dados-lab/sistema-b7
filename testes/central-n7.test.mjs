@@ -39,9 +39,9 @@ async function como(sistemas, cliente, falhar) {
 
 { const { ctx, pg, pedidos } = await como(['gestao', 'b7']);
   ok(pedidos.some(p => p.acao === 'meus_sistemas'), 'pergunta ao servidor quais sistemas a pessoa tem');
-  const href = await pg.$eval('#bt-central-n7', a => a.getAttribute('href')).catch(() => null);
-  ok(href === CENTRAL, 'dois sistemas: "Central" aparece no pé da barra, apontando para a Central do Núcleo 7');
-  ok(!(await pg.$eval('#bt-central-n7', a => a.target).catch(() => '')), 'abre na mesma aba');
+  /* 5.20.3: o atalho do pé da barra lateral saiu (pedido do Yury); a Central fica só no menu da conta */
+  ok((await pg.evaluate(() => B7.CentralN7.url())) === CENTRAL, 'dois sistemas: a Central aponta para a Central do Núcleo 7');
+  ok(!(await pg.$('#bt-central-n7')), 'o pé da barra lateral não tem mais o atalho "Central"');
   await pg.evaluate(() => { B7.Topo.pintarConta(); const b = document.querySelector('.tp-conta'); b && b.click(); }); await pg.waitForSelector('[data-conta="perfil"]', { timeout: 4000 }).catch(() => null);
   ok(!!(await pg.$('[data-conta="central"]')) && /Central dos sistemas/.test(await pg.$eval('[data-conta="central"]', e => e.innerText).catch(() => '')), 'menu da conta: item "Central dos sistemas"');
   await pg.keyboard.press('Escape'); await pg.waitForTimeout(200);
@@ -51,7 +51,7 @@ async function como(sistemas, cliente, falhar) {
   await pg.evaluate(() => B7.CentralN7.carregar()); await pg.waitForTimeout(200);
   ok(pedidos.length === antes, 'a resposta fica guardada (não pergunta a cada tela)');
   await pg.evaluate(() => B7.CentralN7.sair()); await pg.waitForTimeout(100);
-  ok(!(await pg.$('#bt-central-n7')), 'ao sair, a "Central" some');
+  ok(!(await pg.evaluate(() => B7.CentralN7.temCentral())), 'ao sair, a "Central" some');
   await ctx.close(); }
 
 { const { ctx, pg } = await como(['b7']);
