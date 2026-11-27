@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.22.0', versao: '5.22.0', em: '2026-11-27T12:00:00-03:00',
+    titulo: 'Campos, janelas e etiquetas no desenho da marca',
+    itens: ['Os nomes dos campos ficaram maiores e mais fáceis de ler. As janelas ganharam o título num cabeçalho, e as perguntas de apagar mostram um ícone de atenção, com o botão em vermelho claro.',
+      'As etiquetas de situação têm a bolinha da cor na frente ("Pronto para gravar" agora é verde), e as telas vazias ganharam um desenho novo.'] },
   { id: 'v-5.21.1', versao: '5.21.1', em: '2026-11-27T11:00:00-03:00',
     titulo: 'Telas com movimento',
     itens: ['O Panorama chega com os cartões subindo um depois do outro. Quando chega notificação nova, o sino balança e o número pula; os avisos entram pela direita.',

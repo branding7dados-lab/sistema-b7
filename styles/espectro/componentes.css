@@ -1,0 +1,52 @@
+/* Espectro — quadro "02 · Componentes" dos Fundamentos (5.22.0): as peças que aparecem em quase toda tela,
+   ajustadas ao desenho do quadro. Só aparência: mesmas classes, mesma marcação, nenhuma lógica muda.
+   Toda regra começa com html[data-identidade="espectro"]. Tokens do quadro "01 · Tokens" em styles/espectro.css. */
+
+/* ------------------------------------------------------------ CAMPO DE TEXTO
+   rótulo em cima, 13 px na cor do texto (sem caixa-alta espaçada); campo de 42 px com cantos de 14;
+   foco com borda Violeta de 2 px e anel a 18%; erro com borda vermelha de 2 px e a frase em vermelho. */
+html[data-identidade="espectro"] :is(label.rot, span.rot){font-size:13px;letter-spacing:0;text-transform:none;color:var(--ink);margin:14px 0 6px;}
+html[data-identidade="espectro"] :is(label.rot, span.rot):first-child{margin-top:0;}
+html[data-identidade="espectro"] .campo:focus{box-shadow:inset 0 0 0 1px var(--esp-v,#7328A5), 0 0 0 3px rgba(var(--esp-v-rgb,115,40,165),.18);}
+html[data-identidade="espectro"] :is(.campo.erro, .campo[aria-invalid="true"]){border-color:var(--erro);box-shadow:inset 0 0 0 1px var(--erro);}
+html[data-identidade="espectro"] :is(.campo.erro, .campo[aria-invalid="true"]) + :is(.erro, .ajuda.erro){font-size:12px;color:var(--erro);margin-top:6px;}
+
+/* ------------------------------------------------------------ BOTÕES
+   principal: pílula Violeta com o brilho (já em styles/espectro.css); contorno: branco com borda;
+   "Cancelar" de janela: só texto; Excluir: rosa claro com o texto vermelho. */
+html[data-identidade="espectro"] .b:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(var(--esp-v-rgb,115,40,165),.3);}
+html[data-identidade="espectro"] .b.perigo:not(.pri){background:var(--erro-bg);color:var(--erro);border-color:transparent;}
+
+/* ------------------------------------------------------------ JANELA (formulário)
+   título num cabeçalho com uma linha embaixo; o corpo abaixo; Cancelar só texto e o principal à direita. */
+@media (min-width:761px){
+  html[data-identidade="espectro"] .fundo-modal:not(.alerta):not(.tp-folha) .modal > h3:first-child{margin:-26px -26px 18px;padding:20px 26px;border-bottom:1px solid var(--borda);font-size:18px;text-align:left;}
+}
+html[data-identidade="espectro"] .fundo-modal:not(.alerta) .modal > .acoes .b:not(.pri):not(.contorno):not(.perigo){background:transparent;border-color:transparent;color:var(--ink-2);box-shadow:none;}
+html[data-identidade="espectro"] .fundo-modal:not(.alerta) .modal > .acoes .b:not(.pri):not(.contorno):not(.perigo):hover{background:var(--suave);color:var(--ink);}
+
+/* ------------------------------------------------------------ CONFIRMAR (janela de pergunta, .alerta)
+   Cancelar com contorno branco; quando apaga ou move para a lixeira, o botão é o rosa claro com texto vermelho
+   e um ícone de atenção num quadradinho vermelho aparece em cima do título. */
+html[data-identidade="espectro"] .fundo-modal.alerta .modal .acoes .b:not(.pri){background:var(--card);border:1px solid var(--borda);color:var(--ink);}
+html[data-identidade="espectro"] .fundo-modal.alerta .modal .acoes .b.pri.perigo{background:var(--erro-bg);color:var(--erro);box-shadow:none;border-color:transparent;}
+html[data-identidade="espectro"] .fundo-modal.alerta .modal:has(.b.perigo)::before{content:"";display:block;width:48px;height:48px;margin:0 auto 12px;border-radius:16px;
+  background:var(--erro-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23D63A3A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4 2.8 19.5h18.4z'/%3E%3Cpath d='M12 10v4.2'/%3E%3Ccircle cx='12' cy='17' r='.6' fill='%23D63A3A'/%3E%3C/svg%3E") center/24px no-repeat;}
+html[data-identidade="espectro"][data-theme="dark"] .fundo-modal.alerta .modal:has(.b.perigo)::before{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FF8A87' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4 2.8 19.5h18.4z'/%3E%3Cpath d='M12 10v4.2'/%3E%3Ccircle cx='12' cy='17' r='.6' fill='%23FF8A87'/%3E%3C/svg%3E");}
+
+/* ------------------------------------------------------------ ETIQUETA DE SITUAÇÃO
+   o quadro: Rascunho cinza, Pronto e Gravado verdes, Em edição Violeta, Ajuste pedido âmbar, Atrasado vermelho;
+   cada uma com a bolinha da cor na frente. */
+html[data-identidade="espectro"] .chip-status.pronto{background:var(--ok-bg);color:var(--ok);}
+html[data-identidade="espectro"] .chip-status{display:inline-flex;align-items:center;gap:6px;}
+html[data-identidade="espectro"] .chip-status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
+
+/* ------------------------------------------------------------ ESTADO VAZIO
+   a ilustração vira um círculo com o degradê claro da marca e o ícone em Violeta; título em 18 e a frase em 13. */
+html[data-identidade="espectro"] .estado-b7 .ilu{width:88px;height:88px;border-radius:50%;margin-bottom:14px;
+  background:radial-gradient(circle at 50% 50%, rgba(var(--esp-v-rgb,115,40,165),.14) 0 44%, transparent 45%), linear-gradient(135deg, rgba(var(--esp-m-rgb,224,47,117),.16), rgba(var(--esp-v-rgb,115,40,165),.18));}
+html[data-identidade="espectro"] .estado-b7 .ilu svg{width:30px;height:30px;stroke:var(--esp-v,#7328A5);}
+html[data-identidade="espectro"][data-theme="dark"] .estado-b7 .ilu svg{stroke:var(--acento);}
+html[data-identidade="espectro"] .estado-b7 b{font-size:18px;font-weight:400;letter-spacing:0;}
+html[data-identidade="espectro"] .estado-b7 p{font-size:13px;color:var(--ink-3);}
