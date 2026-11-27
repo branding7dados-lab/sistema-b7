@@ -25,6 +25,10 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.21.1', versao: '5.21.1', em: '2026-11-27T11:00:00-03:00',
+    titulo: 'Telas com movimento',
+    itens: ['O Panorama chega com os cartões subindo um depois do outro. Quando chega notificação nova, o sino balança e o número pula; os avisos entram pela direita.',
+      'No quadro, o cartão que você arrasta sai levantado e deixa só o contorno no lugar de onde saiu. As telas trocam o carregamento cinza pelo conteúdo com uma entrada suave, e no celular a folha "Mais" sobe de baixo.'] },
   { id: 'v-5.21.0', versao: '5.21.0', em: '2026-11-27T10:00:00-03:00',
     titulo: 'Entrada com movimento',
     itens: ['A tela de entrada chega peça por peça. Ao clicar em Entrar, o botão mostra três pontinhos enquanto confere e fica verde com um "ok" quando dá certo; o "Bem-vindo" entra na diagonal da marca.'] },

@@ -193,8 +193,11 @@ B7.Notif = (function () {
     } catch (e) {}
   }
 
+  let pintadas = null;   /* 5.21.1: quantas já estavam no sino — se subir, o sino balança e o número pula */
   function pintarBadge() {
     const carregando = naoLidas === null;
+    const subiu = !carregando && pintadas !== null && naoLidas > pintadas;
+    if (!carregando) pintadas = naoLidas;
     document.querySelectorAll('.sino').forEach(b => {
       b.classList.toggle('carregando', carregando);
       b.classList.toggle('tem', !carregando && naoLidas > 0);
@@ -208,6 +211,8 @@ B7.Notif = (function () {
       n.removeAttribute('aria-label');
       n.textContent = naoLidas > 99 ? '99+' : String(naoLidas);
       n.hidden = !naoLidas;
+      /* quadro "Aviso chegando" (Espectro): o sino balança e o número entra pulando (styles/espectro/movimento.css) */
+      if (subiu) { b.classList.remove('esp-toca'); void b.offsetWidth; b.classList.add('esp-toca'); clearTimeout(b._espToca); b._espToca = setTimeout(() => b.classList.remove('esp-toca'), 1400); }
     });
   }
 

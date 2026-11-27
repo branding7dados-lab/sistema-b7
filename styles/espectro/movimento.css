@@ -1,4 +1,4 @@
-/* Espectro — "Telas em movimento" do artefato (5.21.0 em diante). Cada bloco cita o quadro que segue.
+/* Espectro — "Telas em movimento" do artefato (5.21.0 login; 5.21.1 Panorama, aviso, folha Mais, quadro e esqueleto). Cada bloco cita o quadro que segue.
    Só movimento e aparência: as telas, os ids e a lógica são os mesmos. Com "reduzir movimento", nada anda.
    Toda regra começa com html[data-identidade="espectro"]. */
 
@@ -49,7 +49,70 @@ html[data-identidade="espectro"] .b7-abertura:not(.inicial) .ab-ola{animation:es
 @keyframes espLgCortinaEntra{from{clip-path:polygon(-40% 0,-40% 0,-80% 100%,-80% 100%)}to{clip-path:polygon(-40% 0,140% 0,100% 100%,-80% 100%)}}
 @keyframes espLgBemvindo{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
 
+/* ================================================================== PANORAMA ENTRANDO (quadro "Anim-Panorama", 9 s)
+   Os quatro cartões sobem 24 px e aparecem um depois do outro; a tabela e a coluna da direita chegam logo atrás.
+   Os números que contam a partir de zero, as linhas que entram da esquerda e as barras que crescem já estavam
+   no Panorama (js/panorama.js data-conta, styles/espectro/panorama.css). */
+/* só quando a tela abre (js/panorama.js põe .pan-entra no corpo); atualizar os dados não faz tudo chegar de novo */
+html[data-identidade="espectro"] .pan-corpo.pan-entra{animation:none;}
+html[data-identidade="espectro"] .pan-entra .pano-kpis .pano-kpi{animation:espCartaoSobe .7s cubic-bezier(.16,1,.3,1) both;}
+html[data-identidade="espectro"] .pan-entra .pano-kpis .pano-kpi:nth-child(2){animation-delay:.06s;}
+html[data-identidade="espectro"] .pan-entra .pano-kpis .pano-kpi:nth-child(3){animation-delay:.12s;}
+html[data-identidade="espectro"] .pan-entra .pano-kpis .pano-kpi:nth-child(4){animation-delay:.18s;}
+html[data-identidade="espectro"] .pan-entra .pano-grade > :not(.pano-lado),
+html[data-identidade="espectro"] .pan-entra .pano-lado > *{animation:espCartaoSobe .7s .2s cubic-bezier(.16,1,.3,1) both;}
+html[data-identidade="espectro"] .pan-entra .pano-lado > :nth-child(2){animation-delay:.28s;}
+@keyframes espCartaoSobe{from{opacity:0;transform:translateY(24px) scale(.98)}to{opacity:1;transform:none}}
+html.modo-leve[data-identidade="espectro"] .pan-entra :is(.pano-kpis .pano-kpi, .pano-grade > *, .pano-lado > *){animation:none !important;}
+
+/* ================================================================== AVISO CHEGANDO (quadro "Anim-Aviso", 6 s)
+   Chegou notificação nova: o sino balança (18°, −14°, 10°, −6°) e o número entra pulando (js/notificacoes.js,
+   .esp-toca). O aviso (toast) entra pela direita e sai pela direita no computador; a barrinha do tempo já existia. */
+html[data-identidade="espectro"] .sino.esp-toca svg{animation:espSino 1s ease both;transform-origin:50% 10%;}
+@keyframes espSino{0%{transform:none}12%{transform:rotate(18deg)}30%{transform:rotate(-14deg)}48%{transform:rotate(10deg)}66%{transform:rotate(-6deg)}84%,100%{transform:none}}
+html[data-identidade="espectro"] .sino.esp-toca .sino-n:not([hidden]){animation:espPula .45s .1s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes espPula{from{transform:scale(0)}to{transform:none}}
+@media (min-width:761px){
+  html[data-identidade="espectro"] .toast,
+  html[data-identidade="espectro"] .toast:not(.erro){animation:espAvisoEntra .55s cubic-bezier(.16,1,.3,1) both;}
+  html[data-identidade="espectro"] .toast.saindo{animation:espAvisoSai .35s cubic-bezier(.7,0,.84,0) forwards;}
+  html[data-identidade="espectro"] .toast.pulsa{animation:b7ToastPulsa .32s cubic-bezier(.2,.9,.3,1);}
+  @keyframes espAvisoEntra{from{opacity:0;transform:translateX(120%)}to{opacity:1;transform:none}}
+  @keyframes espAvisoSai{to{opacity:0;transform:translateX(120%)}}
+}
+
+/* ================================================================== FOLHA "MAIS" NO CELULAR (quadro "Anim-Celular", 7 s)
+   Tocou em "Mais": o botão aperta, o fundo escurece e a folha sobe de baixo com a curva da marca; ao fechar, desce. */
+@media (max-width:760px){
+  html[data-identidade="espectro"] .nav-inferior [data-inf]{transition:transform .12s cubic-bezier(.65,0,.35,1);}
+  html[data-identidade="espectro"] .nav-inferior [data-inf]:active{transform:scale(.92);}
+  html[data-identidade="espectro"] .fundo-modal.nm-folha{animation:espVeu .35s ease both;}
+  html[data-identidade="espectro"] .fundo-modal.nm-folha .modal{animation:espFolhaSobe .5s cubic-bezier(.16,1,.3,1) both;}
+  html[data-identidade="espectro"] .fundo-modal.nm-folha.saindo{animation:espVeuSai .3s ease forwards;}
+  html[data-identidade="espectro"] .fundo-modal.nm-folha.saindo .modal{animation:espFolhaDesce .3s cubic-bezier(.7,0,.84,0) forwards;}
+  @keyframes espVeu{from{background-color:transparent}}
+  @keyframes espVeuSai{to{background-color:transparent}}
+  @keyframes espFolhaSobe{from{transform:translate3d(0,100%,0)}to{transform:none}}
+  @keyframes espFolhaDesce{to{transform:translate3d(0,100%,0)}}
+}
+
+/* ================================================================== ARRASTAR CARTÃO NO QUADRO (quadro "Anim-Quadro", 6 s)
+   A cópia que segue o mouse (js/movimento.js, .b7-arrasto) sai levantada: borda violeta e a sombra grande do quadro.
+   No lugar de onde saiu fica só o contorno tracejado (o "fantasma"), e a coluna de destino já acende em violeta
+   (styles/espectro/producao.css). */
+html[data-identidade="espectro"] .b7-arrasto.kb-card{border-color:var(--esp-v,#7328A5) !important;box-shadow:0 24px 50px rgba(10,16,51,.25) !important;}
+html[data-identidade="espectro"] .kanban-tela .kb-card.arrastando{transform:none;background:transparent !important;border:1.5px dashed var(--esp-v,#7328A5);box-shadow:none;}
+html[data-identidade="espectro"] .kanban-tela .kb-card.arrastando > *{visibility:hidden;}
+html[data-identidade="espectro"][data-theme="dark"] .kanban-tela .kb-card.arrastando{border-color:#B57BE6;box-shadow:none;}
+
+/* ================================================================== ESQUELETO → CONTEÚDO (quadro "Anim-Carregando", 5 s)
+   O brilho do esqueleto já é o do quadro (styles/espectro/carregando.css). Quando os dados chegam, o conteúdo
+   que entra no lugar do esqueleto sobe 10 px e aparece (js/movimento.js põe .esp-chega e tira ao terminar). */
+html[data-identidade="espectro"] .esp-chega{animation:espChega .5s cubic-bezier(.16,1,.3,1) both;}
+@keyframes espChega{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
 @media (prefers-reduced-motion: reduce){
+  html[data-identidade="espectro"] :is(.pano-kpis .pano-kpi, .pano-grade > *, .pano-lado > *, .sino.esp-toca svg, .sino.esp-toca .sino-n, .toast, .fundo-modal.nm-folha, .fundo-modal.nm-folha .modal, .esp-chega){animation:none !important;}
   html[data-identidade="espectro"] .tela-login :is(.login-caixa, .login-caixa > *, .esp-login-logo, .esp-login-assinatura){animation:none !important;}
   html[data-identidade="espectro"] .b7-abertura:not(.inicial), html[data-identidade="espectro"] .b7-abertura:not(.inicial) .ab-ola{animation:none !important;}
 }

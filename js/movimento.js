@@ -810,5 +810,30 @@ window.B7 = window.B7 || {};
     el.addEventListener('touchend', fim, { passive: true });
     el.addEventListener('touchcancel', fim, { passive: true });
   }
-  B7.Movimento = { soltar, voarAbrindo: info => voarAbrindo(info), arrastoFisico, assentar, deslizar };
+  /* ===================================================================
+     ESQUELETO → CONTEÚDO (5.21.1, quadro "Esqueleto para conteúdo" das Telas em movimento, só no Espectro)
+     Quando o esqueleto cinza (.esqueleto-tela) sai de um lugar e o conteúdo de verdade entra no lugar dele,
+     o conteúdo chega subindo 10 px e aparecendo (classe .esp-chega, styles/espectro/movimento.css), em vez
+     de trocar de uma vez. Só olha o painel das telas; não muda nada do que é desenhado.
+     =================================================================== */
+  function ligarChegada() {
+    const raiz = painel();
+    if (!raiz || !window.MutationObserver || raiz._espChega) return;
+    raiz._espChega = true;
+    new MutationObserver(ms => {
+      if (reduz() || document.documentElement.dataset.identidade !== 'espectro') return;
+      ms.forEach(m => {
+        const saiu = [...m.removedNodes].some(n => n.nodeType === 1 && (n.classList.contains('esqueleto-tela') || (n.querySelector && n.querySelector(':scope > .esqueleto-tela'))));
+        if (!saiu) return;
+        [...m.addedNodes].forEach(n => {
+          if (n.nodeType !== 1 || n.classList.contains('esqueleto-tela') || n.querySelector('.esqueleto-tela')) return;
+          n.classList.add('esp-chega');
+          n.addEventListener('animationend', function fim(ev) { if (ev.target === n) { n.classList.remove('esp-chega'); n.removeEventListener('animationend', fim); } });
+        });
+      });
+    }).observe(raiz, { childList: true, subtree: true });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligarChegada); else ligarChegada();
+
+  B7.Movimento = { soltar, voarAbrindo: info => voarAbrindo(info), arrastoFisico, assentar, deslizar, ligarChegada };
 })();
