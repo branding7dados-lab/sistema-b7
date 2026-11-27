@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.22.1', versao: '5.22.1', em: '2026-11-27T13:00:00-03:00',
+    titulo: 'Portal do cliente no desenho da marca',
+    itens: ['No Portal do cliente, o topo mostra as iniciais da empresa num quadradinho, as abas num trilho só e o logo da Branding7. No celular, as abas mais usadas ficam numa barra embaixo: Início, Aprovar, Linha, Gravações e Mais.'] },
   { id: 'v-5.22.0', versao: '5.22.0', em: '2026-11-27T12:00:00-03:00',
     titulo: 'Campos, janelas e etiquetas no desenho da marca',
     itens: ['Os nomes dos campos ficaram maiores e mais fáceis de ler. As janelas ganharam o título num cabeçalho, e as perguntas de apagar mostram um ícone de atenção, com o botão em vermelho claro.',

@@ -97,7 +97,7 @@ await pg.evaluate(() => { document.querySelectorAll('.tela-login').forEach(e => 
 /* ---------------------------------------------------- Portal (pela Prévia do Portal, com a chave ligada) */
 await pg.evaluate(() => { location.hash = '#/previa/c1'; }); await pg.waitForTimeout(1500);
 const pt = await pg.evaluate(() => { const l = document.querySelector('.lateral'), a = document.querySelector('.nav > a.on'), cab = document.querySelector('.portal-home .ph-cab');
-  return { shell: document.body.dataset.shell, altura: l ? Math.round(l.getBoundingClientRect().height) : 0, ativa: a ? getComputedStyle(a).backgroundColor : '', faixa: cab ? getComputedStyle(cab).backgroundColor : '',
+  return { shell: document.body.dataset.shell, altura: l ? Math.round(l.getBoundingClientRect().height) : 0, ativa: a ? (getComputedStyle(a, '::after').content !== 'none' ? getComputedStyle(a, '::after').backgroundColor : getComputedStyle(a).backgroundColor) : ''   /* 5.22.1: a ativa é a pílula dentro do trilho (::after) */, faixa: cab ? getComputedStyle(cab).backgroundColor : '',
     botaoMenu: !!document.querySelector('.esp-alterna-menu') && getComputedStyle(document.querySelector('.esp-alterna-menu')).display }; });
 ok(pt.shell === 'portal' && pt.altura === 88 && pt.ativa === 'rgb(0, 21, 97)', 'Portal: a barra lateral vira o topo de 88 px com a aba ativa em Azul Matriz (' + JSON.stringify(pt) + ')');
 ok(pt.faixa === 'rgb(0, 21, 97)', 'Portal: a saudação vira a faixa em Azul Matriz');

@@ -183,6 +183,8 @@ B7.Portal = (function () {
       /* Deixa claro em que ambiente a pessoa está. Sem isso, o portal
          parecia uma versão reduzida do sistema interno. */
       '<div class="pt-marcador' + (previa ? ' previa' : '') + '">' +
+        /* 5.22.1: as iniciais do cliente num quadradinho (só o Espectro mostra; quadro "Portal-inicio") */
+        (emp ? '<span class="pt-marcador-av" aria-hidden="true" hidden>' + esc(B7.UI.iniciais(emp.nome)) + '</span>' : '') +
         '<span class="pt-marcador-rot">' + (previa ? 'PRÉVIA DO CLIENTE' : 'PORTAL DO CLIENTE') + '</span>' +
         (lista.length > 1
           ? '<select class="pt-marcador-sel" id="pt-empresa" aria-label="Empresa">' +
@@ -218,6 +220,19 @@ B7.Portal = (function () {
       bt.onclick = () => previa ? voltarAoAdmin() : B7.Auth.sair();   /* na conta de outro, sair = voltar */
       rodape.insertBefore(bt, rodape.firstChild);
     }
+
+    /* 5.22.1 quadro "Portal-celular": no celular, as quatro abas mais usadas numa barra embaixo e "Mais" abre o
+       menu de sempre (#abre-menu). Os mesmos destinos do menu (data-ir); só o Espectro mostra (componentes.css). */
+    const barraAntiga = document.getElementById('pt-barra');
+    if (barraAntiga) barraAntiga.remove();
+    const naBarra = [['', 'inicio', 'Início'], ['aprovacoes', 'aprovacoes', 'Aprovar'], ['minha-linha', 'linha', 'Linha'], ['minhas-gravacoes', 'gravacoes', 'Gravações']]
+      .filter(([secao]) => navVisivel(secao, emp));
+    const barra = document.createElement('nav');
+    barra.id = 'pt-barra'; barra.className = 'pt-barra'; barra.hidden = true; barra.setAttribute('aria-label', 'Atalhos do portal');
+    barra.innerHTML = naBarra.map(([secao, icone, texto]) => '<a data-ir="' + rota(secao) + '">' + ICONE[icone] + '<span>' + esc(texto) + '</span></a>').join('') +
+      '<button type="button" class="pt-barra-mais">' + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>' + '<span>Mais</span></button>';
+    barra.querySelector('.pt-barra-mais').onclick = e => { e.stopPropagation(); const m = document.getElementById('abre-menu'); if (m) m.click(); };   /* o clique não sobe: o documento fecharia a gaveta */
+    document.body.appendChild(barra);
 
     document.body.classList.add('modo-portal');
     document.body.classList.toggle('modo-previa', !!previa);
@@ -676,7 +691,7 @@ B7.Portal = (function () {
      AUXILIARES
      ================================================================= */
   function marcarNav(destino) {
-    document.querySelectorAll('.nav a').forEach(a =>
+    document.querySelectorAll('.nav a, .pt-barra a').forEach(a =>
       a.classList.toggle('on', a.dataset.ir === destino));
     /* a trilha luminosa só anda quando alguém manda — sem isto ela
        ficava parada no Início enquanto a tela trocava */
