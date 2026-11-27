@@ -2,8 +2,8 @@
    CENTRAL DOS SISTEMAS DENTRO DO B7 (4.91.0)
 
    Quem trabalha em mais de um sistema da casa (Núcleo 7, Disparos,
-   Connect Sev, TURBIC, B7) vê "Central" no pé da barra lateral e no
-   menu da conta: leva para a Central do Núcleo 7, na mesma aba. Quem
+   Connect Sev, TURBIC, B7) vê "Central" no menu da conta (até a
+   5.20.2 também no pé da barra lateral): leva para a Central do Núcleo 7, na mesma aba. Quem
    tem só o B7 não vê nada (a regra é a mesma da Central de lá).
 
    Quais sistemas a pessoa tem vem do servidor (n7-clientes, acao
@@ -37,20 +37,11 @@ B7.CentralN7 = (function () {
     pintar();
   }
   const ICONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg>';
+  /* 5.20.3: o atalho "Central" no pé da barra lateral saiu a pedido do Yury (ocupava o pé do menu no computador).
+     A Central continua no menu da conta (js/topo.js); aqui só some com um atalho que tenha ficado na tela. */
   function pintar() {
-    const pe = document.querySelector('.pe-lateral');
-    let bt = document.getElementById('bt-central-n7');
-    if (!pe) return;
-    if (!temCentral()) { if (bt) bt.remove(); return; }
-    if (!bt) {
-      bt = document.createElement('a');
-      bt.id = 'bt-central-n7'; bt.className = 'bt-central-n7';
-      bt.innerHTML = ICONE + '<span><b>Central</b><small>os seus sistemas</small></span>';
-      bt.setAttribute('aria-label', 'Central dos sistemas (Núcleo 7)');
-      bt.title = 'Central dos sistemas';
-      pe.insertBefore(bt, pe.firstChild);
-    }
-    bt.href = estado.central;
+    const bt = document.getElementById('bt-central-n7');
+    if (bt) bt.remove();
   }
   function sair() { estado = null; try { sessionStorage.removeItem(CHAVE); } catch (e) {} pintar(); }
 
