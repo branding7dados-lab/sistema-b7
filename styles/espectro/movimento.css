@@ -1,0 +1,55 @@
+/* Espectro — "Telas em movimento" do artefato (5.21.0 em diante). Cada bloco cita o quadro que segue.
+   Só movimento e aparência: as telas, os ids e a lógica são os mesmos. Com "reduzir movimento", nada anda.
+   Toda regra começa com html[data-identidade="espectro"]. */
+
+/* ================================================================== LOGIN EM MOVIMENTO (quadro "Anim-Login", 11 s)
+   1) o cartão chega: cada peça sobe 18 px e aparece, uma depois da outra (b7rise .7 s, +80 ms cada);
+   2) o campo da vez acende em violeta (já é o :focus do login);
+   3) Entrar: aperta (.96), escurece para o Roxo Neural com três pontos enquanto confere (js/auth.js, .esp-entrando);
+   4) entrou: fica verde com o "ok" (.esp-ok) e a cortina "Bem-vindo, <nome>" entra na diagonal de 60°. */
+html[data-identidade="espectro"] .tela-login .login-caixa > *{animation:espLgSobe .7s cubic-bezier(.16,1,.3,1) both;}
+html[data-identidade="espectro"] .tela-login .login-caixa > :nth-child(1){animation-delay:.12s;}
+html[data-identidade="espectro"] .tela-login .login-caixa > :nth-child(2){animation-delay:.2s;}
+html[data-identidade="espectro"] .tela-login .login-caixa > :nth-child(3){animation-delay:.28s;}
+html[data-identidade="espectro"] .tela-login .login-caixa > :nth-child(4){animation-delay:.36s;}
+html[data-identidade="espectro"] .tela-login .login-caixa > :nth-child(5){animation-delay:.42s;}
+html[data-identidade="espectro"] .tela-login .login-caixa > :nth-child(6){animation-delay:.48s;}
+html[data-identidade="espectro"] .tela-login .login-caixa > :nth-child(7){animation-delay:.54s;}
+html[data-identidade="espectro"] .tela-login .login-caixa > :nth-child(n+8){animation-delay:.6s;}
+html[data-identidade="espectro"] .tela-login .login-caixa{animation:espLgCartao .8s cubic-bezier(.16,1,.3,1) both;}
+@keyframes espLgSobe{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes espLgCartao{from{opacity:0;transform:translateY(24px) scale(.98)}to{opacity:1;transform:none}}
+/* a assinatura e o logo do canto chegam depois do cartão */
+html[data-identidade="espectro"] .tela-login :is(.esp-login-logo, .esp-login-assinatura){animation:espLgFade .8s .5s both;}
+@keyframes espLgFade{from{opacity:0}to{opacity:1}}
+
+/* Entrar: aperta ao clicar; conferindo = Roxo Neural com os três pontos brancos no lugar do texto */
+html[data-identidade="espectro"] .login-caixa .login-entrar{position:relative;transition:transform .12s cubic-bezier(.65,0,.35,1), background .3s, box-shadow .3s;}
+html[data-identidade="espectro"] .login-caixa .login-entrar:active{transform:scale(.96);}
+html[data-identidade="espectro"] .login-caixa .login-entrar.esp-entrando{background:var(--esp-r,#520083) !important;box-shadow:none !important;color:transparent !important;opacity:1;}
+html[data-identidade="espectro"] .login-caixa .login-entrar.esp-entrando::after{content:"";position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;
+  background:#fff;box-shadow:-14px 0 0 rgba(255,255,255,.5), 14px 0 0 rgba(255,255,255,.5);animation:espLgPontos .8s ease-in-out infinite;}
+@keyframes espLgPontos{
+  0%,100%{box-shadow:-14px 0 0 #fff, 14px 0 0 rgba(255,255,255,.35);background:rgba(255,255,255,.6);}
+  33%{box-shadow:-14px 0 0 rgba(255,255,255,.35), 14px 0 0 rgba(255,255,255,.6);background:#fff;}
+  66%{box-shadow:-14px 0 0 rgba(255,255,255,.6), 14px 0 0 #fff;background:rgba(255,255,255,.35);}}
+/* entrou: verde com o "ok" que cresce */
+html[data-identidade="espectro"] .login-caixa .login-entrar.esp-ok{background:#13855A !important;box-shadow:0 16px 40px rgba(19,133,90,.4) !important;color:transparent !important;opacity:1;}
+html[data-identidade="espectro"] .login-caixa .login-entrar.esp-ok::after{content:"";position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;background:#fff;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/contain no-repeat;
+  animation:espLgOk .4s cubic-bezier(.34,1.56,.64,1) both;}
+@keyframes espLgOk{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:none}}
+
+/* a cortina entre o login e o sistema (.b7-abertura sem .inicial, js/app.js abrirCortina "Bem-vindo, <nome>") entra
+   na diagonal de 60° do quadro, por cima do login, e o "Bem-vindo" cresce no meio. O fundo e a peça de carregamento
+   são os do carregamento escolhido (styles/espectro/aberturas.css); a saída continua a de sempre. */
+html[data-identidade="espectro"] .b7-abertura:not(.inicial):not(.saindo){animation:espLgCortinaEntra .6s cubic-bezier(.7,0,.2,1) both;}
+html[data-identidade="espectro"] .b7-abertura:not(.inicial) .ab-ola{animation:espLgBemvindo .6s .3s cubic-bezier(.16,1,.3,1) both;}
+@keyframes espLgCortinaEntra{from{clip-path:polygon(-40% 0,-40% 0,-80% 100%,-80% 100%)}to{clip-path:polygon(-40% 0,140% 0,100% 100%,-80% 100%)}}
+@keyframes espLgBemvindo{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+
+@media (prefers-reduced-motion: reduce){
+  html[data-identidade="espectro"] .tela-login :is(.login-caixa, .login-caixa > *, .esp-login-logo, .esp-login-assinatura){animation:none !important;}
+  html[data-identidade="espectro"] .b7-abertura:not(.inicial), html[data-identidade="espectro"] .b7-abertura:not(.inicial) .ab-ola{animation:none !important;}
+}

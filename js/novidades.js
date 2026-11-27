@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.21.0', versao: '5.21.0', em: '2026-11-27T10:00:00-03:00',
+    titulo: 'Entrada com movimento',
+    itens: ['A tela de entrada chega peça por peça. Ao clicar em Entrar, o botão mostra três pontinhos enquanto confere e fica verde com um "ok" quando dá certo; o "Bem-vindo" entra na diagonal da marca.'] },
   { id: 'v-5.20.3', versao: '5.20.3', em: '2026-11-27T09:00:00-03:00',
     titulo: 'Menu lateral mais limpo e cenas com mais espaço',
     itens: ['O atalho "Central" saiu do pé do menu lateral. Quem usa outros sistemas da casa continua achando a Central no menu da conta.',

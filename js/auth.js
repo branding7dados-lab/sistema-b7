@@ -24,7 +24,7 @@ B7.Auth = (function () {
        3.0.0 → 3.0.1  correção ou ajuste
      A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
      programa do Windows. O aviso de atualização só compara se mudou. */
-  const VERSAO = '5.20.3';
+  const VERSAO = '5.21.0';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -483,6 +483,17 @@ B7.Auth = (function () {
         voltar: u => { tela.remove(); const t = telaLogin(); const c = t.querySelector('#lg-user'); if (u && c) { c.value = u; setTimeout(() => t.querySelector('#lg-senha').focus(), 80); } } });
     };
 
+    /* 5.21.0 quadro "Login em movimento" (Telas em movimento): no Espectro, o Entrar escurece com três pontos
+       enquanto confere e fica verde com o "ok" quando entra; meio segundo depois segue o fim() de sempre (a cortina
+       "Bem-vindo, <nome>" do js/app.js entra na diagonal da marca, styles/espectro/movimento.css). Só aparência. */
+    const espMov = !!(B7.Identidade && B7.Identidade.ligada()) && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const entrando = liga => { if (!espMov) return; botao.classList.toggle('esp-entrando', liga); botao.setAttribute('aria-busy', liga ? 'true' : 'false'); };
+    const comCortina = depois => {
+      if (!espMov || !botao.isConnected) return depois();
+      botao.classList.remove('esp-entrando'); botao.classList.add('esp-ok'); botao.textContent = 'Pronto';
+      setTimeout(depois, 450);
+    };
+
     const fim = () => {
       tela.remove();
       document.body.classList.remove('sem-sessao');
@@ -492,7 +503,7 @@ B7.Auth = (function () {
     /* 4.90.0: veio do Núcleo 7 e a conta tem 2 etapas: já abre no código */
     if (op.etapa2 && B7.Seguranca) {
       B7.Seguranca.passoLogin(form, op.etapa2, { username: op.etapa2.username || '',
-        concluir: async r2 => { await concluirLogin(r2); fim(); },
+        concluir: async r2 => { await concluirLogin(r2); comCortina(fim); },
         voltar: () => { tela.remove(); telaLogin(); } });
       return tela;
     }
@@ -506,6 +517,7 @@ B7.Auth = (function () {
       erro.textContent = '';
       botao.disabled = true;
       botao.textContent = 'Entrando…';
+      entrando(true);
 
       try {
         const res = await entrar(u, s);
@@ -513,12 +525,13 @@ B7.Auth = (function () {
         campoSenha.value = '';
         if (res && res.etapa2 && B7.Seguranca) {
           B7.Seguranca.passoLogin(form, res.etapa2, { username: u,
-            concluir: async r2 => { await concluirLogin(r2); fim(); },
+            concluir: async r2 => { await concluirLogin(r2); comCortina(fim); },
             voltar: () => { tela.remove(); telaLogin(); } });
           return;
         }
-        fim();
+        comCortina(fim);
       } catch (ex) {
+        entrando(false);
         botao.disabled = false;
         botao.textContent = 'Entrar';
         erro.textContent = ex.message || 'Não foi possível entrar.';
