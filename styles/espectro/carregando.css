@@ -36,10 +36,6 @@ html[data-identidade="espectro"] .b7-load .simbolo::before{inset:0;background:va
 html[data-identidade="espectro"] .b7-load .txt{font-size:13.5px;color:var(--ink-3);}
 
 /* ------------------------------------------------------------------ 02 · FAIXA 60° (.barra-load) */
-html[data-identidade="espectro"] .barra-load{width:220px;height:8px;border-radius:8px;background:var(--esq-1);position:relative;overflow:hidden;}
-html[data-identidade="espectro"] .barra-load i{position:absolute;inset:0;width:40%;height:100%;border-radius:8px;
-  background:repeating-linear-gradient(120deg, var(--esp-v,#7328A5) 0 10px, var(--esp-m,#E02F75) 10px 20px);animation:espFaixa 1.5s cubic-bezier(.6,0,.4,1) infinite;}
-@keyframes espFaixa{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
 
 /* ------------------------------------------------------------------ 03 · TRÊS PONTOS (.b7-spin, dentro dos botões) */
 html[data-identidade="espectro"] .b7-spin{display:inline-flex;align-items:center;gap:calc(var(--b7-spin) * .19);width:auto;height:var(--b7-spin);vertical-align:-2px;}
@@ -71,7 +67,6 @@ html[data-identidade="espectro"] .hj-carregando span{border:0;border-radius:50%;
 @media (prefers-reduced-motion: reduce){
   html[data-identidade="espectro"] :is(.esqueleto-tela .esq, .esqueleto)::after{animation:none;opacity:0;}
   html[data-identidade="espectro"] .b7-load .simbolo::before{animation:none;opacity:1;}
-  html[data-identidade="espectro"] .barra-load i{animation:none;transform:translateX(75%);}
   html[data-identidade="espectro"] .b7-spin i{animation:none !important;opacity:.8 !important;}
   html[data-identidade="espectro"] .carregando:not(.b)::after, html[data-identidade="espectro"] .hj-carregando span{animation-duration:3s;}
   html[data-identidade="espectro"] :is(.b.carregando, .b[aria-busy="true"])::after{animation:none !important;}

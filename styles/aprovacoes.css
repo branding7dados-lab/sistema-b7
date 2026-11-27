@@ -39,8 +39,6 @@
 .ap-tx{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .ap-tx b{font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ap-tx small{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ap-cenas,.ap-resposta{display:flex;flex-direction:column;gap:1px;font-size:12px;color:var(--ink-3);}
-.ap-cenas b,.ap-resposta b{font-size:13px;color:var(--ink-2);font-weight:600;}
 .ap-acao{font-size:12px;color:var(--ink-3);text-align:right;}
 
 /* ---- detalhe ---- */
@@ -103,11 +101,6 @@
 .cp-ap.ambar b{color:var(--ambar);} .cp-ap.erro b{color:var(--erro);} .cp-ap.ok b{color:var(--ok);}
 
 /* ---- kanban ---- */
-.kb-aprov{display:inline-block;margin:6px 0 2px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
-.kb-aprov.pendente,.kb-aprov.parcial{background:var(--acento-suave);color:var(--acento);}
-.kb-aprov.aprovado{background:var(--ok-bg);color:var(--ok);} .kb-aprov.ajustes{background:var(--ambar-bg);color:var(--ambar);}
-.kb-aprov.recusado{background:var(--erro-bg);color:var(--erro);} .kb-aprov.substituido{background:var(--suave);color:var(--ink-4);}
-.kb-trava{font-size:11px;margin-left:6px;opacity:.7;}
 .kd-vinculo{flex-wrap:wrap;gap:8px;}
 
 /* ---- sino ---- (o painel está em "PAINEL DE NOTIFICAÇÕES (zzz11)", no fim) */
@@ -123,7 +116,6 @@
 .modal .op-mini{margin:10px 0 4px;width:100%;box-sizing:border-box;}
 .b.pri.perigo{background:var(--erro);box-shadow:none;} .b.pri.perigo:hover{background:var(--erro);color:#fff;filter:brightness(1.08);}
 .ap-bloco.anulada{border:1px dashed var(--borda-forte);background:var(--suave);}
-
 
 /* =====================================================================
    APROVAÇÕES — acabamento e movimento (pacote zzx, 03/10)
@@ -145,14 +137,9 @@
 .ap-item.sit-aguardando{--ap-cor:var(--acento);} .ap-item.sit-ajustes{--ap-cor:var(--ambar);} .ap-item.sit-recusado{--ap-cor:var(--erro);}
 .ap-item.sit-aprovado{--ap-cor:var(--ok);} .ap-item.sit-substituido,.ap-item.sit-cancelado{--ap-cor:var(--ink-4);}
 .ap-item:active{transform:scale(.985);}
-.ap-barra{display:block;position:relative;height:4px;margin-top:5px;border-radius:4px;background:var(--suave);overflow:hidden;}
-.ap-barra:after{content:"";position:absolute;inset:0;width:var(--p,0%);border-radius:inherit;
-  background:linear-gradient(90deg, var(--acento), var(--magenta, var(--acento)));transform-origin:0 50%;animation:apBarra .7s cubic-bezier(.2,.8,.2,1) both;
-  animation-delay:calc(var(--i, 0) * 45ms + .15s);}
-.ap-item.sit-aprovado .ap-barra:after{background:var(--ok);}
 .ap-item.sit-aguardando .ap-sit:before{animation:apPisca 1.8s ease-in-out infinite;}
 @keyframes apEntra{from{opacity:0;transform:translate3d(0,10px,0) scale(.985)}to{opacity:1;transform:none}}
-@keyframes apBarra{from{transform:scaleX(0)}to{transform:none}}
+
 @keyframes apPisca{50%{opacity:.25}}
 
 @media (max-width:760px){
@@ -183,17 +170,12 @@
   .ap-tx{grid-column:2 / -1;grid-row:1;}
   .ap-tx b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:14.5px;line-height:1.3;}
   .ap-sit{grid-column:2;grid-row:2;justify-self:start;font-size:10px;padding:4px 9px;}
-  .ap-resposta{grid-column:3;grid-row:2;align-items:flex-end;text-align:right;}
-  .ap-resposta b{font-size:12px;} .ap-resposta span{font-size:11px;}
-  .ap-cenas{grid-column:2 / -1;grid-row:3;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:0 6px;}
-  .ap-cenas:empty{display:none;}
-  .ap-cenas .ap-barra{flex:1 0 100%;margin-top:4px;}
   .ap-acao{grid-column:2 / -1;grid-row:4;text-align:left;font-size:11.5px;color:var(--ink-4);display:flex;align-items:center;gap:6px;}
   .ap-acao:empty{display:none;}
   .ap-acao:before{content:"→";color:var(--ap-cor, var(--ink-4));font-weight:700;}
 }
 @media (prefers-reduced-motion:reduce){
-  .ap-item,.ap-barra:after,.ap-item.sit-aguardando .ap-sit:before{animation:none !important;}
+  .ap-item,.ap-item.sit-aguardando .ap-sit:before{animation:none !important;}
 }
 
 /* =====================================================================

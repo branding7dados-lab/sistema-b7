@@ -37,14 +37,9 @@ html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor i{display:block;
 html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor i svg{display:none;}
 /* a paleta da casa é o próprio Espectro: as cinco cores da marca em faixas */
 html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor[data-cor="b7"] i{background:linear-gradient(90deg,#001561 0 20%,var(--esp-r,#520083) 20% 40%,var(--esp-v,#7328A5) 40% 60%,var(--esp-m,#E02F75) 60% 80%,#FF5A57 80% 100%) !important;}
-html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor-nome{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;font-size:14px;line-height:20px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor.on .cfg-cor-nome::after{content:"";flex:none;width:20px;height:20px;background:var(--esp-v,#7328A5);
-  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8 12.3l2.8 2.8L16.5 9'/%3E%3C/svg%3E") center/contain no-repeat;
-          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8 12.3l2.8 2.8L16.5 9'/%3E%3C/svg%3E") center/contain no-repeat;}
 html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cores-pe{margin-top:14px;}
 html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-g-paleta .cfg-cor{background:rgba(255,255,255,.04);}
 html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-g-paleta .cfg-cor.on{border-color:var(--acento);}
-html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-g-paleta .cfg-cor.on .cfg-cor-nome::after{background:var(--acento);}
 
 /* ---------------------------------------------------------------- Senha e segurança
    Quadro Config-senha: cartão "Senha" com os três campos lado a lado (rótulo 13 #3D4466 a 6px do campo de 44px),
@@ -148,7 +143,6 @@ html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 .cfg-g-app .cfg-list
   html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor{padding:10px;border-radius:18px;}
   html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor.on{padding:9px;}
   html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor i{height:36px;border-radius:12px;}
-  html[data-identidade="espectro"] .cfg-v2 .cfg-g-paleta .cfg-cor-nome{font-size:13px;margin-top:8px;}
   html[data-identidade="espectro"] .cfg-meu-perfil .pf-senhas{grid-template-columns:minmax(0,1fr);gap:12px;}
   html[data-identidade="espectro"] .cfg-meu-perfil .seg-op{gap:14px;}
   html[data-identidade="espectro"] .cfg-meu-perfil .pf-avisos .pf-grupo{border-radius:22px;}

@@ -337,17 +337,6 @@ html body.modo-previa-usuario #app{margin-top:var(--faixa-h, 44px);
   height:calc(100vh - var(--faixa-h, 44px));height:calc(100dvh - var(--faixa-h, 44px));}
 
 /* escolha entre só visualizar e entrar na conta */
-.vc-opcoes{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
-.vc-opcao{display:flex;flex-direction:column;gap:4px;text-align:left;padding:14px 16px;border-radius:var(--r);
-  border:1px solid var(--borda);background:var(--card);font:inherit;color:var(--ink);cursor:pointer;transition:var(--t);}
-.vc-opcao b{font-size:14px;font-weight:700;}
-.vc-opcao small{font-size:12.5px;line-height:1.45;color:var(--ink-3);}
-.vc-opcao:hover{border-color:var(--borda-forte);background:var(--suave);}
-.vc-opcao.forte{border-color:var(--ambar);background:var(--ambar-bg);}
-.vc-opcao.forte b{color:var(--ambar);}
-.vc-opcao.forte:hover{filter:brightness(.98);}
-.vc-opcao:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
-.vc-opcao:disabled{opacity:.6;cursor:progress;}
 
 .bt-recolher{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;
   border-radius:10px;color:rgba(255,255,255,.45);font-size:12px;transition:var(--t);}
@@ -417,9 +406,6 @@ body.recolhida .bt-recolher span{display:none;}
   color:var(--ink-3);transition:var(--t);flex:none;font-size:13px;font-weight:700;}
 .ico:hover{background:var(--suave);color:var(--acento);}
 .ico.perigo:hover{background:var(--erro-bg);color:var(--erro);}
-[data-tema] .ic-lua{display:none;}
-[data-theme="dark"] [data-tema] .ic-sol{display:none;}
-[data-theme="dark"] [data-tema] .ic-lua{display:block;}
 .ico svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
 
 /* -------------------------------------------------------- autosave */
@@ -550,7 +536,6 @@ select.campo{appearance:none;cursor:pointer;
   display:block;}
 
 .avatar.p{width:30px;height:30px;border-radius:9px;font-size:11px;}
-
 
 /* -------------------------------------------------- upload de logo */
 .upload-logo{display:flex;align-items:center;gap:14px;border:1.5px dashed var(--borda-forte);
@@ -858,15 +843,11 @@ select.campo{appearance:none;cursor:pointer;
 .b7-load .txt{font-size:13.5px;color:var(--ink-3);letter-spacing:.01em;z-index:1;text-align:center;}
 .b7-load .txt small{display:block;font-size:12px;color:var(--ink-4);margin-top:6px;}
 /* barra indeterminada: mostra que algo está acontecendo, sem prometer % */
-.b7-load .barra-load{width:180px;height:3px;border-radius:2px;background:var(--suave);
-  overflow:hidden;z-index:1;}
-.b7-load .barra-load i{display:block;width:40%;height:100%;border-radius:2px;
-  background:var(--grad);animation:b7corre 1.3s ease-in-out infinite;}
 @keyframes b7Respira{0%,100%{opacity:.62}50%{opacity:1}}
 @keyframes b7gira{to{transform:rotate(360deg)}}
-@keyframes b7corre{0%{transform:translateX(-110%)}100%{transform:translateX(360%)}}
+
 @media (prefers-reduced-motion:reduce){
-  .b7-load .simbolo:before,.b7-load .barra-load i{animation:none;}
+  .b7-load .simbolo:before{animation:none;}
   /* o anel ainda gira (é a informação "está carregando"), só mais devagar */
   .b7-load .simbolo:after{animation-duration:2.4s !important;animation-iteration-count:infinite !important;}
 }
@@ -878,9 +859,6 @@ select.campo{appearance:none;cursor:pointer;
 /* ---- SPINNER DE AÇÃO (dentro de botão / controle) ----
    Círculo sempre quadrado (aspect-ratio + flex:none), sem mudar a largura
    do botão: o texto fica transparente e o círculo vai por cima. */
-.b7-gira{display:inline-block;flex:none;box-sizing:border-box;width:16px;height:16px;aspect-ratio:1;
-  border-radius:50%;border:2px solid currentColor;border-right-color:transparent;
-  animation:b7gira .7s linear infinite;vertical-align:-3px;}
 .b.carregando,.b[aria-busy="true"]{position:relative;color:transparent !important;pointer-events:none;}
 .b[aria-busy="true"]:disabled{opacity:1;cursor:progress;}   /* ocupado não é "desligado" */
 .b.carregando > *,.b[aria-busy="true"] > *{visibility:hidden;}
@@ -889,7 +867,7 @@ select.campo{appearance:none;cursor:pointer;
   border:2px solid var(--ink-3);border-right-color:transparent;animation:b7gira .7s linear infinite;}
 .b.pri.carregando:after,.b.pri[aria-busy="true"]:after{border-color:#fff;border-right-color:transparent;}
 @media (prefers-reduced-motion:reduce){
-  .b7-gira,.b.carregando:after,.b[aria-busy="true"]:after{animation-duration:1.6s !important;animation-iteration-count:infinite !important;}
+  .b.carregando:after,.b[aria-busy="true"]:after{animation-duration:1.6s !important;animation-iteration-count:infinite !important;}
 }
 
 /* ---- B7 SPOTLIGHT: brilho radial seguindo o cursor ----
@@ -964,15 +942,6 @@ select.campo{appearance:none;cursor:pointer;
 /* =====================================================================
    CONFIGURAÇÕES
    ===================================================================== */
-.config-secao{background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);
-  padding:20px;margin-bottom:14px;}
-.config-secao h3{font-family:'B7 Titulo';font-size:14px;font-weight:800;letter-spacing:.02em;margin-bottom:4px;}
-.config-secao .desc{font-size:12.5px;color:var(--ink-3);margin-bottom:16px;}
-.config-linha{display:flex;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--borda);}
-.config-linha:first-of-type{border-top:0;}
-.config-linha .tx{flex:1;min-width:0;}
-.config-linha .tx b{display:block;font-size:13.5px;font-weight:600;}
-.config-linha .tx small{font-size:12px;color:var(--ink-3);}
 
 .opcoes{display:inline-flex;gap:4px;background:var(--suave);padding:4px;border-radius:11px;}
 .opcoes button{font-size:12.5px;font-weight:600;color:var(--ink-3);padding:7px 13px;border-radius:8px;
@@ -1109,8 +1078,7 @@ button.chip-revisao:hover{filter:brightness(.96);}
 /* cards e itens de lista: elevação em vez de salto. Sem will-change:
    ele deixava CADA card numa camada de GPU própria o tempo todo (centenas
    no Kanban e no Calendário) — a transição funciona igual sem ele. */
-.card-cliente,.card-gravacao,.lu-item,.ssl-cliente,.kb-card,
-.cp-num,.destaque-grav{
+.card-cliente,.card-gravacao,.ssl-cliente,.kb-card,.cp-num,.destaque-grav{
   transition:transform var(--t-rapido) var(--curva-toque),
              box-shadow var(--t-medio) var(--curva-toque),
              border-color var(--t-medio);
@@ -1129,7 +1097,7 @@ button.chip-revisao:hover{filter:brightness(.96);}
 /* modais: ver "SISTEMA DE MOVIMENTO" no fim do arquivo */
 
 /* trocas de aba e chips */
-.aba,.chip-filtro,.seg-vista button,.seg-linha button{
+.aba,.seg-vista button,.seg-linha button{
   transition:background var(--t-rapido), color var(--t-rapido),
              box-shadow var(--t-medio);}
 
@@ -1150,7 +1118,6 @@ button.chip-revisao:hover{filter:brightness(.96);}
     scroll-behavior:auto !important;
   }
 }
-
 
 /* =====================================================================
    ANTES DE SABER QUEM É
@@ -1184,10 +1151,9 @@ body.apurando #app{visibility:hidden;}
   .secao-topo>.b,.barra-filtros>.b{flex:1 1 auto;justify-content:center;}
   .secao-topo .espaco{flex:1 0 100%;height:0;}
   /* abas e filtros rolam na horizontal em vez de quebrar ou estourar */
-  .abas-cliente,.filtro,.opcoes,.seg-vista,.seg-linha,.ln-abas,.ap-abas,.abas-le{
+  .abas-cliente,.filtro,.opcoes,.seg-vista,.seg-linha,.ap-abas{
     max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;}
-  .abas-cliente::-webkit-scrollbar,.filtro::-webkit-scrollbar,.opcoes::-webkit-scrollbar,
-  .seg-vista::-webkit-scrollbar,.ln-abas::-webkit-scrollbar,.ap-abas::-webkit-scrollbar{display:none;}
+  .abas-cliente::-webkit-scrollbar,.filtro::-webkit-scrollbar,.opcoes::-webkit-scrollbar,.seg-vista::-webkit-scrollbar,.ap-abas::-webkit-scrollbar{display:none;}
   .abas-cliente button,.filtro button,.opcoes button{flex:none;}
   /* tabelas: rolam dentro do próprio bloco, nunca a página */
   .tabela-rolavel,table{max-width:100%;}
@@ -1206,16 +1172,15 @@ body.apurando #app{visibility:hidden;}
   /* toda grade vira uma coluna — minmax(0,1fr), e não 1fr: com 1fr a
      coluna nunca fica menor que o conteúdo, e um título sem quebra
      empurrava o card para fora da tela */
-  .grade,.grade-clientes,.grade-formatos,.pt-grade,.ssl-grade,
-  .lista-clientes,.cp-numeros,.esq-grade{grid-template-columns:minmax(0,1fr) !important;}
-  .grade>*,.grade-clientes>*,.grade-formatos>*,.pt-grade>*,.ssl-grade>*,.lista-clientes>*{min-width:0;max-width:100%;}
+  .grade,.grade-clientes,.grade-formatos,.pt-grade,.ssl-grade,.esq-grade{grid-template-columns:minmax(0,1fr) !important;}
+  .grade>*,.grade-clientes>*,.grade-formatos>*,.pt-grade>*,.ssl-grade>*{min-width:0;max-width:100%;}
 
   /* linhas de dois campos empilham */
   .linha{grid-template-columns:1fr !important;}
 
   /* tabelas viram cartões legíveis */
-  .kb-th,.tabela-cab{display:none;}
-  .kb-tr,.tabela-linha{grid-template-columns:1fr !important;gap:5px;padding:14px 16px;}
+  .kb-th{display:none;}
+  .kb-tr{grid-template-columns:1fr !important;gap:5px;padding:14px 16px;}
 
   /* barras de filtro rolam em vez de quebrar feio */
   .kb-barra,.filtros,.abas,.seg-vista{flex-wrap:wrap;}
@@ -1256,7 +1221,7 @@ body.apurando #app{visibility:hidden;}
   .area-sessao .b{padding:8px 12px;font-size:12.5px;}
 
   /* documentos e prévias não cabem: rolam dentro do próprio bloco */
-  .doc-previa,.sem-doc,.le-previa{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .sem-doc{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 
   /* "Atalhos" é lista de teclado (Ctrl K, Ctrl S…) — sem teclado físico
      no celular, o item não serve pra nada ali. !important porque
@@ -1283,9 +1248,6 @@ body.apurando #app{visibility:hidden;}
   .pt-decisao .b{width:100%;justify-content:center;}
   .pt-cena-acoes{flex-direction:column;}
   .pt-cena-acoes .b{width:100%;justify-content:center;}
-  .lu-item{flex-wrap:wrap;gap:10px;}
-  .lu-tx{min-width:0;flex:1;}
-  .senha-entrega{flex-direction:column;gap:12px;}
 }
 
 /* telas baixas e deitadas: o modal não pode passar da janela */
@@ -1293,7 +1255,6 @@ body.apurando #app{visibility:hidden;}
   .modal{max-height:96vh;}
   .tela-login{align-items:flex-start;padding-top:16px;}
 }
-
 
 /* =====================================================================
    SKELETONS DE ROTA (B7.UI.skeleton)
@@ -1354,8 +1315,6 @@ body.apurando #app{visibility:hidden;}
   .cfg-linha{flex-wrap:wrap;}
   .cfg-linha b{min-width:0;flex:1 1 100%;}
   .cfg-linha .b{margin-left:0;width:100%;justify-content:center;}
-  .config-linha{flex-wrap:wrap;}
-  .config-linha .tx{flex:1 1 100%;}
 }
 .cfg-versao{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;font-weight:600;color:var(--ink-2);background:var(--suave);border:1px solid var(--borda);border-radius:8px;padding:5px 10px;white-space:nowrap;}
 
@@ -1482,7 +1441,6 @@ body.apurando #app{visibility:hidden;}
   body[data-shell="interno"] .nav-inferior{box-shadow:0 -1px 0 rgba(255,255,255,.55) inset, 0 -8px 24px -18px rgba(20,8,40,.217);}
   [data-theme="dark"] body[data-shell="interno"] .nav-inferior{box-shadow:0 -10px 28px -20px rgba(0,0,0,.434);}
 }
-
 
 /* =====================================================================
    MOTION & VIDRO — camada 2 (pacote zl, 02/10)
@@ -1631,7 +1589,6 @@ body.apurando #app{visibility:hidden;}
 .toast.saindo{animation:b7ToastSai var(--m-rapido) var(--m-sai) forwards;}
 @keyframes b7ToastOk{0%{opacity:0;transform:translate3d(0,14px,0) scale(.96)}60%{opacity:1;transform:translate3d(0,-2px,0) scale(1.005)}100%{opacity:1;transform:none}}
 
-
 @media (prefers-reduced-motion:reduce){
   [data-nav] .conteudo.entra,.fundo-modal .modal,.toast{animation:none !important;}
   #app,.cli-ind,.ni-luz,.ni-ic,.lista.solta,.tp-menu{transition:none !important;}
@@ -1649,7 +1606,6 @@ body.apurando #app{visibility:hidden;}
   background:linear-gradient(160deg, color-mix(in srgb, var(--acento) 7%, var(--card)), var(--card) 55%);
   border:1px solid var(--borda);box-shadow:0 30px 80px -30px rgba(40,10,70,.341);will-change:left,top,width,height;}
 .b7-voo-miolo{position:absolute;left:0;top:0;pointer-events:none;}
-.b7-voo-volta{background:var(--fundo);border-color:transparent;}
 .b7-voo-origem{opacity:0 !important;transition:none !important;}
 /* zzs: brilho que varre a tela aberta enquanto o detalhe carrega */
 .b7-voo-brilho{position:absolute;inset:0;pointer-events:none;
@@ -2136,7 +2092,6 @@ body.b7-so-leitura #tela-dashboard :is(.gl-item,.card,.rt-item) .menu .lista hr{
 body.ed-leitura #tela-editor :is(#mn-ed-novo,#mn-ed-dados,#mn-ed-portal,#mn-ed-arquivar,#mn-ed-exportar,#mn-ed-excluir,
   #bt-add-roteiro,#bt-add-cena,.entre,.puxa,.cena-topo .menu,.bloco-topo .escala,.auto-bt,#indicador-salvamento-editor,
   [data-acao="enviar-aprovacao"],[data-acao="duplicar"],[data-acao="novo"],[data-acao="fixar"],[data-acao="excluir"]){display:none !important;}
-body.ed-leitura #tela-editor .bloco-topo .menu .lista hr{display:none;}
 body.ed-leitura #tela-editor #ed-status{pointer-events:none;}
 body.ed-leitura #tela-editor :is(input,textarea)[readonly]{cursor:default;caret-color:transparent;}
 body.ed-leitura #tela-editor :is(#revisao,.tipos) button:disabled{opacity:1;cursor:default;}
@@ -2362,7 +2317,6 @@ html.modo-leve[data-theme="dark"] .toast,html.modo-leve [data-theme="dark"] .toa
 .vc-op b{display:block;font-size:14.5px;margin-bottom:2px;}
 .vc-op small{display:block;font-size:12.5px;line-height:1.45;color:var(--ink-3);}
 .vc-op.vc-entrar{background:color-mix(in srgb, var(--acento) 6%, var(--card));}
-
 
 /* ---- 4.12.5: spinner de barras (B7.UI.spin) ---- */
 .b7-spin{--b7-spin:16px;position:relative;display:inline-block;vertical-align:-3px;width:var(--b7-spin);height:var(--b7-spin);margin-right:8px;color:currentColor;}

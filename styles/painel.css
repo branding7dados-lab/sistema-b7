@@ -28,12 +28,6 @@
 .pn-cab-lado{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 /* alternância de VISÃO (quem tem duas funções) — mesmo desenho do
    segmentado .seg-vista; é navegação, então são links */
-.pn-visoes{display:inline-flex;background:var(--suave);border-radius:10px;padding:3px;}
-.pn-visoes a{font-size:12.5px;padding:6px 13px;border-radius:8px;color:var(--ink-3);text-decoration:none;
-  white-space:nowrap;transition:var(--t-micro);}
-.pn-visoes a:hover{color:var(--ink);}
-.pn-visoes a.on{background:var(--card);color:var(--ink);box-shadow:var(--sh-1);font-weight:600;}
-.pn-visoes a:focus-visible{outline:2px solid var(--acento);outline-offset:2px;}
 
 /* ----------------------------------------------------------------- KPIs */
 .pn-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:var(--pn-gap);}
@@ -272,7 +266,6 @@
 .pn-sk-l1{display:block;height:11px;width:60%;border-radius:6px;}
 .pn-sk-l2{display:block;height:9px;width:35%;border-radius:6px;}
 
-
 /* ====================================================================
    PAINEL DO DESIGNER (.pnd) — mesma família; só o que é dele
    ==================================================================== */
@@ -287,7 +280,6 @@
 /* semana que ainda não chegou: trilho existe, mas não compete */
 .pnd-graf .pn-graf-col.futura .pn-graf-rot{opacity:.55;}
 .pnd-graf .pn-graf-col.futura{cursor:default;}
-
 
 /* ====================================================================
    PAINEL COMPOSTO (.pnm) — várias funções, UM Painel; mesma família
@@ -375,8 +367,6 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
   .pn-graf-resumo{gap:16px;}
   .pn-comp-tipo span{display:none;}
   .pn-cab-lado{width:100%;}
-  .pn-visoes{width:100%;}
-  .pn-visoes a{flex:1;text-align:center;}
   .pnc-etapa{grid-template-columns:96px minmax(0,1fr) auto;gap:10px;padding:6px 4px;}
   .pnc-etapa .pn-graf-tip{display:none;}
   .pnc-pub .status-conteudo{font-size:10.5px;padding:3px 7px;}
@@ -434,11 +424,7 @@ button.pn-dia{font:inherit;text-align:left;cursor:pointer;width:100%;}
 @keyframes pnGira{to{transform:rotate(360deg)}}
 @keyframes pnRaiosEntram{from{opacity:0}to{opacity:.5}}
 /* linha do horizonte: um fio de luz que se abre do centro */
-.pn-ceu .pn-horiz{left:6%;right:6%;top:calc(100% - 210px);height:1px;
-  background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--acento) 60%, transparent), rgba(255,255,255,.55), color-mix(in srgb, var(--sb-luz1) 60%, transparent), transparent);
-  box-shadow:0 0 18px 2px color-mix(in srgb, var(--acento) 35%, transparent);transform:scaleX(0);opacity:.0;
-  animation:pnHorizonte calc(1.6s * var(--pn-t)) var(--pn-ease) calc(.35s * var(--pn-t)) forwards;}
-@keyframes pnHorizonte{0%{transform:scaleX(0);opacity:0}30%{opacity:1}100%{transform:scaleX(1);opacity:.35}}
+
 /* partículas de luz (bokeh) subindo */
 .pn-ceu .pn-bokeh{inset:0;}
 .pn-bokeh i{position:absolute;left:var(--x);bottom:-20px;width:var(--s);height:var(--s);border-radius:50%;opacity:0;

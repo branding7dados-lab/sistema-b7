@@ -57,13 +57,6 @@
 .cp-andamento b{font-family:'B7 Titulo';font-weight:800;color:var(--ink);}
 
 /* ----------------------------------------------------------- agenda */
-.cp-agenda{margin-top:16px;background:var(--card);border:1px solid var(--borda);
-  border-radius:var(--r-lg);padding:16px 18px;}
-.cp-agenda-cab{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
-.cp-agenda-cab .b{margin-left:auto;}
-.cp-agenda-cab .b svg{width:12px;height:12px;}
-.cp-agenda-vazia{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-  font-size:12.5px;color:var(--ink-4);padding:6px 0;}
 .cp-aviso{font-size:12.5px;color:var(--ink-2);background:var(--suave);
   border-left:2px solid var(--acento);border-radius:var(--r-sm);padding:10px 13px;
   margin-bottom:11px;}
@@ -80,11 +73,6 @@
 .cp-ag-tx b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;}
 .cp-ag-meta{display:flex;gap:5px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-4);margin-top:3px;}
-.cp-ag-sit{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--ink-4);background:var(--card);border-radius:99px;padding:4px 10px;white-space:nowrap;}
-.cp-ag-sit.ok{color:#2E8B63;}
-.cp-ag-abrir{font-size:11.5px;color:var(--ink-4);white-space:nowrap;}
-@media (max-width:760px){ .cp-ag-abrir{display:none;} }
 
 /* ------------------------------------------------- listas compactas */
 .cp-lista{display:flex;flex-direction:column;gap:7px;margin-top:14px;}
@@ -114,10 +102,6 @@
 .cp-cat-sk .cp-tres{margin-top:13px;}
 
 /* ------------------------------------------------- configurações */
-.cfg-bloco{background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);
-  padding:18px 20px;margin-bottom:12px;}
-.cfg-bloco h3{font-family:'B7 Titulo';font-weight:800;font-size:15px;margin:0 0 4px;}
-.cfg-bloco p{font-size:12.5px;color:var(--ink-4);margin:0 0 14px;}
 .cfg-linha{display:flex;align-items:center;gap:12px;padding:11px 0;
   border-top:1px solid var(--borda);font-size:12.5px;}
 .cfg-linha b{color:var(--ink-3);font-weight:600;min-width:150px;}

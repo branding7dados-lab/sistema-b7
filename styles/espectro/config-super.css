@@ -254,7 +254,6 @@ html[data-identidade="espectro"] .sa-aval-lista{margin:0 0 14px;padding:4px;bord
 html[data-identidade="espectro"] .sa-aval-lista > .sa-tab-cab{padding:8px 14px;}
 html[data-identidade="espectro"] .sa-aval-lista > .sa-item.sa-tab-aval{padding:10px 14px;border-top-color:var(--borda-forte);}
 html[data-identidade="espectro"] .sa-aval-lista > .sa-item.sa-tab-aval > b{min-width:0;font-weight:400;color:var(--ink);}
-html[data-identidade="espectro"] .sa-nota-ch{font-weight:400;}
 
 /* ---------------------------------------------------------------- escuro */
 html[data-identidade="espectro"][data-theme="dark"] .sa-tile{box-shadow:inset 0 1px 0 rgba(255,255,255,.1);}

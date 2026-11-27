@@ -99,8 +99,6 @@ html[data-identidade="espectro"] .rtv-foto{background:#FFFFFF;box-shadow:0 0 0 3
 html[data-identidade="espectro"] .rtv-podio{max-width:560px;}
 html[data-identidade="espectro"] .rtv-deg small{color:rgba(255,255,255,.8);}
 html[data-identidade="espectro"] .rtv-deg em{border:0;border-radius:22px 22px 8px 8px;background:rgba(255,255,255,.14);}
-html[data-identidade="espectro"] .rtv-deg1 em{background:#FFFFFF;color:#001561;box-shadow:0 20px 50px rgba(0,21,97,.35);}
-html[data-identidade="espectro"] .rtv-deg1 .rtv-foto{box-shadow:0 0 0 3px #FFFFFF,0 0 30px rgba(255,255,255,.5);}
 
 /* aprovado e "no prazo" */
 html[data-identidade="espectro"] .rtv-check circle{stroke:rgba(255,255,255,.4);}

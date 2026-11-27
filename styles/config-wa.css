@@ -3,19 +3,10 @@
    Usa a casca da tela do Otto (asw-*): topo, navegação, blocos, linhas,
    chaves e barra de salvar. Aqui só o que é desta tela.
    ===================================================================== */
-.cwa-av svg{width:28px;height:28px;}
-.cwa-av i.off{background:#F87171 !important;}
-.cwa-av i.esp{background:#CBD5E1 !important;animation:cwaPisca 1.2s ease-in-out infinite;}
 @keyframes cwaPisca{50%{opacity:.35;}}
 .asw-stats > div.alerta dd{color:#FDE68A;}
 
 /* atalho para a tela do Otto, no pé da navegação */
-.cwa-nav-otto{display:flex;align-items:center;gap:10px;margin-top:6px;padding:10px 12px;border-radius:14px;border-top:1px solid var(--borda);
-  color:var(--ink-2);text-decoration:none;font:600 13px/1.2 inherit;}
-.cwa-nav-otto svg{width:18px;height:18px;opacity:.75;}
-.cwa-nav-otto span{flex:1;}
-.cwa-nav-otto em{font-style:normal;color:var(--ink-3);}
-.cwa-nav-otto:hover{background:var(--suave);color:var(--ink);}
 
 /* visão geral: cartões de situação */
 .cwa-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
@@ -51,22 +42,11 @@
 .cwa code,.cwa-dica code{font-size:12px;padding:1px 6px;border-radius:6px;background:var(--suave);border:1px solid var(--borda);}
 
 /* prévia da assinatura */
-.cwa-prev{margin-top:4px;padding:14px;border-radius:16px;background:color-mix(in srgb,var(--suave) 70%,transparent);
-  background-image:radial-gradient(color-mix(in srgb,var(--ink-3) 18%,transparent) 1px,transparent 1px);background-size:14px 14px;}
-.cwa-prev small{display:block;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--ink-3);margin-bottom:8px;}
-.cwa-bolha{display:inline-block;max-width:320px;padding:8px 12px;border-radius:14px 14px 4px 14px;margin-left:auto;font-size:14px;line-height:1.45;color:#fff;
-  background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));float:right;}
-.cwa-prev::after{content:"";display:block;clear:both;}
 
 /* respostas rápidas */
-.cwa-rr{display:flex;flex-direction:column;gap:10px;}
-.cwa-rr-i{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;border:1px solid var(--borda);background:var(--suave);}
-.cwa-rr-top{display:flex;align-items:center;gap:8px;}
 .cwa-atalho{display:inline-flex;align-items:center;flex:none;border-radius:11px;background:linear-gradient(135deg,var(--sb-luz1),var(--sb-luz2));padding:0 4px 0 10px;color:#fff;font-weight:800;}
 .cwa-atalho input{width:110px;border:0;background:transparent;color:#fff;font:700 14px/1 ui-monospace,SFMono-Regular,Menlo,monospace;padding:9px 6px 9px 2px;outline:0;}
 .cwa-atalho input::placeholder{color:rgba(255,255,255,.65);}
-.cwa-rr-tit{flex:1;min-width:0;}
-.cwa-rr textarea{resize:vertical;min-height:58px;}
 .cwa-x{flex:none;}
 .cwa-mais{align-self:flex-start;}
 
@@ -88,9 +68,6 @@
 .cwa-g-t{min-width:0;}
 .cwa-g-t b{display:block;font-size:13.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cwa-g-t small{display:block;font-size:12px;color:var(--ink-3);}
-.cwa-g.sem .cwa-sel{border-color:color-mix(in srgb,#F59E0B 60%,var(--borda));}
-.cwa-g.mud .cwa-sel{border-color:var(--sb-luz2);box-shadow:0 0 0 3px color-mix(in srgb,var(--sb-luz2) 20%,transparent);}
-.cwa-sel{width:100%;}
 
 /* status (Drive, número) */
 .cwa-drive{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px;border-radius:16px;border:1px solid var(--borda);background:var(--suave);}
@@ -113,11 +90,9 @@
 @media (max-width: 760px){
   .cwa-cards,.cwa-mod{grid-template-columns:1fr;}
   .cwa-g{grid-template-columns:auto minmax(0,1fr);}
-  .cwa-g .cwa-sel{grid-column:1 / -1;}
   .cwa-drive{grid-template-columns:auto minmax(0,1fr);}
   .cwa-drive .b{grid-column:1 / -1;}
   .cwa-pessoas{justify-content:flex-start;}
-  .cwa-nav-otto{display:none;}
 }
 
 /* =====================================================================
@@ -244,13 +219,6 @@
 }
 
 /* 4.81.3: o Otto dentro das Configurações do WhatsApp */
-.cwa-nav-grupo{margin-top:6px;padding-top:8px;border-top:1px solid var(--borda);display:flex;flex-direction:column;gap:2px;}
-.cwa-nav-rot{display:flex;align-items:center;gap:8px;padding:6px 12px 6px;font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);}
-.cwa-nav-rot svg{width:15px;height:15px;opacity:.8;}
-.cwa-nav-rot i{margin-left:auto;width:8px;height:8px;border-radius:50%;background:#94A3B8;}
-.cwa-nav-rot i.on{background:#22C55E;box-shadow:0 0 0 3px color-mix(in srgb,#22C55E 22%,transparent);}
-.asw-nav .cwa-sub{padding:8px 12px 8px 14px;font-size:13px;}
-.asw-nav .cwa-sub svg{width:16px;height:16px;}
 .asw.asw-emb{max-width:none;margin:0;padding:0;gap:16px;}
 .cwa-otto{min-width:0;}
 .cwa-otto .asw-carrega{min-height:240px;}
@@ -259,7 +227,6 @@
 .asw-emb-liga b{display:block;font:750 16px/1.25 'B7 Titulo',system-ui;}
 .asw-emb-liga small{display:block;margin-top:3px;font-size:12.5px;color:var(--ink-3);}
 .asw-emb-liga:not(.on){filter:saturate(.4);}
-@media (max-width:760px){ .asw-nav .cwa-nav-grupo{flex-direction:row;border-top:0;margin:0;padding:0;} .cwa-nav-rot{display:none;} }
 
 /* 4.82.0: Assuntos e responsáveis */
 .cwa-tags{display:flex;flex-wrap:wrap;gap:6px;}

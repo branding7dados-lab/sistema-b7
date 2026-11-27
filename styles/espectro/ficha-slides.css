@@ -151,7 +151,6 @@ html[data-identidade="espectro"] .sl-pilar .n.f2{background:var(--esp-v,#7328A5)
 html[data-identidade="espectro"] :is(.le-barra-total, .le-pilar-legenda, .sl-barra-total, .l2-pilares) .f3,
 html[data-identidade="espectro"] .sl-pilar .n.f3{background:var(--esp-m,#E02F75);}
 html[data-identidade="espectro"] :is(.le-pilar-legenda .soma, .le-cri-p){color:var(--esp-m,#E02F75);border-color:var(--esp-m,#E02F75);}
-html[data-identidade="espectro"] .le-cena{border-left-color:var(--esp-m,#E02F75);}
 html[data-identidade="espectro"] :is(.sl-capa .olho i, .rm-barra u){background:linear-gradient(90deg,var(--esp-v,#7328A5),var(--esp-m,#E02F75) 60%,#FF5A57);}
 
 /* ---- modo apresentação (B7.PreviewLinha) ---- */
