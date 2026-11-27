@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-identidade="espectro">
 <head>
 <meta charset="utf-8">
 <!-- Segurança (03/10). O GitHub Pages não deixa configurar cabeçalhos HTTP,
@@ -38,9 +38,9 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
                        : window.matchMedia('(prefers-color-scheme: dark)').matches;
     document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
   } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
-  /* 5.0.0: a identidade nova (Espectro) é o padrão para todos. Só fica no visual antigo o aparelho
-     que escolheu "classico" em Configurações → Aparência (rede de segurança da equipe; js/identidade.js). */
-  try { if (JSON.parse(localStorage.getItem('b7_pref_identidade') || 'null') !== 'classico') document.documentElement.setAttribute('data-identidade', 'espectro'); } catch (e) { document.documentElement.setAttribute('data-identidade', 'espectro'); }
+  /* 5.23.0: a identidade Espectro é a oficial e a única (o <html> já nasce com data-identidade="espectro").
+     A opção de voltar ao visual antigo saiu; a escolha antiga guardada no aparelho é apagada aqui. */
+  try { localStorage.removeItem('b7_pref_identidade'); } catch (e) {}
   /* zzz140: cor do sistema e data especial da abertura, a partir da cópia guardada no aparelho */
   try {
     var ap = JSON.parse(localStorage.getItem('b7_sis_aparencia') || 'null');
@@ -99,7 +99,7 @@ if (window.top !== window.self) { document.documentElement.style.display = 'none
   /* 5.14.0 identidade nova: só as 3 aberturas e os 6 carregamentos do Espectro (js/app.js, B7.Abertura)
      5.16.0: as aberturas são as 3 "Cine" do artefato (ignicao · hiperespaco · aurora-espectro) */
   try {
-    if (JSON.parse(localStorage.getItem('b7_pref_identidade') || 'null') !== 'classico') {
+    {
       var b7H = document.documentElement, b7Ab = /^(ignicao|hiperespaco|aurora-espectro)$/, b7Cs = /^(corte|lampada|faixa|tres-pontos|anel|hexagono)$/;
       var b7Ea = JSON.parse(localStorage.getItem('b7_pref_abertura_estilo') || 'null'), b7Pa = localStorage.getItem('b7_ab_padrao');
       b7H.setAttribute('data-ab-estilo', b7Ab.test(b7Ea || '') ? b7Ea : b7Ab.test(b7Pa || '') ? b7Pa : 'ignicao');

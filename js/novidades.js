@@ -25,6 +25,9 @@
 window.B7 = window.B7 || {};
 
 B7.NOVIDADES_VERSOES = [
+  { id: 'v-5.23.0', versao: '5.23.0', em: '2026-11-27T14:00:00-03:00',
+    titulo: 'A identidade nova agora é a oficial',
+    itens: ['O B7 usa só a identidade nova da Branding7. A opção de voltar ao visual antigo saiu de Configurações → Aparência, e quem ainda estava nele passa a ver o novo.'] },
   { id: 'v-5.22.1', versao: '5.22.1', em: '2026-11-27T13:00:00-03:00',
     titulo: 'Portal do cliente no desenho da marca',
     itens: ['No Portal do cliente, o topo mostra as iniciais da empresa num quadradinho, as abas num trilho só e o logo da Branding7. No celular, as abas mais usadas ficam numa barra embaixo: Início, Aprovar, Linha, Gravações e Mais.'] },

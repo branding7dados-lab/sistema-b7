@@ -123,26 +123,9 @@ const entrar = () => {
   await ctx.close();
 }
 
-/* 4) o quadro final da abertura é a posição de repouso (é de lá que o
-   logo voa para a barra). zzz231: no streaming não há voo — o logo some
-   dentro das faixas de luz, que abrem o sistema; ali o quadro final é o
-   logo invisível. */
-for (const estilo of ['hiper', 'bigbang', 'classica', 'streaming', 'tinta', 'glitch', 'aurora', 'neon', 'mosaico']) {
-  const ctx = await nav.newContext({ viewport:{width:390,height:844} });
-  /* 5.14.0: os estilos antigos só existem no visual antigo (Configurações → Aparência) */
-  await ctx.addInitScript(e => { try { localStorage.setItem('b7_pref_abertura_estilo', JSON.stringify(e)); localStorage.setItem('b7_pref_identidade', JSON.stringify('classico')); } catch (x) {} }, estilo);
-  const pg = await ctx.newPage(); await pg.goto(BASE + '/index.html'); await pg.waitForTimeout(500);
-  const t = await pg.evaluate(() => {
-    for (const a of document.getAnimations()) { try { a.finish(); } catch (e) {} }
-    const id = s => { const v = getComputedStyle(document.querySelector(s)).transform;
-      return v === 'none' || v === 'matrix(1, 0, 0, 1, 0, 0)'; };
-    return { estilo: document.documentElement.getAttribute('data-ab-estilo'), simbolo: id('.ab-simbolo'), marca: id('.ab-marca'),
-      opacidade: getComputedStyle(document.querySelector('.ab-marca')).opacity };
-  });
-  if (estilo === 'streaming') ok(t.estilo === estilo && t.opacidade === '0', 'streaming: no fim o logo some nas faixas (sem voo)');
-  else ok(t.estilo === estilo && t.simbolo && t.marca, estilo + ': no fim da abertura o símbolo e a marca estão em repouso (o voo não salta)');
-  await ctx.close();
-}
+/* 4) (saiu na 5.23.0) conferia o fim das 9 aberturas do visual antigo (hiper, bigbang, clássica, streaming…).
+   O visual antigo deixou de existir: ninguém mais chega nelas, e o bloco 5 confere que quem as tinha escolhido
+   cai na Ignição. */
 
 /* 5) 5.16.0 identidade nova: as 3 aberturas "Cine" do artefato (ignicao · hiperespaco · aurora-espectro).
    O que a pessoa escolheu antes (visual antigo ou Faísca/Corte/Pulso da 5.14) cai na Ignição; no fim da

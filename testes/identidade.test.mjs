@@ -47,17 +47,10 @@ await entrar('admin'); await pg.waitForTimeout(500);
 let e = await estado();
 ok(e.attr === 'espectro' && /^Grimblade/.test(e.fonte) && e.pref === null, 'padrão para todos: identidade nova sem ninguém ligar nada (' + JSON.stringify(e) + ')');
 
-/* ---------------------------------------------------- a equipe pode voltar ao visual antigo neste aparelho */
+/* ---------------------------------------------------- 5.23.0: o Espectro é o oficial — não há mais como voltar ao visual antigo */
 await pg.evaluate(() => { location.hash = '#/config?s=aparencia'; }); await pg.waitForTimeout(1200);
-const linha = await pg.$('.cfg-alterna:has([data-chave="identidade"])');
-ok(!!linha, 'Configurações → Aparência tem "Usar a identidade nova", ligada');
-if (linha) await linha.click();
-await pg.waitForTimeout(700);
+ok(!(await pg.$('.cfg-alterna:has([data-chave="identidade"])')), 'Configurações → Aparência não tem mais "Usar a identidade nova"');
 e = await estado();
-ok(!e.attr && e.pref === '"classico"' && /^Inter/.test(e.fonte) && e.largura > 200 && /symbol-white\.png$/.test(e.simbolo), 'desligar: visual antigo, Inter, barra larga e logo antigo, guardado no aparelho (' + JSON.stringify(e) + ')');
-await pg.click('.cfg-alterna:has([data-chave="identidade"])'); await pg.waitForTimeout(700);
-e = await estado();
-ok(e.attr === 'espectro' && e.pref === 'null', 'religar volta à identidade nova');
 ok(/^Grimblade/.test(e.fonte), 'a fonte vira a Grimblade (' + e.fonte + ')');
 ok(e.largura === 84, 'a barra lateral vira o menu flutuante de 84 px (' + e.largura + ')');
 ok(/espectro\/simbolo\.svg$/.test(e.simbolo), 'no claro, o menu é branco: símbolo novo colorido (' + e.simbolo + ')');
@@ -111,16 +104,12 @@ const cedo = await pg.evaluate(() => document.documentElement.getAttribute('data
 ok(cedo === 'espectro', 'ao reabrir, o <html> já nasce com a identidade nova (sem piscar o visual antigo)');
 await pg.waitForTimeout(1200); await entrar('admin'); await pg.waitForTimeout(400);
 
-/* ---------------------------------------------------- desligar devolve tudo */
-await pg.evaluate(() => { location.hash = '#/config?s=aparencia'; }); await pg.waitForTimeout(1200);
-await pg.click('.cfg-alterna:has([data-chave="identidade"])'); await pg.waitForTimeout(600);
-e = await estado();
-ok(!e.attr && e.pref === '"classico"' && /^Inter/.test(e.fonte) && e.largura > 200 && /symbol-white\.png$/.test(e.simbolo), 'desligar volta o visual, a fonte, a barra e o logo de antes');
-ok(!(await pg.$('.esp-alterna-menu')), 'desligada, o botão de abrir o menu some');
-
 /* ---------------------------------------------------- cliente (Portal): sempre a identidade nova */
+/* aparelho que tinha escolhido o visual antigo (antes da 5.23.0): abre na identidade nova e a escolha é apagada */
+await pg.evaluate(() => localStorage.setItem('b7_pref_identidade', JSON.stringify('classico')));
 await pg.goto(URL0 + '?x=2');
-ok(!(await pg.evaluate(() => document.documentElement.getAttribute('data-identidade'))), 'aparelho que escolheu o visual antigo abre nele');
+ok((await pg.evaluate(() => document.documentElement.getAttribute('data-identidade'))) === 'espectro' &&
+   (await pg.evaluate(() => localStorage.getItem('b7_pref_identidade'))) === null, 'aparelho que tinha escolhido o visual antigo abre na identidade nova e a escolha some');
 await pg.waitForTimeout(1000);
 await entrar('cliente');
 await pg.evaluate(() => B7.Identidade.conferirPapel());
