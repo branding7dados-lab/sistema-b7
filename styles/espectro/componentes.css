@@ -50,3 +50,54 @@ html[data-identidade="espectro"] .estado-b7 .ilu svg{width:30px;height:30px;stro
 html[data-identidade="espectro"][data-theme="dark"] .estado-b7 .ilu svg{stroke:var(--acento);}
 html[data-identidade="espectro"] .estado-b7 b{font-size:18px;font-weight:400;letter-spacing:0;}
 html[data-identidade="espectro"] .estado-b7 p{font-size:13px;color:var(--ink-3);}
+
+/* ================================================================== PORTAL DO CLIENTE · topo (5.22.1, quadro "Portal-inicio")
+   o cliente com as iniciais num quadradinho Magenta, o nome em cima e "Portal do cliente" embaixo; as abas num
+   trilho branco só (a ativa em Azul Matriz dentro dele); à direita o sino e o logo da Branding7; e no pé de cada
+   tela "Produzido pela Branding7". Só no computador — o celular segue o quadro "Portal-celular". */
+@media (min-width:1081px){
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-marcador{display:grid !important;grid-template-columns:44px auto;grid-template-areas:"av emp" "av rot";column-gap:12px;align-content:center;padding-right:20px;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-marcador-av{grid-area:av;display:flex !important;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;
+    background:var(--esp-m,#E02F75);color:#fff;font-size:16px;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-marcador :is(.pt-marcador-emp, .pt-marcador-sel){grid-area:emp;align-self:end;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-marcador-rot{grid-area:rot;align-self:start;font-size:12px;letter-spacing:0;text-transform:lowercase;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-marcador-rot::first-letter{text-transform:uppercase;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-marcador.previa .pt-marcador-rot{text-transform:uppercase;letter-spacing:.1em;font-size:10.5px;}
+  /* abas: um trilho branco só, a ativa é uma pílula Azul Matriz dentro dele */
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav{gap:0;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > a{height:48px;padding:0 14px;border-radius:0;box-shadow:none;background:var(--card);position:relative;isolation:isolate;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > .pt-marcador + a{border-radius:24px 0 0 24px;padding-left:18px;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > a:last-of-type{border-radius:0 24px 24px 0;padding-right:18px;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > a:hover{background:var(--card);color:var(--ink);}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > a.on{background:var(--card) !important;box-shadow:none;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > a.on::after{content:"";position:absolute;inset:4px 2px;border-radius:20px;background:#001561;z-index:-1;box-shadow:0 8px 20px rgba(0,21,97,.25);}
+  html[data-identidade="espectro"][data-theme="dark"] body[data-shell="portal"] .nav > a.on{background:var(--card) !important;}
+  html[data-identidade="espectro"][data-theme="dark"] body[data-shell="portal"] .nav > a.on::after{background:#2A3FA8;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > .pt-marcador + a.on::after{left:4px;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .nav > a.on:last-of-type::after{right:4px;}
+  /* o logo da Branding7 depois do sino */
+  html[data-identidade="espectro"] body[data-shell="portal"] .topo-global::after{display:block !important;content:"";position:static;flex:none;width:112px;height:26px;margin-left:6px;
+    background:url('../../assets/brand/espectro/horizontal-preto.svg') center/contain no-repeat;}
+  html[data-identidade="espectro"][data-theme="dark"] body[data-shell="portal"] .topo-global::after{background-image:url('../../assets/brand/espectro/horizontal-branco.svg');}
+  /* o pé: "Produzido pela" e o logo */
+  html[data-identidade="espectro"] body[data-shell="portal"] #painel-dashboard::after{content:"Produzido pela";display:block;margin:36px 40px 24px;padding-right:100px;width:max-content;font-size:12.5px;color:var(--ink-3);
+    background:url('../../assets/brand/espectro/horizontal-preto.svg') right center/88px auto no-repeat;line-height:22px;}
+  html[data-identidade="espectro"][data-theme="dark"] body[data-shell="portal"] #painel-dashboard::after{background-image:url('../../assets/brand/espectro/horizontal-branco.svg');}
+}
+
+/* ================================================================== PORTAL DO CLIENTE · celular (5.22.1, quadro "Portal-celular")
+   barra de abas fixa embaixo: Início, Aprovar, Linha, Gravações e Mais (que abre o menu de sempre). Com ela, o botão
+   de menu do topo sai e o conteúdo ganha espaço embaixo para não ficar atrás da barra. */
+@media (max-width:760px){
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-barra{display:flex !important;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:90;
+    height:68px;padding:0 6px;border-radius:24px;background:var(--card);border:1px solid var(--esp-cartao-borda);box-shadow:0 18px 40px rgba(10,16,51,.14);}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-barra > *{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    background:none;border:0;color:var(--ink-3);font-size:11px;text-decoration:none;cursor:pointer;transition:transform .12s cubic-bezier(.65,0,.35,1);}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-barra > :active{transform:scale(.92);}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-barra svg{width:22px;height:22px;}
+  html[data-identidade="espectro"] body[data-shell="portal"] .pt-barra a.on{color:var(--esp-v,#7328A5);}
+  html[data-identidade="espectro"][data-theme="dark"] body[data-shell="portal"] .pt-barra{background:#11143A;box-shadow:0 18px 40px rgba(0,0,0,.45);}
+  html[data-identidade="espectro"][data-theme="dark"] body[data-shell="portal"] .pt-barra a.on{color:var(--acento);}
+  html[data-identidade="espectro"] body[data-shell="portal"]:has(.pt-barra) #abre-menu{display:none !important;}
+  html[data-identidade="espectro"] body[data-shell="portal"] #painel-dashboard{padding-bottom:96px;}
+}

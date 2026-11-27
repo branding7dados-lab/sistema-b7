@@ -3,6 +3,7 @@
      ROTA='#/clientes'  TEMA=light|dark  CEL=1 (390×844)  W=1440 H=900  OUT=/caminho/print.png  CHEIA=1 (página inteira)
      MOCK=/caminho/mock.mjs  → export default (url, req) => corpo JSON | undefined   (dados de exemplo da tela;
         url é um URL; devolva undefined para cair no padrão: listas vazias)
+     CLIENTE=1  → entra como cliente e abre o Portal
      DEPOIS=/caminho/depois.mjs → export default async (pg) => {…}   (cliques antes do print)
    Entra como administrador "Kevin Souza". Precisa de testes/node_modules (ln -sfn /opt/node22/lib/node_modules testes/node_modules). */
 import { chromium } from 'playwright';
@@ -33,7 +34,13 @@ await ctx.route(/supabase\.co\//, async rota => {
 const pg = await ctx.newPage();
 pg.on('pageerror', e => console.log('✗ erro de JavaScript: ' + e.message));
 await pg.goto('http://127.0.0.1:' + srv.address().port + '/index.html'); await pg.waitForTimeout(1200);
-await pg.evaluate(() => {
+if (E.CLIENTE) await pg.evaluate(() => {
+  /* CLIENTE=1: entra como o dono do cliente "Ninno" (c1) e monta o Portal do cliente */
+  const U = { id: 'u', papel: 'cliente', nome: 'Marina Alves', username: 'marina', estado: 'ativa', preferencias: {}, empresas: [{ id: 'c1', nome: 'Ninno Macarronaria', servico: 'ativo' }], financeiro: false };
+  Object.assign(B7.Auth, { usuario: () => U, papel: () => 'cliente', funcao: () => null, ehAdmin: () => false, ehAdminReal: () => false, ehFinanceiro: () => false, ehEquipe: () => false, ehCliente: () => true, funcoesExtra: () => [], modulos: () => null, naContaDeOutro: () => false });
+  document.querySelectorAll('.b7-abertura').forEach(e => e.parentNode && e.parentNode.removeChild(e)); if (B7.Portal) B7.Portal.montarLayout();
+});
+else await pg.evaluate(() => {
   const U = { id: 'u', papel: 'admin', nome: 'Kevin Souza', username: 'kevin', estado: 'ativa', preferencias: {}, empresas: [], financeiro: false };
   Object.assign(B7.Auth, { usuario: () => U, papel: () => 'admin', funcao: () => null, ehAdmin: () => true, ehAdminReal: () => true, ehFinanceiro: () => false, ehEquipe: () => true, ehCliente: () => false, funcoesExtra: () => [], modulos: () => null, naContaDeOutro: () => false });
   document.querySelectorAll('.b7-abertura').forEach(e => e.parentNode && e.parentNode.removeChild(e)); if (B7.montarShellInterno) B7.montarShellInterno();
