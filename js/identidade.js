@@ -4,12 +4,10 @@
    A nova identidade da Branding7 (manual 2026). Desde a 5.0.0 é o PADRÃO
    para todos, clientes inclusive: o <html> nasce com
    data-identidade="espectro" e o styles/espectro.css troca cores, fonte
-   (Grimblade), componentes e a casca (menu flutuante e topo). Durante a
-   transição, a equipe pode voltar ao visual antigo neste aparelho em
-   Configurações → Aparência; o cliente (Portal) usa sempre a nova.
-
-   O atributo é posto antes da primeira pintura pelo <head> do index.html
-   (lê b7_pref_identidade); aqui ficam a troca dos logos e o liga/desliga.
+   (Grimblade), componentes e a casca (menu flutuante e topo).
+   5.23.0: é a identidade oficial e a única — a opção de voltar ao visual
+   antigo saiu. O atributo vem escrito no <html> do index.html; aqui ficam
+   a troca dos logos e o menu que abre.
    Pacote: assets/brand/espectro/ (logos e LEIA-ME), assets/fonts/grimblade.otf.
    ===================================================================== */
 window.B7 = window.B7 || {};
@@ -62,16 +60,14 @@ B7.Identidade = (function () {
     bt.title = aberto ? 'Fechar o menu' : 'Abrir o menu';
   }
 
-  /* 5.0.0: a identidade nova é o padrão. O aparelho da equipe pode voltar ao visual antigo ("classico")
-     enquanto durar a transição; o cliente (Portal) usa sempre a nova. */
-  function definir(ligar) {
-    try { B7.pref.gravar('identidade', ligar ? null : 'classico'); } catch (e) {}
-    if (ligar || ehCliente()) html.setAttribute('data-identidade', ESPECTRO); else html.removeAttribute('data-identidade');
+  /* 5.23.0: a identidade Espectro é a oficial e a única — não há mais "voltar ao visual antigo".
+     definir() fica só para quem ainda chamar: sempre liga. */
+  function definir() {
+    html.setAttribute('data-identidade', ESPECTRO);
     aplicarLogos(); aplicarMenu();
   }
 
-  /* aparelho compartilhado em que alguém da equipe voltou ao visual antigo: o cliente vê a identidade nova */
-  function conferirPapel() { if (ehCliente() && !ligada()) html.setAttribute('data-identidade', ESPECTRO); aplicarLogos(); aplicarMenu(); }
+  function conferirPapel() { if (!ligada()) html.setAttribute('data-identidade', ESPECTRO); aplicarLogos(); aplicarMenu(); }
 
   /* o tema troca os logos da casca (o menu é branco no claro e vidro no escuro) */
   new MutationObserver(() => { if (ligada()) aplicarLogos(); }).observe(html, { attributes: true, attributeFilter: ['data-theme'] });

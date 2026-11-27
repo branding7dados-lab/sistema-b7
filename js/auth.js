@@ -24,7 +24,7 @@ B7.Auth = (function () {
        3.0.0 → 3.0.1  correção ou ajuste
      A mesma versão vai no CACHE do sw.js ('b7-v3.0.0'), no app Android e no
      programa do Windows. O aviso de atualização só compara se mudou. */
-  const VERSAO = '5.22.1';
+  const VERSAO = '5.23.0';
   /* A versão aparece só em Configurações → Sistema, para o administrador
      (não fica mais no rodapé da barra lateral nem na tela de login). */
 
@@ -400,32 +400,20 @@ B7.Auth = (function () {
         '<span class="malha"></span><span class="rastro"></span>' +
       '</div>' +
 
-      /* 4.0: a vitrine da marca ao lado do formulário (só em tela larga) */
-      '<aside class="login-vitrine" aria-hidden="true">' +
-        '<span class="lv-sobre">Branding7 · Estúdio</span>' +
-        '<p class="lv-titulo">Da ideia à <em>entrega</em>, num lugar só.</p>' +
-        '<p class="lv-sub">Roteiros, gravações, edição, design e aprovação do cliente, com a equipe inteira vendo a mesma coisa.</p>' +
-        '<ol class="lv-fluxo">' +
-          '<li><i></i><b>Roteiro</b><span>a ideia no papel</span></li>' +
-          '<li><i></i><b>Gravação</b><span>a equipe em campo</span></li>' +
-          '<li><i></i><b>Edição</b><span>a fila por prioridade</span></li>' +
-          '<li><i></i><b>Aprovação</b><span>o cliente dá o ok</span></li>' +
-        '</ol>' +
-      '</aside>' +
 
       '<form class="login-caixa" autocomplete="off">' +
-        /* fundo escuro pede a versão branca da marca: a colorida some */
-        '<img class="login-marca" src="assets/brand/logo-white.png" alt="Branding7">' +
-        '<h1>Acessar a plataforma</h1>' +
-        '<p class="login-sub">Use o seu usuário (ou e-mail) e a senha do B7. Quem é da equipe também entra pela Central do Núcleo 7.</p>' +
+        /* o símbolo aceso da marca (identidade Espectro, a oficial desde a 5.23.0) */
+        '<img class="login-marca" src="assets/brand/espectro/simbolo-mono-branco.svg" alt="Branding7">' +
+        '<h1>Entrar no B7</h1>' +
+        '<p class="login-sub">A produção de hoje está te esperando.</p>' +
 
         (mensagem ? '<div class="login-aviso">' + esc(mensagem) + '</div>' : '') +
 
-        '<label class="rot" for="lg-user">USUÁRIO OU E-MAIL</label>' +
+        '<label class="rot" for="lg-user">Usuário ou e-mail</label>' +
         '<input class="campo" id="lg-user" name="b7-user" autocomplete="username" ' +
           'autocapitalize="none" spellcheck="false" required>' +
 
-        '<label class="rot" for="lg-senha">SENHA</label>' +
+        '<label class="rot" for="lg-senha">Senha</label>' +
         '<div class="login-senha">' +
           '<input class="campo" id="lg-senha" name="b7-senha" type="password" ' +
             'autocomplete="current-password" required>' +
@@ -444,15 +432,9 @@ B7.Auth = (function () {
         '<p class="login-legal"><a href="privacidade.html" target="_blank" rel="noopener">Privacidade</a> · <a href="termos.html" target="_blank" rel="noopener">Termos de Serviço</a></p>' +
       '</form>';
 
-    /* 4.94.0: identidade nova (Espectro) — o símbolo aceso, o logo no canto e a assinatura da marca */
-    if (B7.Identidade && B7.Identidade.ligada()) {
-      const mc = tela.querySelector('.login-marca'); if (mc) mc.src = 'assets/brand/espectro/simbolo-mono-branco.svg';
-      const h1 = tela.querySelector('.login-caixa h1'); if (h1) h1.textContent = 'Entrar no B7';
-      /* 5.18.0 quadros "Login · computador" e "Login · celular" (Fundamentos): a frase do quadro, ícones dentro dos
-         campos (o rótulo só aparece no celular), a linha Google | Núcleo 7 e a versão no pé (celular) */
-      const sub = tela.querySelector('.login-sub'); if (sub) sub.textContent = 'A produção de hoje está te esperando.';
-      const rotU = tela.querySelector('label[for="lg-user"]'); if (rotU) rotU.textContent = 'Usuário ou e-mail';
-      const rotS = tela.querySelector('label[for="lg-senha"]'); if (rotS) rotS.textContent = 'Senha';
+    /* quadros "Login · computador" e "Login · celular" (Fundamentos): a linha Google | Núcleo 7, a versão no pé (celular),
+       o logo no canto e a assinatura da marca */
+    {
       const ent = tela.querySelector('.login-entrar');
       if (ent) ent.insertAdjacentHTML('afterend', '<div class="esp-lg-alt"><a class="b contorno lg-n7" href="https://adm.nucleosete.com.br/central">Núcleo 7</a></div>' +
         '<p class="esp-lg-versao">Sistema B7 · versão ' + esc(VERSAO) + '</p>');
@@ -486,7 +468,7 @@ B7.Auth = (function () {
     /* 5.21.0 quadro "Login em movimento" (Telas em movimento): no Espectro, o Entrar escurece com três pontos
        enquanto confere e fica verde com o "ok" quando entra; meio segundo depois segue o fim() de sempre (a cortina
        "Bem-vindo, <nome>" do js/app.js entra na diagonal da marca, styles/espectro/movimento.css). Só aparência. */
-    const espMov = !!(B7.Identidade && B7.Identidade.ligada()) && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const espMov = !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     const entrando = liga => { if (!espMov) return; botao.classList.toggle('esp-entrando', liga); botao.setAttribute('aria-busy', liga ? 'true' : 'false'); };
     const comCortina = depois => {
       if (!espMov || !botao.isConnected) return depois();
