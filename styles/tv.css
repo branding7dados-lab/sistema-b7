@@ -45,23 +45,6 @@ body.modo-tv #toasts,body.modo-tv #b7-chat-fab,body.modo-tv #b7-chat,body.modo-t
 
 .tv-resumo{grid-column:1 / -1;display:flex;align-items:center;gap:clamp(16px,2vw,36px);padding:clamp(12px,1.8vh,22px) clamp(16px,1.8vw,32px);
   border-radius:clamp(18px,2.4vh,28px);background:var(--card);border:1px solid var(--borda);}
-.tv-anel{position:relative;width:clamp(74px,11vh,124px);height:clamp(74px,11vh,124px);flex:none;}
-.tv-anel svg{width:100%;height:100%;transform:rotate(-90deg);}
-.tv-anel circle{fill:none;stroke-width:11;}
-.tv-anel .f{stroke:var(--suave);}
-.tv-anel .v{stroke:var(--acento);stroke-linecap:round;stroke-dasharray:var(--c);stroke-dashoffset:var(--o);transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1);}
-.tv-anel b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'B7 Titulo';font-weight:800;
-  font-size:clamp(22px,3.6vh,40px);letter-spacing:-.03em;}
-.tv-anel b i{font-style:normal;font-size:.5em;margin-left:2px;color:var(--ink-4);}
-.tv-resumo-tx{display:flex;flex-direction:column;gap:4px;min-width:0;}
-.tv-resumo-tx span{font-size:clamp(11px,1.3vh,14px);font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4);}
-.tv-resumo-tx strong{font-family:'B7 Titulo';font-weight:800;font-size:clamp(17px,2.6vh,30px);letter-spacing:-.02em;line-height:1.1;}
-.tv-nums{margin-left:auto;display:flex;gap:clamp(8px,1vw,18px);}
-.tv-num{min-width:clamp(92px,9.5vw,178px);padding:clamp(8px,1.3vh,16px) clamp(12px,1.2vw,22px);border-radius:clamp(14px,1.8vh,20px);
-  background:color-mix(in srgb, var(--ec) 9%, var(--card));border:1px solid color-mix(in srgb, var(--ec) 26%, var(--borda));
-  display:flex;flex-direction:column;gap:2px;}
-.tv-num b{font-family:'B7 Titulo';font-weight:800;font-size:clamp(28px,5.2vh,58px);line-height:1;letter-spacing:-.03em;color:var(--ec);font-variant-numeric:tabular-nums;}
-.tv-num span{font-size:clamp(11px,1.5vh,16px);font-weight:600;color:var(--ink-3);}
 
 .tv-bloco{min-height:0;display:flex;flex-direction:column;padding:clamp(12px,1.8vh,22px) clamp(14px,1.4vw,26px);
   border-radius:clamp(18px,2.4vh,28px);background:var(--card);border:1px solid var(--borda);}
@@ -86,8 +69,6 @@ body.modo-tv #toasts,body.modo-tv #b7-chat-fab,body.modo-tv #b7-chat,body.modo-t
 .tv-cli-pct{flex:none;width:clamp(40px,3.2vw,60px);text-align:right;font-family:'B7 Titulo';font-weight:800;font-size:clamp(13px,2vh,21px);
   font-variant-numeric:tabular-nums;color:var(--ec);}
 .tv-cli.tv-e-andamento .tv-cli-pct,.tv-cli.tv-e-ok .tv-cli-pct{color:var(--ink-2);}
-.tv-cli-cab{animation:none;border-bottom-color:var(--borda);padding-left:calc(clamp(26px,3.6vh,38px) + clamp(8px,.8vw,14px));align-items:flex-end;padding-bottom:6px;}
-.tv-cli-cab .tv-cli-etapas i{height:auto;background:none;color:var(--ink-4);font-size:clamp(9px,1.15vh,12px);font-weight:700;letter-spacing:.02em;}
 
 /* ------------------------------------------------------------------ lado */
 .tv-lado{min-height:0;display:flex;flex-direction:column;gap:clamp(12px,1.6vh,22px);}
@@ -128,11 +109,8 @@ body.modo-tv #toasts,body.modo-tv #b7-chat-fab,body.modo-tv #b7-chat,body.modo-t
   .tv{overflow-y:auto;}
   .tv-corpo{display:flex;flex-direction:column;flex:none;}
   .tv-resumo{flex-wrap:wrap;}
-  .tv-nums{margin-left:0;width:100%;flex-wrap:wrap;}
-  .tv-num{flex:1;min-width:120px;}
   .tv-clientes-corpo{display:flex;flex-direction:column;overflow:visible;}
   .tv-cli{padding:8px 0;}
-  .tv-cli-cab{display:none;}
   .tv-lado .tv-bloco:last-child{flex:none;}
 }
 @media (max-width:640px){
@@ -149,7 +127,7 @@ body.modo-tv #toasts,body.modo-tv #b7-chat-fab,body.modo-tv #b7-chat,body.modo-t
 }
 @media (prefers-reduced-motion: reduce){
   .tv,.tv-cli,.tv-relogio b i{animation:none !important;}
-  .tv-anel .v,.tv-sair{transition:none !important;}
+  .tv-sair{transition:none !important;}
 }
 html.modo-leve .tv-relogio b i{animation:none;}
 
@@ -266,27 +244,17 @@ html.modo-leve .tv-relogio b i{animation:none;}
   background:linear-gradient(100deg, transparent, rgba(255,255,255,.085) 50%, transparent);
   transform:translate3d(-140%,0,0) skewX(-16deg);animation:tvVarre 11s cubic-bezier(.4,0,.2,1) 2s infinite;}
 @keyframes tvVarre{0%{transform:translate3d(-140%,0,0) skewX(-16deg);}38%,100%{transform:translate3d(520%,0,0) skewX(-16deg);}}
-.tv-bloco h2,.tv-resumo-tx span{letter-spacing:.14em;text-transform:uppercase;font-size:clamp(11px,1.35vh,14.5px);font-weight:800;color:var(--ink-3);}
-.tv-resumo-tx strong{font-size:clamp(19px,3vh,34px);}
+.tv-bloco h2{letter-spacing:.14em;text-transform:uppercase;font-size:clamp(11px,1.35vh,14.5px);font-weight:800;color:var(--ink-3);}
 
 /* anel com brilho */
-.tv-anel svg{filter:drop-shadow(0 0 16px rgba(240,79,168,.55));overflow:visible;}
-.tv-anel .f{stroke:rgba(255,255,255,.09);}
-.tv-anel .v{stroke:#F04FA8;}
-.tv-anel b{background:linear-gradient(180deg, #fff, #E6D6FF);-webkit-background-clip:text;background-clip:text;color:transparent;}
-.tv-anel b i{-webkit-text-fill-color:var(--ink-4);}
 
 /* números grandes com luz própria */
-.tv-num{background:linear-gradient(180deg, color-mix(in srgb, var(--ec) 20%, transparent), color-mix(in srgb, var(--ec) 6%, transparent));
-  border-color:color-mix(in srgb, var(--ec) 38%, transparent);box-shadow:0 0 44px -18px var(--ec), inset 0 1px 0 rgba(255,255,255,.12);}
-.tv-num b{text-shadow:0 0 28px color-mix(in srgb, var(--ec) 60%, transparent);}
 
 /* linhas de cliente e barras com brilho da própria cor */
 .tv-cli{border-bottom-color:rgba(255,255,255,.06);}
 .tv-cli-etapas i{background:color-mix(in srgb, var(--ec) 22%, transparent);color:color-mix(in srgb, var(--ec) 70%, #fff);
   box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ec) 28%, transparent);}
 .tv-cli-etapas i.tv-e-vazio{background:rgba(255,255,255,.04);box-shadow:none;}
-.tv-cli-cab .tv-cli-etapas i{background:none;box-shadow:none;}
 .tv-cli.tv-e-atraso .tv-cli-pct{text-shadow:0 0 18px rgba(255,111,174,.6);}
 .tv-etapa-barra{background:rgba(255,255,255,.05);}
 .tv-etapa-barra i{box-shadow:0 0 14px -2px var(--ec);transform-origin:left center;}
@@ -302,8 +270,7 @@ html.modo-leve .tv-relogio b i{animation:none;}
 @keyframes tvEntraBloco{from{opacity:0;transform:translate3d(0,26px,0) scale(.985);}to{opacity:1;transform:none;}}
 .tv-corpo.tv-entra .tv-etapa-barra i{animation:tvCresce 1.1s cubic-bezier(.16,1,.3,1) .35s both;}
 @keyframes tvCresce{from{transform:scaleX(0);opacity:.3;}to{transform:none;opacity:1;}}
-.tv-corpo.tv-entra .tv-anel .v{animation:tvAnel 1.5s cubic-bezier(.16,1,.3,1) .2s both;}
-@keyframes tvAnel{from{stroke-dashoffset:var(--c);}to{stroke-dashoffset:var(--o);}}
+
 .tv-corpo.tv-sai{opacity:0;transform:translate3d(0,-16px,0) scale(.99);transition:opacity .4s ease-in, transform .4s ease-in;}
 
 /* ---- a animação da B7 (modo "só a animação" e vinheta) ---- */
@@ -318,19 +285,9 @@ html.modo-leve .tv-relogio b i{animation:none;}
 .tv > .tv-sair{position:absolute;z-index:9;}
 
 /* janela de configuração: o modo */
-.tv-cfg-modo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;}
-.tv-cfg-modo label{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;border-radius:14px;border:1px solid var(--borda);cursor:pointer;}
-.tv-cfg-modo label:has(input:checked){border-color:var(--acento);background:var(--acento-suave);}
-.tv-cfg-modo input{margin-top:3px;accent-color:var(--acento);flex:none;}
-.tv-cfg-modo span{display:flex;flex-direction:column;gap:2px;min-width:0;}
-.tv-cfg-modo b{font-size:13.5px;font-weight:700;color:var(--ink);}
-.tv-cfg-modo small{font-size:12px;color:var(--ink-3);line-height:1.4;}
-.tv-cfg-blocos{display:flex;flex-direction:column;gap:7px;transition:opacity .2s;}
-.tv-cfg-blocos.apagado{opacity:.4;pointer-events:none;}
-@media (max-width:560px){ .tv-cfg-modo{grid-template-columns:1fr;} }
 
 @media (prefers-reduced-motion: reduce){
-  .tv-luz,.tv-cab::before,.tv-resumo::before,.tv-corpo.tv-entra > *,.tv-corpo.tv-entra .tv-etapa-barra i,.tv-corpo.tv-entra .tv-anel .v{animation:none !important;}
+  .tv-luz,.tv-cab::before,.tv-resumo::before,.tv-corpo.tv-entra > *,.tv-corpo.tv-entra .tv-etapa-barra i{animation:none !important;}
   .tv-corpo.tv-sai,.tv-anim{transition:none !important;}
 }
 html.modo-leve .tv-luz,html.modo-leve .tv-cab::before,html.modo-leve .tv-resumo::before{animation:none;}
@@ -435,8 +392,6 @@ html.modo-leve .tv-grao{display:none;}
 .tv.tv-v-aurora .tv-luz{background:radial-gradient(closest-side, var(--tv-luz-a, rgba(40,220,190,.44)), transparent 72%);opacity:.7;}
 .tv.tv-v-aurora .tv-luz.dois{background:radial-gradient(closest-side, var(--tv-luz-b, rgba(120,90,255,.46)), transparent 72%);opacity:.65;}
 .tv.tv-v-aurora .tv-relogio b{background:linear-gradient(180deg, #fff 20%, #B8FFF0 60%, #9C8CFF 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 0 22px rgba(63,224,197,.35));}
-.tv.tv-v-aurora .tv-anel svg{filter:drop-shadow(0 0 16px rgba(63,224,197,.55));}
-.tv.tv-v-aurora .tv-anel .v{stroke:#3FE0C5;}
 .tv.tv-v-aurora .tv-hoje{background:linear-gradient(90deg, rgba(63,224,197,.2), rgba(124,92,255,.16));box-shadow:0 0 34px -10px rgba(63,224,197,.6);}
 .tv.tv-v-aurora .tv-cab::before{background:linear-gradient(90deg, transparent, rgba(120,90,255,.75) 35%, #fff 76%, rgba(63,224,197,.95) 92%, transparent);}
 .tv.tv-v-aurora .tv-sdia.hoje{border-color:rgba(63,224,197,.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.16), 0 0 60px -20px rgba(63,224,197,.75);}
@@ -457,16 +412,10 @@ html.modo-leve .tv-grao{display:none;}
 .tv.tv-v-claro .tv-relogio b{background:linear-gradient(180deg, #2A1466 10%, #C21C83 100%);-webkit-background-clip:text;background-clip:text;filter:none;}
 .tv.tv-v-claro .tv-relogio b i{-webkit-text-fill-color:rgba(60,30,110,.45);}
 .tv.tv-v-claro :is(.tv-anel b,.tv-sdia header b){background:none;color:var(--ink);-webkit-text-fill-color:currentColor;}
-.tv.tv-v-claro .tv-anel b i{-webkit-text-fill-color:var(--ink-4);}
-.tv.tv-v-claro .tv-anel svg{filter:none;}
-.tv.tv-v-claro .tv-anel .f{stroke:var(--suave);}
-.tv.tv-v-claro .tv-anel .v{stroke:var(--acento);}
 .tv.tv-v-claro :is(.tv-num b,.tv-pub-n b,.tv-cli-pct){text-shadow:none;}
-.tv.tv-v-claro .tv-num{background:color-mix(in srgb, var(--ec) 9%, #fff);border-color:color-mix(in srgb, var(--ec) 26%, var(--borda));box-shadow:none;}
 .tv.tv-v-claro .tv-cli{border-bottom-color:rgba(60,30,110,.08);}
 .tv.tv-v-claro .tv-cli-etapas i{background:color-mix(in srgb, var(--ec) 15%, transparent);color:color-mix(in srgb, var(--ec) 82%, #15122B);box-shadow:none;}
 .tv.tv-v-claro .tv-cli-etapas i.tv-e-vazio{background:rgba(60,30,110,.05);}
-.tv.tv-v-claro .tv-cli-cab .tv-cli-etapas i{background:none;}
 .tv.tv-v-claro .tv-etapa-barra{background:rgba(60,30,110,.07);}
 .tv.tv-v-claro .tv-etapa-barra i{box-shadow:none;}
 .tv.tv-v-claro .tv-hoje{background:rgba(194,28,131,.08);border-color:rgba(194,28,131,.26);box-shadow:none;}
@@ -481,18 +430,12 @@ html.modo-leve .tv-grao{display:none;}
   --ink:#fff; --ink-2:#D0D0D0; --ink-3:#9A9A9A; --ink-4:#6E6E6E; background:#000;}
 .tv.tv-v-minimal :is(.tv-luz,.tv-grao),.tv.tv-v-minimal::after,.tv.tv-v-minimal .tv-cab::before,.tv.tv-v-minimal .tv-resumo::before{display:none;}
 .tv.tv-v-minimal :is(.tv-resumo,.tv-bloco,.tv-sdia,.tv-mural-grade article,.tv-recado,.tv-hoje,.tv-faixa){background:none;border:1px solid rgba(255,255,255,.16);border-radius:6px;box-shadow:none;}
-.tv.tv-v-minimal .tv-num{background:none;border:0;border-left:2px solid var(--ec);border-radius:0;box-shadow:none;}
 .tv.tv-v-minimal :is(.tv-num b,.tv-pub-n b,.tv-cli-pct){text-shadow:none;}
 .tv.tv-v-minimal .tv-relogio b{background:none;color:#fff;-webkit-text-fill-color:#fff;filter:none;font-weight:700;}
 .tv.tv-v-minimal .tv-relogio b i{-webkit-text-fill-color:rgba(255,255,255,.5);}
 .tv.tv-v-minimal :is(.tv-anel b,.tv-sdia header b,.tv-sauda h1){background:none;color:#fff;-webkit-text-fill-color:#fff;}
-.tv.tv-v-minimal .tv-anel b i{-webkit-text-fill-color:var(--ink-4);}
-.tv.tv-v-minimal .tv-anel svg{filter:none;}
-.tv.tv-v-minimal .tv-anel circle{stroke-width:5;}
-.tv.tv-v-minimal .tv-anel .v{stroke:#fff;}
 .tv.tv-v-minimal .tv-cli-etapas i{background:none;box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ec) 60%, transparent);border-radius:3px;color:var(--ec);}
 .tv.tv-v-minimal .tv-cli-etapas i.tv-e-vazio{box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);}
-.tv.tv-v-minimal .tv-cli-cab .tv-cli-etapas i{box-shadow:none;}
 .tv.tv-v-minimal .tv-etapa-barra{height:4px;border-radius:0;background:rgba(255,255,255,.08);}
 .tv.tv-v-minimal .tv-etapa-barra i{border-radius:0;box-shadow:none;}
 .tv.tv-v-minimal .tv-sdia.hoje{border-color:#fff;}

@@ -1,68 +1,13 @@
 /* =====================================================================
    B7 CALENDÁRIO DE GRAVAÇÕES (Parte 3)
    ===================================================================== */
-
-.cal-tela .estado-b7{margin-top:10px;}
-.cal-desconectado b{display:block;margin-bottom:4px;}
-
-.cal-barra{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  flex-wrap:wrap;margin:16px 0 12px;}
-.cal-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.cal-nav .b{padding:6px 12px;}
-.cal-rotulo-janela{font-size:13px;color:var(--ink-3);font-weight:600;margin-left:4px;}
-.cal-vista{display:flex;gap:6px;}
-
-.cal-filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
-.cal-filtros .campo{width:auto;min-width:150px;flex:1 1 150px;}
 #cal-f-busca{min-width:200px;flex:2 1 200px;}
 
-.cal-dias{display:flex;flex-direction:column;gap:18px;}
-.cal-dia-cab{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;
-  font-size:13px;color:var(--ink-3);}
-.cal-dia-cab b{font-family:'B7 Titulo';font-weight:800;color:var(--ink);font-size:14px;}
-.cal-dia.hoje .cal-dia-cab b{color:var(--acento);}
-.cal-dia-cab em{font-style:normal;background:var(--acento-suave);color:var(--acento);
-  font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;}
-.cal-dia-corpo{display:flex;flex-direction:column;gap:6px;}
-
-.cal-evento{display:flex;align-items:center;gap:12px;padding:10px 12px;
-  background:var(--card);border:1px solid var(--borda);border-radius:10px;
-  cursor:pointer;transition:var(--t-rapido);}
-.cal-evento:hover, .cal-evento:focus-visible{border-color:var(--borda-forte);
-  box-shadow:0 6px 18px -12px rgba(0,0,0,.155);outline:none;}
-.cal-evento.cancelado{opacity:.55;}
-.cal-evento.cancelado .cal-evento-titulo{text-decoration:line-through;}
-.cal-evento-hora{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--ink-3);
-  min-width:82px;font-variant-numeric:tabular-nums;}
-.cal-evento-corpo{flex:1;min-width:0;}
-.cal-evento-titulo{font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:3px;}
-.cal-evento-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-4);}
-.cal-evento-agenda{font-weight:600;}
-.cal-vinculo-badge{flex:0 0 auto;font-size:10.5px;font-weight:700;padding:3px 9px;
-  border-radius:99px;background:var(--ok-bg);color:var(--ok);white-space:nowrap;}
-.cal-vinculo-badge.fraca{background:var(--suave);color:var(--ink-4);}
-
 /* Configurações */
-.cal-conexao-ok{display:flex;flex-direction:column;gap:2px;margin-bottom:12px;
-  padding:12px 14px;background:var(--ok-bg);border-radius:var(--r-sm);}
-.cal-conexao-ok b{color:var(--ok);font-size:13.5px;}
-.cal-conexao-ok span{font-size:12.5px;color:var(--ink-2);}
-.cal-conexao-ok small{font-size:11px;color:var(--ink-4);margin-top:2px;}
-.cal-agenda-item{display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:9px 12px;background:var(--suave);border-radius:var(--r-sm);font-size:13px;
-  color:var(--ink-2);margin-bottom:6px;flex-wrap:wrap;}
-.cal-agenda-item > label{display:flex;align-items:center;gap:9px;cursor:pointer;}
-.cal-agenda-padrao{font-size:11.5px;color:var(--ink-4);font-weight:600;}
-.cal-agenda-padrao input{accent-color:var(--acento);}
-.cal-agenda-padrao:has(input:checked){color:var(--acento);}
 
 /* Detalhe do evento */
 .cal-detalhe-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
   gap:12px;margin:14px 0;}
-.cal-gravacao-vinculada{padding:12px 14px;background:var(--suave);border-radius:var(--r-sm);
-  display:flex;flex-direction:column;gap:3px;}
-.cal-gravacao-vinculada b{font-size:13.5px;}
-.cal-gravacao-vinculada span{font-size:12px;color:var(--ink-3);}
 
 /* =====================================================================
    STATUS DE OCORRÊNCIA (Marcada/Remarcada/Concluída/Cancelada)
@@ -74,17 +19,9 @@
 .cal-st-remarcada{--cal-st:var(--ambar);--cal-st-bg:var(--ambar-bg);--cal-st-border:rgba(150,96,26,.35);}
 .cal-st-concluida{--cal-st:var(--ok);--cal-st-bg:var(--ok-bg);--cal-st-border:rgba(18,128,90,.35);}
 .cal-st-cancelada{--cal-st:var(--erro);--cal-st-bg:var(--erro-bg);--cal-st-border:rgba(194,24,91,.35);}
-.cal-st-semvinculo{--cal-st:var(--ink-4);--cal-st-bg:var(--suave);--cal-st-border:var(--borda-forte);}
 [data-theme="dark"] .cal-st-remarcada{--cal-st-border:rgba(232,180,92,.4);}
 [data-theme="dark"] .cal-st-concluida{--cal-st-border:rgba(79,214,159,.4);}
 [data-theme="dark"] .cal-st-cancelada{--cal-st-border:rgba(255,116,174,.4);}
-
-.cal-legenda{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px;}
-.cal-legenda-item{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;
-  color:var(--ink-2);background:var(--cal-st-bg);padding:6px 12px 6px 10px;border-radius:99px;
-  border:1px solid transparent;}
-.cal-legenda-item .cal-dot{background:var(--cal-st);box-shadow:0 0 0 2px var(--card);}
-.cal-dot{width:8px;height:8px;border-radius:50%;background:var(--cal-st);flex:0 0 auto;}
 
 .cal-badge-status{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;
   font-weight:700;padding:3px 9px;border-radius:99px;background:var(--cal-st-bg);
@@ -93,12 +30,6 @@
 
 /* Ocorrência dentro da lista por dia — mesma estrutura do .cal-evento,
    mas com a cor de status na borda esquerda. */
-.cal-oc{border-left:3px solid var(--cal-st-border);}
-.cal-oc.cal-st-marcada, .cal-oc.cal-st-remarcada,
-.cal-oc.cal-st-concluida, .cal-oc.cal-st-cancelada{border-left-color:var(--cal-st);}
-.cal-oc.cal-st-cancelada .cal-evento-titulo,
-.cal-oc.cal-st-remarcada .cal-evento-titulo{text-decoration:none;}
-.cal-oc-hist{font-size:10.5px;font-weight:700;color:var(--ink-4);margin-left:6px;}
 
 .cal-aviso-sync{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;
   font-weight:600;color:var(--erro);}
@@ -115,58 +46,6 @@
    verdade — inclusive "sem vínculo", que antes tinha o mesmo tom do
    fundo da célula e por isso sumia visualmente.
    ===================================================================== */
-.cal-grade-mes{background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);
-  box-shadow:var(--sh-2);overflow:hidden;}
-.cal-grade-cab{display:grid;grid-template-columns:repeat(7,1fr);background:var(--suave);
-  border-bottom:1px solid var(--borda-forte);}
-.cal-grade-cab > div{padding:12px 8px;text-align:center;font-size:11px;font-weight:800;
-  color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;font-family:'B7 Titulo';
-  border-right:1px solid var(--borda);}
-.cal-grade-cab > div:last-child{border-right:none;}
-.cal-grade-cab > div:first-child,.cal-grade-cab > div:last-child{color:var(--ink-4);}
-.cal-grade-corpo{display:grid;grid-template-columns:repeat(7,1fr);}
-
-.cal-cel{position:relative;background:var(--card);min-height:128px;min-width:0;padding:9px 8px;
-  display:flex;flex-direction:column;gap:6px;border-right:1px solid var(--borda);
-  border-bottom:1px solid var(--borda);transition:var(--t);overflow:hidden;}
-.cal-grade-corpo > .cal-cel:nth-child(7n){border-right:none;}
-.cal-grade-corpo > .cal-cel:nth-last-child(-n+7){border-bottom:none;}
-.cal-cel:nth-child(7n+1),.cal-cel:nth-child(7n){background:color-mix(in srgb, var(--suave) 45%, var(--card));}
-.cal-cel:nth-child(7n+1).fora,.cal-cel:nth-child(7n).fora{background:var(--suave);}
-.cal-cel:hover{background:var(--suave);}
-.cal-cel.fora{background:var(--suave);}
-.cal-cel.fora .cal-cel-num{color:var(--ink-4);opacity:.6;}
-.cal-cel.hoje{background:var(--card);box-shadow:inset 0 0 0 2px var(--acento);z-index:1;
-  border-radius:4px;}
-.cal-cel.hoje:hover{background:var(--acento-suave);}
-.cal-cel-num{font-size:12.5px;font-weight:800;color:var(--ink-3);font-family:'B7 Titulo';
-  display:flex;align-items:center;gap:6px;min-height:22px;}
-.cal-cel-num em{font-style:normal;background:var(--acento);color:#fff;font-size:9.5px;
-  font-weight:700;padding:2px 7px;border-radius:99px;letter-spacing:.02em;}
-.cal-cel.hoje .cal-cel-num{color:var(--acento);}
-.cal-cel-itens{display:flex;flex-direction:column;gap:3px;min-height:0;flex:1;}
-
-.cal-cel-add{position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:6px;
-  border:none;background:transparent;color:var(--ink-4);font-size:15px;line-height:1;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  opacity:0;transition:var(--t-micro);}
-.cal-cel:hover .cal-cel-add, .cal-cel-add:focus-visible{opacity:1;}
-.cal-cel-add:hover{background:var(--acento);color:#fff;}
-@media (hover: none){.cal-cel-add{opacity:.55;}}
-
-.cal-chip{display:flex;align-items:center;gap:5px;padding:3px 7px;border-radius:7px;
-  background:var(--cal-st-bg);color:var(--cal-st);font-size:10.5px;font-weight:700;
-  line-height:1.4;cursor:pointer;max-width:100%;min-width:0;
-  border:1px solid transparent;transition:var(--t-micro);}
-.cal-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;display:block;}
-.cal-st-semvinculo.cal-chip{color:var(--ink-3);font-weight:600;}
-.cal-chip:hover{border-color:var(--cal-st-border);transform:translateY(-1px);
-  box-shadow:var(--sh-1);}
-.cal-chip .cal-dot{box-shadow:none;}
-.cal-cel-mais{font-size:10.5px;font-weight:700;color:var(--ink-4);cursor:pointer;
-  padding:2px 7px;border-radius:7px;background:var(--suave);text-align:left;
-  border:none;width:fit-content;}
-.cal-cel-mais:hover{color:var(--acento);background:var(--acento-suave);}
 
 /* =====================================================================
    MOBILE GERAL DO CALENDÁRIO — 820px, o mesmo corte "geral" usado no
@@ -176,51 +55,11 @@
    espaço numa tela de ~360px não cabe de jeito nenhum).
    ===================================================================== */
 @media (max-width: 820px){
-  .cal-filtros{flex-direction:column;}
-  .cal-filtros .campo,#cal-f-busca{width:100%;min-width:0;flex:1 1 auto;}
-}
-
-@media (max-width: 640px){
-  .cal-barra{flex-direction:column;align-items:stretch;}
-  .cal-vista{align-self:flex-start;}
-  .cal-evento{flex-wrap:wrap;}
-  .cal-evento-hora{min-width:0;}
-  .cal-grade-mes{border-radius:var(--r-sm);}
-  .cal-grade-cab > div{font-size:9.5px;padding:7px 2px;}
-  .cal-cel{min-height:52px;padding:4px 3px;cursor:pointer;}
-  .cal-cel-num{font-size:11px;min-height:auto;}
-  .cal-cel-add{opacity:.6;width:18px;height:18px;}
-  .cal-legenda{gap:6px;}
-  .cal-legenda-item{padding:5px 10px 5px 8px;font-size:11px;}
-  /* 7 colunas num telefone não cabem hora+título (virava "09:3..."
-     cortado) — o chip vira só uma bolinha da cor do status, e tocar em
-     qualquer lugar da célula abre a lista do dia inteiro (modalDia via
-     js/calendario.js), do mesmo jeito que o "+N mais" já abria. */
-  .cal-cel-itens{flex-direction:row;flex-wrap:wrap;gap:3px;align-items:center;}
-  .cal-chip{width:7px;height:7px;padding:0;border-radius:50%;background:var(--cal-st);
-    border:0;flex:none;}
-  .cal-chip .cal-dot,.cal-chip span{display:none;}
-  .cal-cel-mais{display:none;}
-}
-
-@media (max-width: 480px){
-  .cal-cel{min-height:48px;padding:3px;}
-  .cal-grade-cab > div{font-size:8.5px;padding:5px 1px;}
-  .cal-cel-num{font-size:10px;}
-  .cal-cel-itens{gap:2px;}
-  .cal-chip{width:6px;height:6px;}
+  #cal-f-busca{width:100%;min-width:0;flex:1 1 auto;}
 }
 
 /* Interruptor de lembretes por agenda (migration_agenda_lembretes.sql) —
    fica ao lado de "Usar para novas gravações", com o mesmo peso visual. */
-.cal-agenda-lembrete{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--ink-4);
-  font-weight:600;cursor:pointer;white-space:nowrap;}
-.cal-agenda-lembrete input{accent-color:var(--ok);}
-.cal-agenda-lembrete:has(input:checked){color:var(--ok);}
-@media (max-width:620px){
-  .cal-agenda-item{flex-wrap:wrap;row-gap:6px;}
-  .cal-agenda-item > label:first-child{flex:1 1 100%;}
-}
 
 /* =====================================================================
    CALENDÁRIO B7 (fase 6) — .cb-*
@@ -313,20 +152,16 @@
 
 /* -------------------------------------------------------------- SEMANA */
 .cb-semana{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;}
-.cb-sem-col{min-width:0;background:var(--card);border:1px solid var(--borda);border-radius:var(--r);padding:8px;display:flex;flex-direction:column;gap:8px;min-height:260px;}
-.cb-sem-col.hoje{border-color:color-mix(in srgb, var(--acento) 55%, var(--borda));box-shadow:0 0 0 1px color-mix(in srgb, var(--acento) 30%, transparent);}
 .cb-sem-cab{display:flex;align-items:baseline;gap:6px;background:none;border:0;padding:2px 2px 6px;border-bottom:1px solid var(--borda);cursor:pointer;text-align:left;}
 .cb-sem-cab small{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--ink-4);}
 .cb-sem-cab b{font-family:'B7 Titulo';font-size:20px;font-weight:800;color:var(--ink);}
 .cb-sem-cab em{font-style:normal;font-size:10.5px;font-weight:800;color:var(--acento);text-transform:uppercase;letter-spacing:.05em;margin-left:auto;}
 .cb-sem-todo,.cb-sem-hora{display:flex;flex-direction:column;gap:4px;min-width:0;}
-.cb-sem-vazio{color:var(--ink-4);font-size:12px;padding:4px;}
 .cb-card{display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;width:100%;min-width:0;padding:8px 9px;border-radius:9px;
   border:1px solid var(--borda);border-left:3px solid var(--dom);background:var(--card);cursor:pointer;}
 .cb-card.d-gravacao{border-left-color:var(--tom);}
 .cb-card:hover{border-color:var(--borda-forte);}
 .cb-card:focus-visible{outline:2px solid var(--acento);}
-.cb-card-h{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--ink-2);}
 .cb-card b{font-size:13px;font-weight:700;color:var(--ink);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cb-card > span:not(.cb-card-h):not(.cb-st){font-size:12px;color:var(--ink-3);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cb-card.hist{border-style:dashed;background:transparent;}
@@ -421,7 +256,6 @@
   .cb-cel{min-height:104px;}
   .cb-chip .cb-dom-ic{display:none;}
   .cb-semana{gap:5px;}
-  .cb-sem-col{padding:6px;}
 }
 @media (pointer:coarse){ .cb-chip{min-height:26px;} .cb-mais{min-height:28px;} }
 @media (prefers-reduced-motion:reduce){ .cb-atualizando i{animation:none;} }
@@ -522,8 +356,6 @@
 @media (pointer:coarse){ .cb-cel-add{display:none;} }
 
 /* ---- semana: cartões com a cor do cliente ---- */
-.cb-sem-col{border-radius:14px;transition:box-shadow .18s var(--mola);}
-.cb-sem-col:hover{box-shadow:var(--sh-2);}
 .cb-card{transition:transform .15s var(--mola), box-shadow .15s var(--mola), border-color .15s var(--mola);}
 .cb-card:hover{transform:translateY(-1px);box-shadow:var(--sh-2);}
 
@@ -750,7 +582,6 @@
 .cb-chip:hover{transform:translate3d(0,-1px,0);box-shadow:0 6px 14px -10px rgba(20,8,40,.31);}
 
 /* semana */
-.cb-sem-col{border-radius:18px;}
 .cb-card{border-radius:12px;}
 
 /* agenda (celular) */

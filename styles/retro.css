@@ -118,10 +118,7 @@ html.rtv-aberto{overflow:hidden;}
 .rtv-deg small{font-size:11.5px;color:#ffffffb3;line-height:1.3;min-height:30px;}
 .rtv-deg em{display:grid;place-items:center;width:100%;margin-top:8px;border-radius:16px 16px 6px 6px;font:700 28px 'B7 Titulo',sans-serif;font-style:normal;
   background:linear-gradient(180deg,#ffffff2e,#ffffff0d);border:1px solid #ffffff22;}
-.rtv-deg1 em{height:150px;background:linear-gradient(180deg,#f2b33d,#b8741a);border-color:transparent;box-shadow:0 20px 50px -14px #f2b33d;}
-.rtv-deg2 em{height:105px;}.rtv-deg3 em{height:72px;}
 .rtv-foto{width:64px;height:64px;border-radius:50%;overflow:hidden;background:#ffffff26;display:grid;place-items:center;box-shadow:0 0 0 3px #ffffff44;}
-.rtv-deg1 .rtv-foto{width:78px;height:78px;box-shadow:0 0 0 3px #f2b33d,0 0 30px #f2b33d88;}
 .rtv-foto img{width:100%;height:100%;object-fit:cover;}
 .rtv-foto i{font:700 26px 'B7 Titulo',sans-serif;font-style:normal;}
 

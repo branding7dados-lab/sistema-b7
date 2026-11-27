@@ -61,22 +61,13 @@
 .tp-item-tx b{font-size:13.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tp-item-tx small{font-size:11.5px;color:var(--ink-4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* itens simples (conta): ícone sem fundo, uma linha */
-.tp-item-simples{min-height:40px;padding:8px 10px;}
-.tp-item-simples .tp-item-ic{width:22px;height:22px;background:none;color:var(--ink-3);}
-.tp-item-simples:hover .tp-item-ic,.tp-item-simples:focus-visible .tp-item-ic{background:none;color:var(--acento);}
-.tp-item-simples .tp-item-tx b{font-weight:500;color:var(--ink-2);}
 .tp-item.perigo:hover,.tp-item.perigo:focus-visible{background:var(--erro-bg);}
 .tp-item.perigo:hover b,.tp-item.perigo:hover .tp-item-ic,.tp-item.perigo:focus-visible b{color:var(--erro);}
 
 /* cabeçalho da conta: quem é e TODAS as funções reais, sem troca de perfil */
-.tp-conta-cab{display:flex;align-items:center;gap:12px;padding:10px 10px 12px;margin-bottom:4px;border-bottom:1px solid var(--borda);}
 .tp-conta-av{width:42px;height:42px;border-radius:13px;flex:none;display:inline-flex;align-items:center;justify-content:center;
   font-size:42px;font-weight:800;overflow:hidden;}
 .tp-conta-av img{width:100%;height:100%;object-fit:cover;}
-.tp-conta-tx{display:flex;flex-direction:column;gap:2px;min-width:0;}
-.tp-conta-tx b{font-size:14px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;line-height:1.25;}
-.tp-conta-funcoes{font-size:12px;font-weight:600;color:var(--acento);line-height:1.35;}
-.tp-conta-tx small{font-size:11.5px;color:var(--ink-4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* aparência: segmentado Sistema / Claro / Escuro */
 .tp-secao{padding:8px 10px 6px;}
@@ -97,8 +88,6 @@
 .tp-folha-cab h3{margin:0;font-family:'B7 Titulo';font-weight:800;font-size:17px;}
 .tp-folha-corpo{display:flex;flex-direction:column;overflow-y:auto;max-height:calc(80vh - 60px);max-height:calc(80dvh - 60px);}
 .tp-folha .tp-item{min-height:52px;}
-.tp-folha .tp-item-simples{min-height:48px;}
-.tp-folha .tp-conta-cab{border-bottom:1px solid var(--borda);}
 .tp-folha .tp-tema{min-height:42px;}
 
 /* ---------------------------------------------------- Portal do Cliente */

@@ -12,7 +12,6 @@
 
 .nota-secao{color:var(--ink-3);font-size:12.5px;margin:0 0 16px;padding-left:11px;
   border-left:2px solid var(--borda-forte);line-height:1.5;}
-.vazio-inline{color:var(--ink-4);font-size:13px;margin:6px 0 0;}
 .texto-bloco{color:var(--ink-2);font-size:13.5px;line-height:1.6;margin:0;white-space:pre-wrap;}
 .leve{color:var(--ink-4);font-weight:400;letter-spacing:0;}
 
@@ -90,26 +89,12 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
 .barra-progresso i{display:block;height:100%;background:var(--grad-curto);border-radius:2px;
   transition:width var(--t);}
 
-.barra-linha{display:flex;align-items:center;gap:12px;margin-bottom:9px;}
-.barra-linha .rot-barra{width:120px;flex:none;font-size:12.5px;color:var(--ink-2);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.barra-linha .barra{flex:1;height:8px;background:var(--suave);border-radius:5px;overflow:hidden;}
-.barra-linha .barra i{display:block;height:100%;background:var(--grad-curto);border-radius:5px;
-  transition:width var(--t);}
-.barra-linha > b{width:40px;text-align:right;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;}
-
 .barra-total{display:flex;height:12px;border-radius:7px;overflow:hidden;background:var(--suave);}
 .barra-total i{display:block;height:100%;transition:width var(--t);}
 .barra-total .faixa-0{background:var(--violeta);}
 .barra-total .faixa-1{background:var(--roxo);}
 .barra-total .faixa-2{background:var(--magenta);}
 .barra-total .faixa-3{background:#001559;}
-.barra-legenda{display:flex;align-items:baseline;gap:9px;margin-top:10px;}
-.barra-legenda b{font-family:'B7 Titulo';font-weight:800;font-size:19px;}
-.barra-legenda span{font-size:12.5px;color:var(--ink-3);}
-
-.aviso-suave{margin-top:12px;font-size:12.5px;color:var(--ink-3);background:var(--suave);
-  border-radius:var(--r-sm);padding:9px 12px;}
 
 /* ------------------------------------------------------- pilares */
 .cartao-pilar{position:relative;display:flex;gap:16px;background:var(--card);
@@ -229,7 +214,6 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
 @media (max-width:760px){
   .grade-formatos{grid-template-columns:1fr;}
   .cartao-pilar{flex-direction:column;}
-  .barra-linha .rot-barra{width:88px;}
 }
 
 /* =====================================================================
@@ -252,9 +236,6 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
      título era espremido a quase 0px e quebrava letra por letra —
      mesmo padrão de bug já visto em outras telas. Empilha em vez de
      espremer. */
-  .dl-topo{flex-direction:column;align-items:stretch;gap:10px;}
-  .dl-topo > div{width:100%;}
-  .dl-topo button{width:100%;justify-content:center;}
 
   /* mesma ideia na legenda "copiar" de um campo do Quick View: o
      rótulo (algumas legendas são longas, ex. "OBSERVAÇÃO PARA O
@@ -276,22 +257,6 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
 .capa-cliente .menu{position:relative;z-index:3;}
 
 /* ------------------------- linha editorial atual no Client Home */
-.destaque-linha{margin-bottom:18px;}
-.dl-topo{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:16px;}
-.dl-topo small{display:block;font-size:9.5px;font-weight:700;letter-spacing:.24em;
-  color:var(--ink-4);margin-bottom:6px;}
-.dl-topo h3{font-family:'B7 Titulo';font-weight:800;font-size:21px;letter-spacing:-.3px;margin:0;}
-.dl-metricas{display:flex;gap:28px;margin-bottom:12px;}
-.dl-metricas b{display:block;font-family:'B7 Titulo';font-weight:800;font-size:22px;line-height:1;}
-.dl-metricas span{display:block;font-size:9.5px;letter-spacing:.16em;color:var(--ink-4);margin-top:5px;}
-.dl-historico{margin-top:16px;padding-top:14px;border-top:1px solid var(--borda);
-  display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.dl-historico small{font-size:9.5px;font-weight:700;letter-spacing:.2em;color:var(--ink-4);
-  margin-right:4px;}
-.dl-historico button{background:var(--suave);border:1px solid var(--borda);border-radius:99px;
-  padding:7px 13px;font-size:12.5px;cursor:pointer;color:var(--ink-2);transition:var(--t-micro);}
-.dl-historico button:hover{border-color:var(--acento);color:var(--acento);}
-.dl-historico button span{color:var(--ink-4);margin-left:7px;font-size:11.5px;}
 
 /* -------------------------------------------- calendário editorial */
 .vista-postagens{display:inline-flex;gap:3px;background:var(--suave);padding:3px;
@@ -300,24 +265,6 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
   font-size:12.5px;color:var(--ink-3);cursor:pointer;transition:var(--t-micro);}
 .vista-postagens button.on{background:var(--card);color:var(--ink);font-weight:600;
   box-shadow:0 1px 3px rgba(0,0,0,.07);}
-
-.cal-grade-topo{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px;}
-.cal-grade-topo span{font-size:9.5px;font-weight:700;letter-spacing:.16em;color:var(--ink-4);
-  text-align:center;}
-.cal-grade{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
-.cal-cel{min-height:92px;background:var(--suave);border:1px solid var(--borda);
-  border-radius:var(--r-sm);padding:7px;display:flex;flex-direction:column;gap:4px;}
-.cal-cel.vazia{background:none;border-color:transparent;}
-.cal-cel.com{background:var(--card);border-color:var(--borda-forte);}
-.cal-dia{font-size:11.5px;font-weight:600;color:var(--ink-4);}
-.cal-cel.com .cal-dia{color:var(--ink-2);}
-.cal-item{display:flex;align-items:center;gap:5px;width:100%;text-align:left;cursor:pointer;
-  background:var(--acento-suave);border:0;border-radius:6px;padding:4px 6px;
-  color:var(--acento);transition:var(--t-micro);}
-.cal-item:hover{filter:brightness(.96);}
-.cal-ic{flex:none;display:flex;}
-.cal-ic svg{width:11px;height:11px;}
-.cal-tx{font-size:10.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* ------------------------------------------- duplicar: seleção */
 .lista-check{display:flex;flex-direction:column;gap:2px;margin:8px 0 4px;}
@@ -338,12 +285,6 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
   font-size:11px;letter-spacing:-2px;color:var(--ink-4);opacity:0;transition:opacity var(--t-micro);}
 .cartao-pilar.arrastavel,.item-slide.arrastavel{position:relative;}
 .cartao-pilar.arrastavel:hover::before,.item-slide.arrastavel:hover::before{opacity:.6;}
-
-@media (max-width:760px){
-  .cal-grade,.cal-grade-topo{gap:3px;}
-  .cal-cel{min-height:64px;padding:4px;}
-  .cal-tx{display:none;}
-}
 
 /* ------------------------------------------------ banco de ideias */
 .grade-ideias{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:12px;}
@@ -396,28 +337,7 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
 .tl-item.clicavel:hover{background:var(--suave);}
 
 /* ------------------------------------------------------ calendário */
-.vista-post{margin-bottom:16px;width:max-content;}
 .calendario{background:var(--card);border:1px solid var(--borda);border-radius:var(--r-lg);padding:16px;}
-.cal-semana{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:8px;}
-.cal-semana span{font-size:9.5px;font-weight:700;letter-spacing:.16em;color:var(--ink-4);
-  text-align:center;padding-bottom:6px;border-bottom:1px solid var(--borda);}
-.cal-grade{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
-.cal-cel{min-height:82px;border-radius:var(--r-sm);border:1px solid transparent;
-  background:var(--suave);padding:7px;display:flex;flex-direction:column;gap:4px;}
-.cal-cel.fora{background:transparent;}
-.cal-cel.tem{border-color:var(--borda-forte);background:var(--card);}
-.cal-dia{font-size:11px;color:var(--ink-4);font-variant-numeric:tabular-nums;}
-.cal-cel.tem .cal-dia{color:var(--ink-2);font-weight:600;}
-.cal-item{display:flex;align-items:center;gap:5px;width:100%;text-align:left;cursor:pointer;
-  border:0;border-radius:6px;padding:4px 6px;background:var(--acento-suave);
-  color:var(--ink-2);transition:var(--t-micro);min-width:0;}
-.cal-item:hover{background:var(--acento);color:#fff;}
-.cal-fmt{font-size:8.5px;font-weight:700;letter-spacing:.08em;flex:none;opacity:.75;}
-.cal-tit{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cal-sem-data{margin-top:14px;padding-top:12px;border-top:1px solid var(--borda);
-  display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
-.cal-sem-data small{font-size:9.5px;font-weight:700;letter-spacing:.18em;color:var(--ink-4);}
-.cal-sem-data .cal-item{width:auto;max-width:220px;}
 
 /* --------------------------------------------- duplicar linha */
 .lista-copiar{display:flex;flex-direction:column;gap:7px;margin:8px 0 4px;}
@@ -435,14 +355,6 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
   padding:16px;transition:border-color var(--t-micro);}
 .card-ideia:hover{border-color:var(--borda-forte);}
 .ci-topo{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
-.titulo-ideia{font-family:'B7 Titulo';font-weight:800;font-size:15px;letter-spacing:-.2px;
-  margin-bottom:12px;background:transparent;border-color:transparent;padding-left:0;}
-.titulo-ideia:focus{background:var(--suave);border-color:var(--borda);padding-left:11px;}
-.ideias-arquivadas{margin-top:20px;}
-.ideias-arquivadas summary{cursor:pointer;font-size:12.5px;color:var(--ink-4);
-  padding:10px 0;user-select:none;}
-.ideias-arquivadas summary:hover{color:var(--ink-2);}
-.ideias-arquivadas .grade-ideias{margin-top:10px;opacity:.72;}
 .opcao-formato.on{border-color:var(--acento);background:var(--acento-suave);}
 
 /* --------------------------------- linhas editoriais: visão global */
@@ -502,29 +414,13 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;}
 .lg-id span{display:block;font-size:12px;color:var(--ink-4);margin-top:2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.lg-prog-tx{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--ink-3);
-  margin-bottom:8px;}
-.lg-prog-tx b{font-family:'B7 Titulo';font-weight:800;font-size:17px;color:var(--ink);margin-right:3px;}
-.lg-prog-tx em{font-style:normal;color:var(--ink-4);}
-.lg-prog-tx > span:last-child{font-size:11.5px;color:var(--ink-4);white-space:nowrap;}
-.lg-prog-barra{height:6px;border-radius:99px;background:var(--suave);overflow:hidden;}
-.lg-prog-barra i{display:block;height:100%;border-radius:99px;background:var(--grad-curto);
-  transform-origin:left center;transform:scaleX(var(--p,0));
-  animation:lgBarra .8s cubic-bezier(.2,.8,.25,1) both;animation-delay:calc(var(--i,0) * 28ms + .18s);}
-@keyframes lgBarra{from{transform:scaleX(0);}}
-.lg-vazio{display:flex;align-items:center;min-height:39px;font-size:12.5px;color:var(--ink-4);
-  padding:0 12px;border:1px dashed var(--borda-forte);border-radius:var(--r-sm);}
+
 .lg-pe{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-4);
   padding-top:11px;border-top:1px solid var(--borda);min-height:30px;}
 .lg-alerta{display:inline-flex;align-items:center;gap:5px;font-weight:600;color:var(--ambar);}
 .lg-alerta:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
-.lg-quando{margin-left:auto;white-space:nowrap;}
 .lg-card{position:relative;}
-.lg-abrir{position:absolute;top:12px;right:14px;font-size:16px;line-height:1;color:var(--acento);opacity:0;
-  transform:translateX(-6px);transition:opacity var(--t),transform var(--t);}
 .lg-card:hover .lg-id,.lg-card:focus-visible .lg-id{padding-right:14px;}
-.lg-card:hover .lg-abrir,.lg-card:focus-visible .lg-abrir{opacity:1;transform:none;}
-@media (hover:none){.lg-abrir{opacity:.45;transform:none;color:var(--ink-4);}}
 @media (max-width:720px){
   .lg-barra{gap:10px;}
   .lg-busca{flex-basis:100%;max-width:none;}
@@ -534,19 +430,11 @@ label.rot.rot-link{display:flex;align-items:center;justify-content:space-between
   .lg-grupo > summary{flex-wrap:wrap;}
   .lg-resumo{flex-basis:100%;margin-left:28px;text-align:left;}
 }
-@media (prefers-reduced-motion:reduce){.lg-card,.lg-prog-barra i{animation:none;}}
+@media (prefers-reduced-motion:reduce){.lg-card{animation:none;}}
 .filtro-ativo-linhas{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:-4px 0 18px;padding:10px 12px 10px 14px;border-radius:var(--r-sm);background:var(--suave);border:1px solid var(--borda);font-size:13px;color:var(--ink-3);}
 .filtro-ativo-linhas b{color:var(--ink);}
 .filtro-ativo-linhas a.b{text-decoration:none;}
-.card-linha{cursor:pointer;display:flex;flex-direction:column;gap:9px;padding:16px 18px;}
-.card-linha:hover{border-color:var(--borda-forte);}
 .cl-topo{display:flex;align-items:center;gap:9px;}
-.cl-cli{font-size:12px;color:var(--ink-4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.card-linha h3{font-family:'B7 Titulo';font-weight:800;font-size:17px;letter-spacing:-.2px;margin:0;}
-.cl-meta{display:flex;gap:5px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-4);}
-.card-linha .b{align-self:flex-start;margin-top:2px;}
-.destaque-linha.vazia .dl-nota{font-size:12.5px;color:var(--ink-4);margin-top:10px;}
-
 
 /* A logo preenche o quadrado, aqui como em qualquer outro lugar. Esta
    regra existia com `contain` e, por ser mais específica que a global,

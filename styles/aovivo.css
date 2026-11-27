@@ -60,27 +60,13 @@
 @media (max-width:520px){ .av-selo-compart{left:50%;transform:translateX(-50%);bottom:76px;} }
 
 /* barra do super enquanto acompanha */
-.av-barra-seguir{position:fixed;top:0;left:0;right:0;z-index:9500;display:flex;align-items:center;gap:10px;
-  padding:9px 16px;font:600 13px 'Inter',system-ui,sans-serif;color:#fff;
-  /* zzz287: no celular a barra não pode ficar embaixo da hora/bateria (notch) */
-  padding-top:calc(9px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
-  padding-left:calc(16px + var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
-  padding-right:calc(16px + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
-  background:linear-gradient(90deg,#7c4dff,#d6336c);box-shadow:0 6px 24px -8px #0009;animation:avBarra .25s ease both;}
-@keyframes avBarra{from{transform:translateY(-100%)}to{transform:none}}
-.av-barra-seguir b{font-weight:800;}
+
 .av-bs-ponto{width:10px;height:10px;border-radius:50%;background:#fff;box-shadow:0 0 0 0 #ffffff80;animation:avBsPulso 1.8s ease-out infinite;}
 @keyframes avBsPulso{0%{box-shadow:0 0 0 0 #ffffff80}70%{box-shadow:0 0 0 7px #ffffff00}100%{box-shadow:0 0 0 0 #ffffff00}}
-.av-bs-tela{font-size:12px;opacity:.85;}
-.av-barra-seguir.esperando{filter:saturate(.6) brightness(.9);}
 .av-bs-parar{margin-left:auto;padding:6px 14px;border-radius:999px;border:0;background:#ffffff26;color:#fff;font:700 12.5px 'Inter',sans-serif;cursor:pointer;transition:background .15s;}
 .av-bs-parar:hover{background:#ffffff3d;}
-html.av-seguindo{scroll-behavior:auto;}
 /* zzz289: empurra o #app (igual ao banner "Visualizando como"), não o body —
    senão o topo do sistema rola por dentro e sobra um espaço morto lá em cima */
-html.av-seguindo #app{margin-top:calc(38px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
-  height:calc(100vh - 38px - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
-  height:calc(100dvh - 38px - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));}
 
 /* ---------- online no "Visualizar como" (zzz289) ---------- */
 .res .mini{position:relative;}
@@ -96,7 +82,7 @@ html.av-seguindo #app{margin-top:calc(38px + var(--safe-area-inset-top, env(safe
 .av-cursor-remoto svg{width:24px;height:24px;fill:#7c4dff;stroke:#fff;stroke-width:1.3;filter:drop-shadow(0 2px 4px #0007);}
 .av-cursor-remoto b{position:absolute;left:18px;top:16px;padding:2px 8px;border-radius:8px;white-space:nowrap;
   font:700 11.5px 'Inter',sans-serif;color:#fff;background:#7c4dff;box-shadow:0 4px 10px -3px #0008;}
-@media (prefers-reduced-motion:reduce){ .av-cursor-remoto{transition:none} .av-selo-compart,.av-barra-seguir{animation:none} }
+@media (prefers-reduced-motion:reduce){ .av-cursor-remoto{transition:none} .av-selo-compart{animation:none} }
 
 /* ---------- rodapé "Visualizando como" na prévia / acompanhar (zzz291) ---------- */
 .ver-como.como-previa{animation:avPrevEntra .34s cubic-bezier(.2,.9,.25,1) both;}

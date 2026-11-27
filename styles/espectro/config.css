@@ -159,12 +159,9 @@ html[data-identidade="espectro"] .cfg-v2 .cfg-tm-ok{background:var(--esp-v,#7328
 html[data-identidade="espectro"] .cfg-v2 .cfg-tm-rot{font-size:14px;font-weight:400;color:var(--ink);}
 
 /* cores rápidas: "Mais opções" e "Usar a da equipe" no formato de botão secundário */
-html[data-identidade="espectro"] .cfg-v2 .cfg-cor-mais,
 html[data-identidade="espectro"] .cfg-v2 .cfg-cor-link{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 16px;border-radius:17px;background:var(--card);border:1px solid var(--borda);
   color:var(--ink);font:inherit;font-size:13px;font-weight:400;cursor:pointer;}
-html[data-identidade="espectro"] .cfg-v2 .cfg-cor-mais:hover,
 html[data-identidade="espectro"] .cfg-v2 .cfg-cor-link:hover{border-color:var(--esp-v,#7328A5);color:var(--esp-v,#7328A5);}
-html[data-identidade="espectro"] .cfg-v2 .cfg-cor-mais svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;}
 html[data-identidade="espectro"] .cfg-v2 .cfg-cor-nota{font-size:13px;color:var(--ink-3);}
 html[data-identidade="espectro"][data-theme="dark"] .cfg-v2 :is(.cfg-cor-mais, .cfg-cor-link){background:rgba(255,255,255,.04);border-color:var(--borda-forte);}
 

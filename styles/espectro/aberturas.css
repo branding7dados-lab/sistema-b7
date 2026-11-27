@@ -30,8 +30,6 @@ html[data-identidade="espectro"] .b7-abertura.b7-abertura.b7-abertura .ab-frase{
 html[data-identidade="espectro"] .b7-abertura.b7-abertura.b7-abertura.b7-abertura .ab-fio{display:none;}
 /* 5.16.1: a "data especial" (estação: vermelho, dourado, verde, azul) girava a cor da abertura inteira e deixava o
    carregamento verde e azul. No Espectro as cores são as da marca, sempre. */
-html[data-identidade="espectro"][data-estacao] .b7-abertura,
-html[data-identidade="espectro"][data-estacao] .b7-abertura .ab-marca{filter:none;}
 html[data-identidade="espectro"] .b7-abertura .ab-ola{font-family:inherit;font-weight:400;font-size:17px;color:#F3F4FA;}
 html[data-identidade="espectro"] .b7-abertura .ab-fio{width:140px;height:4px;border-radius:4px;background:rgba(255,255,255,.09);}
 html[data-identidade="espectro"] .b7-abertura .ab-fio:after{width:40%;border-radius:4px;background:repeating-linear-gradient(120deg,#7328A5 0 10px,#E02F75 10px 20px);}

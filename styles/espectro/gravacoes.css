@@ -369,8 +369,7 @@ html[data-identidade="espectro"] .gv-hist-lista li.t-item_gravado::before,
 html[data-identidade="espectro"] .gv-hist-lista li.t-concluida::before{border-color:#13855A;background:var(--ok-bg);}
 html[data-identidade="espectro"] .gv-hist-lista li.t-criada::before,
 html[data-identidade="espectro"] .gv-hist-lista li.t-data_definida::before{border-color:var(--esp-v,#7328A5);background:#F0E8F8;}
-html[data-identidade="espectro"] .gv-hist-mais,
-html[data-identidade="espectro"] .gv-det-add{font-weight:400;color:var(--esp-v,#7328A5);}
+html[data-identidade="espectro"] .gv-hist-mais{font-weight:400;color:var(--esp-v,#7328A5);}
 html[data-identidade="espectro"] .gv .chip-status{display:inline-flex;align-items:center;gap:6px;}
 html[data-identidade="espectro"] .gv .chip-status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
 
@@ -381,13 +380,7 @@ html[data-identidade="espectro"][data-theme="dark"] .gv-hist-lista li.t-criada::
 html[data-identidade="espectro"][data-theme="dark"] .gv-hist-lista li.t-data_definida::before{background:rgba(181,123,230,.16);color:#C99BF0;border-color:#B57BE6;}
 html[data-identidade="espectro"][data-theme="dark"] .gv-rel.hoje{background:var(--esp-v,#7328A5);color:#fff;}
 html[data-identidade="espectro"][data-theme="dark"] .gv-rel.passou{background:var(--ambar-bg);color:var(--ambar);}
-html[data-identidade="espectro"][data-theme="dark"] .gv-it-acoes .gv-it-abrir,
-html[data-identidade="espectro"][data-theme="dark"] .gv-prep-pasta,
-html[data-identidade="espectro"][data-theme="dark"] .gv-hist-mais,
-html[data-identidade="espectro"][data-theme="dark"] .gv-det-add,
-html[data-identidade="espectro"][data-theme="dark"] .gv-voltar:hover,
-html[data-identidade="espectro"][data-theme="dark"] .gv-nome .gv-cli:hover,
-html[data-identidade="espectro"][data-theme="dark"] button.gv-eq:hover .gv-eq-tx b{color:#C99BF0;}
+html[data-identidade="espectro"][data-theme="dark"] .gv-it-acoes .gv-it-abrir,html[data-identidade="espectro"][data-theme="dark"] .gv-prep-pasta,html[data-identidade="espectro"][data-theme="dark"] .gv-hist-mais,html[data-identidade="espectro"][data-theme="dark"] .gv-voltar:hover,html[data-identidade="espectro"][data-theme="dark"] .gv-nome .gv-cli:hover,html[data-identidade="espectro"][data-theme="dark"] button.gv-eq:hover .gv-eq-tx b{color:#C99BF0;}
 html[data-identidade="espectro"][data-theme="dark"] .gv-eq-av{background:var(--esp-v,#7328A5);}
 
 @media (max-width:1180px){

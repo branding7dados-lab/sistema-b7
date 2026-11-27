@@ -26,8 +26,7 @@ html body #app{transition:none;}
 html body:has(> .fundo-modal) #app{transform:none;border-radius:0;filter:none;}
 
 /* ---- luzes decorativas paradas (eram animações infinitas sobre desfoque) ---- */
-.pan-heroi-luz,.estado-b7:before,.estado-b7:after,.estado-b7 .b7-marca,.estado-b7 .b7-marca *,.estado-b7 i,.ilu,.cb-livre-ic,
-.vd-h-luz i,.vd-h-bokeh i,.vd-heroi .vd-h-reflexo:before{animation:none !important;}
+.estado-b7:before,.estado-b7:after,.estado-b7 .b7-marca,.estado-b7 .b7-marca *,.estado-b7 i,.ilu,.cb-livre-ic,.vd-h-luz i,.vd-h-bokeh i,.vd-heroi .vd-h-reflexo:before{animation:none !important;}
 
 /* ---- janela sem foco / aba escondida: tudo descansa ---- */
 html.b7-parado *,html.b7-parado *::before,html.b7-parado *::after{animation-play-state:paused !important;}

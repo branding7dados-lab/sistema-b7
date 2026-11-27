@@ -133,9 +133,6 @@ body.tem-chat .b7-atu{bottom:92px;}
 .ch-acao.feito,.ch-acao.cancelado{border-color:var(--borda);box-shadow:none;}
 
 .ch-vazio{margin:auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;}
-.ch-vazio-ic{width:52px;height:52px;border-radius:18px;display:inline-flex;align-items:center;justify-content:center;color:#fff;margin-bottom:6px;
-  background:linear-gradient(135deg,color-mix(in srgb,var(--violeta) 67%,#fff),color-mix(in srgb,var(--magenta) 86%,#fff));box-shadow:0 14px 26px -14px color-mix(in srgb,color-mix(in srgb,var(--roxo) 89%,#fff) 46.5%,transparent);}
-.ch-vazio-ic svg{width:26px;height:26px;}
 .ch-vazio b{font-family:'B7 Titulo',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.02em;}
 .ch-vazio p{margin:0;font-size:13px;line-height:1.5;color:var(--ink-3);max-width:300px;}
 .ch-sugs{display:flex;flex-direction:column;gap:7px;width:100%;margin-top:12px;}
