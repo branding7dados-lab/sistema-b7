@@ -1031,6 +1031,10 @@ B7.Editor = (function () {
     const z = zoomManual !== null ? zoomManual : Math.min(1, Math.max(.3, disp / 794));
     folhas.style.setProperty('--z', z);
     document.getElementById('palco').style.height = (folhas.offsetHeight * z) + 'px';
+    /* a folha tem 794 px e é só encolhida/aumentada visualmente: com zoom maior que a prévia, o centro do
+       palco ficava no meio da área visível e a borda esquerda da folha saía da tela sem dar para rolar até ela.
+       O palco passa a ter, no mínimo, a largura da folha no zoom atual (+ 30 px de cada lado), e a prévia rola. */
+    document.getElementById('palco').style.minWidth = Math.ceil(794 * z + 60) + 'px';
     document.getElementById('zoom-valor').textContent = Math.round(z * 100) + '%';
   }
   function zoom(delta) {
